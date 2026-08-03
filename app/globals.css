@@ -1,26 +1,122 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--gd-base);
+  --color-foreground: var(--gd-text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* ── Surfaces (dark monochrome, subtle warm-green undertone) ── */
+  --color-gd-deepest:  #060608;
+  --color-gd-base:     #0b0b0f;
+  --color-gd-card:     #131318;
+  --color-gd-elevated: #1a1a21;
+  --color-gd-overlay:  #22222b;
+
+  /* ── Borders ── */
+  --color-gd-border:        rgba(255,255,255,0.05);
+  --color-gd-border-soft:   rgba(255,255,255,0.08);
+  --color-gd-border-strong: rgba(255,255,255,0.12);
+
+  /* ── Accent: amber‑olive spectrum (orange→green monochrome) ── */
+  --color-gd-accent-50:  #fefce8;
+  --color-gd-accent-100: #fef9c3;
+  --color-gd-accent-200: #fef08a;
+  --color-gd-accent-300: #fde047;
+  --color-gd-accent-400: #facc15;
+  --color-gd-accent-500: #d4a017;
+  --color-gd-accent-600: #b8860b;
+  --color-gd-accent-700: #9a6d0a;
+  --color-gd-accent-800: #7c5708;
+  --color-gd-accent-900: #5e4207;
+  --color-gd-accent-950: #3d2a04;
+
+  /* ── Green undertone (organic feel) ── */
+  --color-gd-olive-500: #84cc16;
+  --color-gd-olive-600: #65a30d;
+  --color-gd-olive-700: #4d7c0f;
+  --color-gd-olive-800: #3f6212;
+  --color-gd-olive-900: #365314;
+
+  /* ── Warm oranges (alerts / CTAs) ── */
+  --color-gd-ember-500: #f97316;
+  --color-gd-ember-600: #ea580c;
+  --color-gd-ember-700: #c2410c;
+
+  /* ── Text ── */
+  --color-gd-text-primary:   #f4f4f5;
+  --color-gd-text-secondary: #a1a1aa;
+  --color-gd-text-muted:     #71717a;
+  --color-gd-text-inverse:   #0b0b0f;
+
+  /* ── Status ── */
+  --color-gd-success: #22c55e;
+  --color-gd-warning: #f59e0b;
+  --color-gd-danger:  #ef4444;
+  --color-gd-info:    #3b82f6;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ── Base ── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--gd-base);
+  color: var(--gd-text-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--gd-base); }
+::-webkit-scrollbar-thumb { background: var(--gd-border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gd-text-muted); }
+
+/* ── Glass utility ── */
+.glass {
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--gd-border);
+}
+.glass-strong {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--gd-border-soft);
+}
+
+/* ── Glow ring (used on active/hover cards) ── */
+.glow-ring {
+  box-shadow: 0 0 0 1px var(--gd-border-soft),
+              0 0 20px rgba(212, 160, 23, 0.06),
+              0 0 60px rgba(212, 160, 23, 0.02);
+}
+.glow-ring-strong {
+  box-shadow: 0 0 0 1px var(--gd-border-strong),
+              0 0 30px rgba(212, 160, 23, 0.12),
+              0 0 80px rgba(132, 204, 22, 0.04);
+}
+.glow-orange {
+  box-shadow: 0 0 0 1px rgba(249,115,22,0.12),
+              0 0 24px rgba(249,115,22,0.08);
+}
+.glow-green {
+  box-shadow: 0 0 0 1px rgba(132,204,22,0.12),
+              0 0 24px rgba(132,204,22,0.08);
+}
+
+/* ── Gradient text (accent) ── */
+.gradient-text {
+  background: linear-gradient(135deg, var(--gd-accent-400), var(--gd-olive-500));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Subtle bg grid (used on maps / empty states) ── */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
