@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MessageCircle, Send, ArrowLeft, Loader2, MoreHorizontal } from "lucide-react";
@@ -35,6 +35,10 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<Conversation | null>(null);
+
+  // Keep activeRef in sync so the poll can read the current conversation
+  useEffect(() => { activeRef.current = active; }, [active]);
 
   // Auto-open conversation from ?conv= param (e.g. from a profile "Message" button)
   useEffect(() => {
@@ -47,14 +51,44 @@ export default function MessagesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversations, searchParams, user]);
 
+  // Initial load + live polling (every 4s) so new messages appear WITHOUT refresh
+  const loadConversations = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`/api/chat/conversations?userId=${encodeURIComponent(user.id)}`);
+      const d = await res.json().catch(() => ({}));
+      if (d.conversations) {
+        setConversations(prev => {
+          // keep the active conversation's unread at 0 (it's open)
+          const activeId = activeRef.current?.id;
+          return d.conversations.map((c: Conversation) =>
+            c.id === activeId ? { ...c, unread: 0 } : c
+          );
+        });
+      }
+    } catch {}
+  }, [user]);
+
   useEffect(() => {
     if (!user) { router.replace("/login"); return; }
-    fetch(`/api/chat/conversations?userId=${encodeURIComponent(user.id)}`)
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d) setConversations(d.conversations || []); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [user, router]);
+    loadConversations().finally(() => setLoading(false));
+    const t = setInterval(loadConversations, 4000);
+    return () => clearInterval(t);
+  }, [user, router, loadConversations]);
+
+  // Live-poll the ACTIVE thread every 3s for new incoming messages
+  useEffect(() => {
+    if (!active || !user) return;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/chat/messages?conversationId=${encodeURIComponent(active.id)}&userId=${encodeURIComponent(user.id)}`);
+        const d = await res.json().catch(() => ({}));
+        if (d.messages) setMessages(d.messages);
+      } catch {}
+    };
+    const t = setInterval(poll, 3000);
+    return () => clearInterval(t);
+  }, [active, user]);
 
   const openConversation = async (conv: Conversation) => {
     setActive(conv);
@@ -106,7 +140,7 @@ export default function MessagesPage() {
 
   return (
     <div className="-m-6">
-      <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-[935px]">
+      <div className="mx-auto flex h-[calc(100dvh-4rem)] max-w-[935px]">
         {/* ── Conversation list ── */}
         <div className={`w-full flex-col border-r border-gd-border md:flex md:w-[350px] ${active ? "hidden" : "flex"}`}>
           <div className="flex items-center justify-between border-b border-gd-border px-4 py-4">

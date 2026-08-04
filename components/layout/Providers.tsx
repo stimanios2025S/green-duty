@@ -27,7 +27,7 @@ function MobileNav() {
   const openCreate = () => window.dispatchEvent(new CustomEvent("gd:open-create"));
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gd-border bg-gd-deepest/95 backdrop-blur-xl md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gd-border bg-gd-deepest/95 backdrop-blur-xl md:hidden pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto flex max-w-lg items-center justify-around py-2">
         {items.map((item, i) =>
           item.create ? (
