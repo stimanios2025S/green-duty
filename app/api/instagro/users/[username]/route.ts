@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { apiUserFromRow, serializePost } from "@/lib/instagro-api";
 
-export async function GET(req: Request, { params }: { params: { username: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ username: string }> }) {
   try {
-    const username = (params.username || "").toLowerCase();
+    const { username: usernameParam } = await params;
+    const username = (usernameParam || "").toLowerCase();
     const { searchParams } = new URL(req.url);
     const viewerId = searchParams.get("viewerId") || undefined;
     const d = await getDb();
