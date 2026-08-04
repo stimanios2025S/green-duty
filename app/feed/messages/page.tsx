@@ -139,7 +139,7 @@ export default function MessagesPage() {
   }, [messages, active]);
 
   return (
-    <div className="-m-6">
+    <div className="-m-6 overflow-x-hidden">
       <div className="mx-auto flex h-[calc(100dvh-4rem)] max-w-[935px]">
         {/* ── Conversation list ── */}
         <div className={`w-full flex-col border-r border-gd-border md:flex md:w-[350px] ${active ? "hidden" : "flex"}`}>

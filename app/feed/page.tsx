@@ -32,7 +32,7 @@ export default function FeedPage() {
   }, []);
 
   return (
-    <div className="-m-6">
+    <div className="-m-6 overflow-x-hidden">
       {/* IG top nav */}
       <header className="sticky top-0 z-40 border-b border-gd-border bg-gd-deepest/90 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[935px] items-center justify-between px-4">
