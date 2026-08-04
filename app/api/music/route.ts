@@ -30,10 +30,14 @@ export async function GET(req: Request) {
       url.searchParams.set("client_id", key);
       url.searchParams.set("format", "json");
       url.searchParams.set("limit", "30");
-      url.searchParams.set("include", "musicinfo");
+      url.searchParams.set("include", "musicinfo,albumimage");
       url.searchParams.set("audioformat", "mp32");
       url.searchParams.set("order", "popularity_total");
-      if (q) url.searchParams.set("search", q);
+      // Search across track name AND artist (so "StimiBeats" or Algerian artists work)
+      if (q) {
+        url.searchParams.set("search", q);
+        url.searchParams.set("search_in", "all");
+      }
       if (genre && genre !== "all") url.searchParams.set("tags", genre);
 
       const res = await fetch(url.toString(), { cache: "no-store" });
@@ -47,14 +51,18 @@ export async function GET(req: Request) {
             : typeof rawTags === "string" && rawTags
             ? rawTags
             : "various";
+          // Album artwork — Jamendo provides album_image / image
+          const albumImage = t.album_image || t.image || "";
           return {
             id: "j_" + t.id,
             name: t.name,
             artist: t.artist_name,
+            album: t.album_name || "",
             duration: fmt(t.duration),
             emoji: EMOJIS[i % EMOJIS.length],
             gradient: GRADIENTS[i % GRADIENTS.length],
             url: t.audio,
+            albumImage,
             genre,
           };
         });

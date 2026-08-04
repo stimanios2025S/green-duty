@@ -128,14 +128,18 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
                     <button onClick={() => togglePreview(t.id)} className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gd-elevated text-gd-text-secondary hover:text-gd-text-primary transition-colors">
                       {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                     </button>
-                    {/* Cover */}
-                    <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${t.gradient} text-base`}>
-                      {t.emoji}
+                    {/* Album cover */}
+                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br ${t.gradient} text-base`}>
+                      {t.albumImage ? (
+                        <img src={t.albumImage} alt={t.album || t.name} className="h-full w-full object-cover" />
+                      ) : (
+                        t.emoji
+                      )}
                     </div>
                     {/* Info */}
                     <div className="min-w-0 flex-1" onClick={() => togglePreview(t.id)}>
                       <p className="truncate text-sm font-medium text-gd-text-primary">{t.name}</p>
-                      <p className="truncate text-xs text-gd-text-muted">{t.artist} · {t.duration}</p>
+                      <p className="truncate text-xs text-gd-text-muted">{t.artist}{t.album ? " · " + t.album : ""} · {t.duration}</p>
                     </div>
                     {t.genre && <span className="hidden text-[10px] text-gd-text-muted sm:block">{t.genre}</span>}
                     {/* Choose */}

@@ -8,6 +8,11 @@ export async function GET(req: Request) {
     const viewerId = searchParams.get("viewerId") || undefined;
     const d = await getDb();
 
+    // Instagram-style: stories auto-expire after 24h
+    const expiry = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    await d.prepare("DELETE FROM stories WHERE created_at < ?").run(expiry);
+    await d.prepare("DELETE FROM story_views WHERE story_id NOT IN (SELECT id FROM stories)").run();
+
     const postRows = await d.prepare("SELECT * FROM posts ORDER BY created_at DESC LIMIT 50").all();
     const storyRows = await d.prepare("SELECT * FROM stories ORDER BY created_at DESC LIMIT 20").all();
 

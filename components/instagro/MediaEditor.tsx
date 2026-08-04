@@ -23,13 +23,14 @@ interface Props {
   nextLabel?: string;
   allowText?: boolean;
   allowMusic?: boolean;
+  initialMusic?: { id: string | null; url?: string | null; name?: string | null };
 }
 
 type Tab = "filters" | "adjust" | "crop" | "text" | "music";
 
 const TEXT_COLORS = ["#ffffff", "#0b0b0f", "#facc15", "#22c55e", "#ef4444", "#3b82f6", "#f97316", "#a855f7"];
 
-export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "Next", allowText = true, allowMusic = true }: Props) {
+export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "Next", allowText = true, allowMusic = true, initialMusic }: Props) {
   const [tab, setTab] = useState<Tab>("filters");
   const [filter, setFilter] = useState("none");
   const [adj, setAdj] = useState<Adjustments>(DEFAULT_ADJUST);
@@ -38,8 +39,9 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
   const [texts, setTexts] = useState<TextOverlay[]>([]);
   const [draftText, setDraftText] = useState("");
   const [addingText, setAddingText] = useState(false);
-  const [musicId, setMusicId] = useState<string | null>(null);
-  const [musicName, setMusicName] = useState("");
+  const [musicId, setMusicId] = useState<string | null>(initialMusic?.id || null);
+  const [musicUrl, setMusicUrl] = useState<string | null>(initialMusic?.url || null);
+  const [musicName, setMusicName] = useState(initialMusic?.name || "");
   const [playing, setPlaying] = useState(false);
   const [musicPickerOpen, setMusicPickerOpen] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -54,6 +56,7 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
     if (musicId === id || id === "") {
       stopPreview();
       setMusicId(null);
+      setMusicUrl(null);
       setMusicName("");
       setPlaying(false);
     }
@@ -64,10 +67,10 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
     if (mediaType === "image" && imgRef.current) {
       // Bake filter + adjustments + REAL crop + rotation into a new JPEG
       const baked = exportFilteredImage(imgRef.current, filter, adj, aspect, rotation);
-      onNext({ mediaUrl: baked, filterCss: "none", aspect, texts, musicId, musicName });
+      onNext({ mediaUrl: baked, filterCss: "none", aspect, texts, musicId, musicUrl, musicName });
     } else {
       // Video: keep the original, store the CSS filter for re-application
-      onNext({ mediaUrl, filterCss, aspect, texts, musicId, musicName });
+      onNext({ mediaUrl, filterCss, aspect, texts, musicId, musicUrl, musicName });
     }
   };
 
@@ -313,8 +316,8 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
         <MusicPicker
           currentId={musicId || undefined}
           onSelect={t => {
-            if (t) { setMusicId(t.id); setMusicName(t.name); previewTrack(t.url); setPlaying(true); }
-            else { setMusicId(null); setMusicName(""); stopPreview(); setPlaying(false); }
+            if (t) { setMusicId(t.id); setMusicUrl(t.url); setMusicName(t.name); previewTrack(t.url); setPlaying(true); }
+            else { setMusicId(null); setMusicUrl(null); setMusicName(""); stopPreview(); setPlaying(false); }
             setMusicPickerOpen(false);
           }}
           onClose={() => setMusicPickerOpen(false)}

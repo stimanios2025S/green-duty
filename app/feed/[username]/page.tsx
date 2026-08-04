@@ -48,22 +48,21 @@ export default function ProfilePage() {
 
   const handleMessage = async () => {
     if (!authUser) { router.push("/login"); return; }
-    const msg = prompt(`Send a message to @${profile?.user.username}:`);
-    if (!msg?.trim()) return;
+    // Open (or create) the DM thread, then go to Messages
     try {
-      await fetch("/api/notifications", {
+      const res = await fetch("/api/chat/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: profile!.user.id,
-          title: `New message from ${authUser.name}`,
-          message: msg.trim().slice(0, 200),
-          type: "system",
-        }),
+        body: JSON.stringify({ userId: authUser.id, otherUserId: profile!.user.id }),
       });
-      alert("Message sent!");
+      const d = await res.json().catch(() => ({}));
+      if (d.conversationId) {
+        router.push(`/feed/messages?conv=${d.conversationId}`);
+      } else {
+        router.push("/feed/messages");
+      }
     } catch {
-      alert("Couldn't send the message.");
+      router.push("/feed/messages");
     }
   };
 

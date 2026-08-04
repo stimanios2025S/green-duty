@@ -12,10 +12,12 @@ export interface MusicTrack {
   id: string;
   name: string;
   artist: string;
+  album?: string;
   duration: string;
   emoji: string;
   gradient: string;
   url: string;
+  albumImage?: string;
   genre?: string;
 }
 

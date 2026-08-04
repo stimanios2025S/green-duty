@@ -1,11 +1,58 @@
 "use client";
 import { ReactNode, useEffect } from "react";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
+import { Home, Search, PlusSquare, Send, User as UserIcon } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 
 const PUBLIC_PATHS = ["/login", "/auth/register", "/auth/verify"];
+
+function MobileNav() {
+  const { user } = useAuth();
+  const pathname = usePathname();
+  const myUsername = user?.name?.toLowerCase().replace(/\s+/g, ".") || "you";
+  const isFeed = pathname === "/feed" || pathname?.startsWith("/feed/");
+
+  const items = [
+    { href: "/feed", icon: Home, active: isFeed && pathname === "/feed" },
+    { href: "/feed", icon: Search, active: false, search: true },
+    { href: "/feed", icon: PlusSquare, active: false, create: true },
+    { href: "/feed/messages", icon: Send, active: pathname?.startsWith("/feed/messages") },
+    { href: `/feed/${myUsername}`, icon: UserIcon, active: pathname === `/feed/${myUsername}` },
+  ];
+
+  const openSearch = () => window.dispatchEvent(new CustomEvent("gd:open-search"));
+  const openCreate = () => window.dispatchEvent(new CustomEvent("gd:open-create"));
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gd-border bg-gd-deepest/95 backdrop-blur-xl md:hidden">
+      <div className="mx-auto flex max-w-lg items-center justify-around py-2">
+        {items.map((item, i) =>
+          item.create ? (
+            <button key={i} onClick={openCreate} className="text-gd-text-secondary hover:text-gd-text-primary transition-colors" title="Create">
+              <PlusSquare className="h-7 w-7" />
+            </button>
+          ) : item.search ? (
+            <button key={i} onClick={openSearch} className="text-gd-text-muted hover:text-gd-text-secondary transition-colors" title="Search">
+              <Search className="h-7 w-7" />
+            </button>
+          ) : (
+            <Link
+              key={i}
+              href={item.href}
+              className={`${item.active ? "text-gd-text-primary" : "text-gd-text-muted hover:text-gd-text-secondary"} transition-colors`}
+              title={item.href}
+            >
+              <item.icon className="h-7 w-7" />
+            </Link>
+          )
+        )}
+      </div>
+    </nav>
+  );
+}
 
 function Shell({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -31,12 +78,30 @@ function Shell({ children }: { children: ReactNode }) {
       </div>
     );
   }
+
+  // InstaGro pages (feed + all /feed/*) render full-width with the mobile nav —
+  // the IG-style pages manage their own top nav.
+  const isInstaGro = pathname?.startsWith("/feed");
+
+  if (isInstaGro) {
+    return (
+      <div className="flex min-h-screen flex-col bg-gd-deepest pb-16 md:pb-0">
+        <main className="flex-1">{children}</main>
+        <MobileNav />
+      </div>
+    );
+  }
+
+  // Other app pages: sidebar + header (desktop), mobile nav (mobile)
   return (
     <div className="flex h-screen overflow-hidden bg-gd-deepest">
-      <Sidebar />
+      <div className="hidden md:flex">
+        <Sidebar />
+      </div>
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto bg-gd-base p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-gd-base p-6 pb-20 md:pb-6">{children}</main>
+        <MobileNav />
       </div>
     </div>
   );

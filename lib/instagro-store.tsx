@@ -18,7 +18,7 @@ interface InstaStoreValue {
     likesHidden?: boolean; commentsDisabled?: boolean; musicId?: string | null;
     musicUrl?: string | null; musicName?: string | null;
   }) => Promise<{ ok: boolean; error?: string }>;
-  createStory: (input: { emoji?: string; gradient?: string; caption?: string; mediaUrl?: string; musicId?: string | null; musicName?: string | null; texts?: any[] }) => Promise<boolean>;
+  createStory: (input: { emoji?: string; gradient?: string; caption?: string; mediaUrl?: string; musicId?: string | null; musicUrl?: string | null; musicName?: string | null; texts?: any[] }) => Promise<boolean>;
   toggleLike: (postId: string) => Promise<void>;
   toggleSave: (postId: string) => void;
   addComment: (postId: string, text: string) => Promise<void>;
@@ -26,6 +26,7 @@ interface InstaStoreValue {
   toggleFollow: (userId: string) => Promise<void>;
   markStoryViewed: (storyId: string) => Promise<void>;
   deletePost: (postId: string) => Promise<boolean>;
+  deleteStory: (storyId: string) => Promise<boolean>;
 }
 
 const InstaContext = createContext<InstaStoreValue | null>(null);
@@ -135,6 +136,21 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
     return false;
   }, [user]);
 
+  /** Delete a story (owner only) */
+  const deleteStory = useCallback(async (storyId: string) => {
+    if (!user) return false;
+    const res = await fetch(`/api/instagro/stories/${encodeURIComponent(storyId)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.id }),
+    });
+    if (res.ok) {
+      setStories(ss => ss.filter(s => s.id !== storyId));
+      return true;
+    }
+    return false;
+  }, [user]);
+
   const addComment = useCallback(async (postId: string, text: string) => {
     if (!user) return;
     const res = await fetch("/api/instagro/comment", {
@@ -185,7 +201,7 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   return (
-    <InstaContext.Provider value={{ posts, stories, suggestions, loading, refresh, createPost, createStory, toggleLike, toggleSave, addComment, removeComment, toggleFollow, markStoryViewed, deletePost }}>
+    <InstaContext.Provider value={{ posts, stories, suggestions, loading, refresh, createPost, createStory, toggleLike, toggleSave, addComment, removeComment, toggleFollow, markStoryViewed, deletePost, deleteStory }}>
       {children}
     </InstaContext.Provider>
   );
