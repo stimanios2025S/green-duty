@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { apiUserFromRow } from "@/lib/instagro-api";
+import { streakEmoji } from "@/lib/chat-utils";
 
-// GET /api/chat/conversations?userId=... → list the user's DM threads (newest first)
+// GET /api/chat/conversations?userId=... → DM threads + group chats (newest first)
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -10,30 +11,66 @@ export async function GET(req: Request) {
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 });
     const d = await getDb();
 
-    const rows = await d.prepare(
-      "SELECT * FROM conversations WHERE user_a = ? OR user_b = ? ORDER BY updated_at DESC LIMIT 50"
+    const directRows = await d.prepare(
+      "SELECT * FROM conversations WHERE type = 'direct' AND (user_a = ? OR user_b = ?) ORDER BY updated_at DESC LIMIT 50"
     ).all(userId, userId);
 
+    const groupRows = await d.prepare(`
+      SELECT c.* FROM conversations c
+      JOIN conversation_members m ON m.conversation_id = c.id
+      WHERE c.type = 'group' AND m.user_id = ? ORDER BY c.updated_at DESC LIMIT 50
+    `).all(userId);
+
     const conversations = [];
-    for (const c of rows as any[]) {
-      const otherId = c.user_a === userId ? c.user_b : c.user_a;
+
+    // Direct chats
+    for (const c of directRows as any[]) {
+      const otherId = c.user_a === userId ? c.user_b : c.user_b === userId ? c.user_a : c.user_b;
       const other = await d.prepare("SELECT * FROM users WHERE id = ?").get(otherId);
       if (!other) continue;
-      const lastMsg = await d.prepare(
-        "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 1"
-      ).get(c.id) as any;
-      const unread = await d.prepare(
-        "SELECT COUNT(*) as c FROM messages WHERE conversation_id = ? AND sender_id != ? AND read = 0"
-      ).get(c.id, userId);
+      const lastMsg = await d.prepare("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 1").get(c.id) as any;
+      const unread = await d.prepare("SELECT COUNT(*) as c FROM messages WHERE conversation_id = ? AND sender_id != ? AND read = 0").get(c.id, userId);
       conversations.push({
         id: c.id,
+        type: "direct",
+        name: other.name,
         otherUser: await apiUserFromRow(other),
-        lastMessage: lastMsg ? { text: lastMsg.text, fromMe: lastMsg.sender_id === userId, createdAt: lastMsg.created_at } : null,
+        lastMessage: lastMsg ? { text: lastMsg.text || (lastMsg.media_type === "image" ? "📷 Photo" : lastMsg.media_type === "video" ? "🎬 Video" : lastMsg.media_type === "audio" ? "🎤 Voice note" : lastMsg.media_type === "location" ? "📍 Location" : ""), fromMe: lastMsg.sender_id === userId, createdAt: lastMsg.created_at } : null,
         unread: Number((unread as any)?.c || 0),
+        streak: Number(c.streak || 0),
+        streakEmoji: streakEmoji(Number(c.streak || 0)),
+        vanish: !!c.vanish,
         updatedAt: c.updated_at,
       });
     }
 
+    // Group chats
+    for (const c of groupRows as any[]) {
+      const lastMsg = await d.prepare("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 1").get(c.id) as any;
+      const members = await d.prepare("SELECT user_id FROM conversation_members WHERE conversation_id = ?").all(c.id) as any[];
+      const memberUsers = [];
+      for (const m of members.slice(0, 3)) {
+        const u = await d.prepare("SELECT * FROM users WHERE id = ?").get(m.user_id);
+        if (u) memberUsers.push(await apiUserFromRow(u));
+      }
+      const unread = await d.prepare("SELECT COUNT(*) as c FROM messages WHERE conversation_id = ? AND sender_id != ? AND read = 0").get(c.id, userId);
+      conversations.push({
+        id: c.id,
+        type: "group",
+        name: c.name || "Group chat",
+        otherUser: memberUsers[0] || null,
+        memberCount: members.length,
+        memberAvatars: memberUsers,
+        lastMessage: lastMsg ? { text: lastMsg.text || (lastMsg.media_type === "image" ? "📷 Photo" : lastMsg.media_type === "video" ? "🎬 Video" : lastMsg.media_type === "audio" ? "🎤 Voice note" : lastMsg.media_type === "location" ? "📍 Location" : ""), fromMe: lastMsg.sender_id === userId, createdAt: lastMsg.created_at } : null,
+        unread: Number((unread as any)?.c || 0),
+        streak: 0,
+        streakEmoji: "",
+        vanish: !!c.vanish,
+        updatedAt: c.updated_at,
+      });
+    }
+
+    conversations.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     return NextResponse.json({ conversations });
   } catch (err) {
     console.error("[chat/conversations]", err);
@@ -50,12 +87,12 @@ export async function POST(req: Request) {
     }
     const d = await getDb();
     const [a, b] = [userId, otherUserId].sort();
-    const existing = await d.prepare("SELECT * FROM conversations WHERE user_a = ? AND user_b = ?").get(a, b);
+    const existing = await d.prepare("SELECT * FROM conversations WHERE type = 'direct' AND user_a = ? AND user_b = ?").get(a, b);
     if (existing) return NextResponse.json({ conversationId: existing.id });
 
     const id = "c_" + Math.random().toString(36).slice(2, 10);
-    await d.prepare("INSERT INTO conversations (id, user_a, user_b, updated_at) VALUES (?,?,?,?)")
-      .run(id, a, b, new Date().toISOString());
+    await d.prepare("INSERT INTO conversations (id, user_a, user_b, type, updated_at) VALUES (?,?,?,?,?)")
+      .run(id, a, b, "direct", new Date().toISOString());
     return NextResponse.json({ conversationId: id }, { status: 201 });
   } catch (err) {
     console.error("[chat/conversations POST]", err);

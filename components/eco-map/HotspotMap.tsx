@@ -46,6 +46,20 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
       });
       setJoined(true);
       setTimeout(() => setJoined(false), 2000);
+      // Phase 4: open the event group chat so volunteers can coordinate
+      const res = await fetch("/api/chat/group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creatorId: user.id,
+          name: `🧹 ${selected.title.slice(0, 30)}`,
+          memberIds: [],
+        }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (d.conversationId) {
+        window.location.href = `/feed/messages?conv=${d.conversationId}`;
+      }
     } catch {}
   };
 

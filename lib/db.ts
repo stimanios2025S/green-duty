@@ -193,17 +193,35 @@ const SCHEMA = `
 
   CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY,
-    user_a TEXT NOT NULL,
-    user_b TEXT NOT NULL,
+    user_a TEXT,
+    user_b TEXT,
+    type TEXT NOT NULL DEFAULT 'direct',
+    name TEXT,
+    vanish INTEGER NOT NULL DEFAULT 0,
+    streak INTEGER NOT NULL DEFAULT 0,
+    streak_last TEXT,
+    streak_trees INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_conversations_users ON conversations(user_a, user_b);
+
+  CREATE TABLE IF NOT EXISTS conversation_members (
+    conversation_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    joined_at TEXT NOT NULL,
+    PRIMARY KEY (conversation_id, user_id)
+  );
 
   CREATE TABLE IF NOT EXISTS messages (
     id TEXT PRIMARY KEY,
     conversation_id TEXT NOT NULL,
     sender_id TEXT NOT NULL,
-    text TEXT NOT NULL,
+    text TEXT,
+    media_url TEXT,
+    media_type TEXT,
+    reply_to TEXT,
+    reactions TEXT,
+    vanish INTEGER NOT NULL DEFAULT 0,
     read INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
@@ -285,6 +303,17 @@ async function migrate(db: Db): Promise<void> {
     ["stories.texts", "ALTER TABLE stories ADD COLUMN texts TEXT"],
     ["stories.music_url", "ALTER TABLE stories ADD COLUMN music_url TEXT"],
     ["stories.music_name", "ALTER TABLE stories ADD COLUMN music_name TEXT"],
+    ["conversations.type", "ALTER TABLE conversations ADD COLUMN type TEXT NOT NULL DEFAULT 'direct'"],
+    ["conversations.name", "ALTER TABLE conversations ADD COLUMN name TEXT"],
+    ["conversations.vanish", "ALTER TABLE conversations ADD COLUMN vanish INTEGER NOT NULL DEFAULT 0"],
+    ["conversations.streak", "ALTER TABLE conversations ADD COLUMN streak INTEGER NOT NULL DEFAULT 0"],
+    ["conversations.streak_last", "ALTER TABLE conversations ADD COLUMN streak_last TEXT"],
+    ["conversations.streak_trees", "ALTER TABLE conversations ADD COLUMN streak_trees INTEGER NOT NULL DEFAULT 0"],
+    ["messages.media_url", "ALTER TABLE messages ADD COLUMN media_url TEXT"],
+    ["messages.media_type", "ALTER TABLE messages ADD COLUMN media_type TEXT"],
+    ["messages.reply_to", "ALTER TABLE messages ADD COLUMN reply_to TEXT"],
+    ["messages.reactions", "ALTER TABLE messages ADD COLUMN reactions TEXT"],
+    ["messages.vanish", "ALTER TABLE messages ADD COLUMN vanish INTEGER NOT NULL DEFAULT 0"],
     ["posts.likes_hidden", "ALTER TABLE posts ADD COLUMN likes_hidden INTEGER NOT NULL DEFAULT 0"],
     ["posts.comments_disabled", "ALTER TABLE posts ADD COLUMN comments_disabled INTEGER NOT NULL DEFAULT 0"],
     ["posts.music_id", "ALTER TABLE posts ADD COLUMN music_id TEXT"],
