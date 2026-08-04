@@ -30,7 +30,7 @@ export async function GET(req: Request) {
       url.searchParams.set("client_id", key);
       url.searchParams.set("format", "json");
       url.searchParams.set("limit", "30");
-      url.searchParams.set("include", "musicinfo,albumimage");
+      url.searchParams.set("include", "musicinfo");
       url.searchParams.set("audioformat", "mp32");
       url.searchParams.set("order", "popularity_total");
       // Search across track name AND artist (so "StimiBeats" or Algerian artists work)
