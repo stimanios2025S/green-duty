@@ -22,7 +22,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="-m-6 overflow-x-hidden">
+    <div className="h-full overflow-x-hidden">
       <Bird />
       <HeroSection />
       <ServiceCards />
