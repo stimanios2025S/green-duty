@@ -17,27 +17,51 @@ export interface MusicTrack {
 let ctx: AudioContext | null = null;
 
 export function getAudioCtx(): AudioContext {
-  if (!ctx) ctx = new AudioContext();
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
-  return ctx;
+  try {
+    if (!ctx) ctx = new AudioContext();
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    return ctx;
+  } catch {
+    // AudioContext unavailable — return a stub that no-ops
+    return null as unknown as AudioContext;
+  }
+}
+
+/**
+ * Browsers block AudioContext until a user gesture. Call this from the first
+ * pointerdown/keydown so story music can start without an explicit tap.
+ */
+export function unlockAudio() {
+  const ac = getAudioCtx();
+  if (ac && ac.state === "suspended") ac.resume().catch(() => {});
+  // Also create/resume on a silent buffer to force the unlock in some engines
+  try {
+    const buf = ac.createBuffer(1, 1, 22050);
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    src.connect(ac.destination);
+    src.start(0);
+  } catch {}
 }
 
 /** Simple helper: schedule an oscillator note */
 function note(ctx: AudioContext, oscType: OscillatorType, freq: number, start: number, dur: number, gain: number, dest: GainNode) {
-  const osc = ctx.createOscillator();
-  const g = ctx.createGain();
-  osc.type = oscType;
-  osc.frequency.value = freq;
-  g.gain.setValueAtTime(0, start);
-  g.gain.linearRampToValueAtTime(gain, start + 0.05);
-  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  osc.connect(g);
-  g.connect(dest);
-  osc.start(start);
-  osc.stop(start + dur + 0.1);
+  try {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = oscType;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, start);
+    g.gain.linearRampToValueAtTime(gain, start + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    osc.connect(g);
+    g.connect(dest);
+    osc.start(start);
+    osc.stop(start + dur + 0.1);
+  } catch {}
 }
 
-function softPad(ctx: AudioContext, freqs: number[], stepDur = 0.5, masterGain = 0.08) {
+function softPad(ctx: AudioContext, freqs: number[], stepDur = 0.5, masterGain = 0.13) {
   const master = ctx.createGain();
   master.gain.value = masterGain;
   master.connect(ctx.destination);
@@ -55,7 +79,7 @@ function softPad(ctx: AudioContext, freqs: number[], stepDur = 0.5, masterGain =
 
 function chillChords(ctx: AudioContext) {
   const master = ctx.createGain();
-  master.gain.value = 0.07;
+  master.gain.value = 0.12;
   master.connect(ctx.destination);
   const chords: number[][] = [
     [220, 261.6, 329.6],   // Am
@@ -67,7 +91,7 @@ function chillChords(ctx: AudioContext) {
   let i = 0;
   const interval = setInterval(() => {
     const chord = chords[i % chords.length];
-    chord.forEach(f => note(ctx, "triangle", f, t, 2.2, 0.4, master));
+    chord.forEach(f => note(ctx, "triangle", f, t, 2.2, 0.45, master));
     t += 2.4;
     i++;
   }, 2400);
@@ -76,14 +100,14 @@ function chillChords(ctx: AudioContext) {
 
 function natureAmbient(ctx: AudioContext) {
   const master = ctx.createGain();
-  master.gain.value = 0.09;
+  master.gain.value = 0.13;
   master.connect(ctx.destination);
   // gentle birdsong-like chirps + low drone
   const drone = ctx.createOscillator();
   drone.type = "sine";
   drone.frequency.value = 130.8;
   const dg = ctx.createGain();
-  dg.gain.value = 0.05;
+  dg.gain.value = 0.07;
   drone.connect(dg); dg.connect(master);
   drone.start();
   let t = ctx.currentTime + 0.1;
@@ -92,18 +116,18 @@ function natureAmbient(ctx: AudioContext) {
   const interval = setInterval(() => {
     if (i % 2 === 0) {
       const f = chirps[Math.floor(Math.random() * chirps.length)];
-      note(ctx, "sine", f, t, 0.25, 0.25, master);
-      note(ctx, "sine", f * 1.005, t + 0.06, 0.2, 0.12, master);
+      note(ctx, "sine", f, t, 0.25, 0.3, master);
+      note(ctx, "sine", f * 1.005, t + 0.06, 0.2, 0.14, master);
     }
     t += 0.9;
     i++;
   }, 900);
-  return { stop: () => { clearInterval(interval); drone.stop(); } };
+  return { stop: () => { clearInterval(interval); try { drone.stop(); } catch {} } };
 }
 
 function lofiBeat(ctx: AudioContext) {
   const master = ctx.createGain();
-  master.gain.value = 0.1;
+  master.gain.value = 0.14;
   master.connect(ctx.destination);
   // kick on beats
   const bassline = [55, 55, 65.4, 55, 49, 49, 61.7, 55];
@@ -114,9 +138,9 @@ function lofiBeat(ctx: AudioContext) {
     note(ctx, "sine", 120, t, 0.12, 0.7, master);
     // bass note
     const f = bassline[i % bassline.length];
-    note(ctx, "triangle", f, t, 0.4, 0.3, master);
-    // hat (short noise-ish high osc)
-    note(ctx, "square", 8000, t + 0.3, 0.03, 0.05, master);
+    note(ctx, "triangle", f, t, 0.4, 0.35, master);
+    // hat (short noise-ish high osc) — 8000Hz may be inaudible on some speakers, use 6000
+    note(ctx, "square", 6000, t + 0.3, 0.03, 0.05, master);
     t += 0.6;
     i++;
   }, 600);

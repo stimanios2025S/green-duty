@@ -9,7 +9,7 @@ import { MailCheck, RefreshCw, ArrowLeft, CheckCircle2, Terminal } from "lucide-
 const CODE_LENGTH = 6;
 
 export default function VerifyPage() {
-  const { pendingEmail, verifyMode, fallbackCode, verify, resendCode } = useAuth();
+  const { user, pendingEmail, verifyMode, fallbackCode, verify, resendCode } = useAuth();
   const router = useRouter();
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
@@ -19,10 +19,11 @@ export default function VerifyPage() {
   const [cooldown, setCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // No pending verification → back to register
+  // If already logged in, go straight to the dashboard (no loop)
   useEffect(() => {
-    if (!pendingEmail) router.replace("/auth/register");
-  }, [pendingEmail, router]);
+    if (user) router.replace("/dashboard");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Resend cooldown ticker
   useEffect(() => {
@@ -88,6 +89,32 @@ export default function VerifyPage() {
       setResending(false);
     }
   };
+
+  // No pending verification — show a friendly screen instead of looping to register
+  if (!pendingEmail) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gd-deepest px-6 py-12">
+        <div className="relative w-full max-w-md rounded-2xl border border-gd-border-soft bg-gd-card p-8 text-center shadow-2xl shadow-black/40">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gd-accent-500/10 border border-gd-accent-500/20">
+            <MailCheck className="h-8 w-8 text-gd-accent-400" />
+          </div>
+          <h1 className="mt-5 text-xl font-bold text-gd-text-primary">Nothing to verify</h1>
+          <p className="mt-2 text-sm text-gd-text-secondary leading-relaxed">
+            We don't have a pending verification for this device.
+            If you already verified, try signing in. If not, create an account first.
+          </p>
+          <div className="mt-6 flex flex-col gap-2">
+            <Link href="/login" className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-2.5 text-sm font-semibold text-gd-text-inverse text-center hover:brightness-110 transition-all">
+              Go to sign in
+            </Link>
+            <Link href="/auth/register" className="rounded-xl border border-gd-border py-2.5 text-sm font-medium text-gd-text-secondary hover:bg-gd-elevated transition-colors text-center">
+              Create an account
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gd-deepest px-6 py-12">

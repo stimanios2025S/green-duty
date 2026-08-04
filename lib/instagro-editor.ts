@@ -79,19 +79,22 @@ export function exportFilteredImage(
   // Rotation: swap dims for 90/270
   const rot = ((rotation % 360) + 360) % 360;
   const swap = rot === 90 || rot === 270;
-  let outW = swap ? srcH : srcW;
-  let outH = swap ? srcW : srcH;
+  const fullW = swap ? srcH : srcW; // full rotated width
+  const fullH = swap ? srcW : srcH; // full rotated height
 
-  // Aspect crop (center-crop to ratio)
+  // Aspect crop (center-crop to ratio): the canvas is SMALLER than the full
+  // rotated image, so drawing the full source centered CLIPS the overflow.
+  let outW = fullW;
+  let outH = fullH;
   if (aspect > 0) {
     const targetRatio = aspect;
-    const curRatio = outW / outH;
+    const curRatio = fullW / fullH;
     if (curRatio > targetRatio) {
       // too wide → crop width
-      outW = Math.round(outH * targetRatio);
+      outW = Math.round(fullH * targetRatio);
     } else {
       // too tall → crop height
-      outH = Math.round(outW / targetRatio);
+      outH = Math.round(fullW / targetRatio);
     }
   }
 
@@ -99,12 +102,14 @@ export function exportFilteredImage(
   canvas.width = outW;
   canvas.height = outH;
   const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, outW, outH);
   ctx.filter = buildFilterCss(filter, adj);
   ctx.translate(outW / 2, outH / 2);
   ctx.rotate((rot * Math.PI) / 180);
-  // draw source so it fills the (possibly cropped) output
-  const drawW = outW; const drawH = outH;
-  ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+  // Draw the FULL rotated source centered at the canvas center.
+  // Because the canvas is cropped, the overflow is clipped = REAL center-crop.
+  ctx.drawImage(img, -fullW / 2, -fullH / 2, fullW, fullH);
   return canvas.toDataURL("image/jpeg", quality);
 }
 

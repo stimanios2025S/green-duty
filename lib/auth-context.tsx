@@ -53,11 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem("gd_user");
-      if (raw) setUser(JSON.parse(raw));
-      setPendingEmail(sessionStorage.getItem("gd_pending_email"));
-      const mode = sessionStorage.getItem("gd_verify_mode") as "email" | "console" | "failed" | null;
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.id) setUser(parsed);
+      }
+      // Pending verification now lives in localStorage so a refresh/new tab
+      // doesn't lose it (was the cause of the signup loop).
+      setPendingEmail(localStorage.getItem("gd_pending_email"));
+      const mode = localStorage.getItem("gd_verify_mode") as "email" | "console" | "failed" | null;
       setVerifyMode(mode);
-      setFallbackCode(sessionStorage.getItem("gd_fallback_code"));
+      setFallbackCode(localStorage.getItem("gd_fallback_code"));
     } catch {}
     setIsLoading(false);
   }, []);
@@ -78,10 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setVerifyMode(json.mode);
     setFallbackCode(json.fallbackCode || null);
     try {
-      sessionStorage.setItem("gd_pending_email", json.email);
-      sessionStorage.setItem("gd_verify_mode", json.mode || "email");
-      if (json.fallbackCode) sessionStorage.setItem("gd_fallback_code", json.fallbackCode);
-      else sessionStorage.removeItem("gd_fallback_code");
+      localStorage.setItem("gd_pending_email", json.email);
+      localStorage.setItem("gd_verify_mode", json.mode || "email");
+      if (json.fallbackCode) localStorage.setItem("gd_fallback_code", json.fallbackCode);
+      else localStorage.removeItem("gd_fallback_code");
     } catch {}
   }, []);
 
@@ -95,9 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setVerifyMode(null);
     setFallbackCode(null);
     try {
-      sessionStorage.removeItem("gd_pending_email");
-      sessionStorage.removeItem("gd_verify_mode");
-      sessionStorage.removeItem("gd_fallback_code");
+      localStorage.removeItem("gd_pending_email");
+      localStorage.removeItem("gd_verify_mode");
+      localStorage.removeItem("gd_fallback_code");
     } catch {}
     return { ok: true };
   }, [pendingEmail, persist]);
@@ -109,9 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setVerifyMode(json.mode);
     setFallbackCode(json.fallbackCode || null);
     try {
-      sessionStorage.setItem("gd_verify_mode", json.mode || "email");
-      if (json.fallbackCode) sessionStorage.setItem("gd_fallback_code", json.fallbackCode);
-      else sessionStorage.removeItem("gd_fallback_code");
+      localStorage.setItem("gd_verify_mode", json.mode || "email");
+      if (json.fallbackCode) localStorage.setItem("gd_fallback_code", json.fallbackCode);
+      else localStorage.removeItem("gd_fallback_code");
     } catch {}
     return { ok: true };
   }, [pendingEmail]);
@@ -122,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!res.ok) {
       if (json.needsVerification) {
         setPendingEmail(json.email);
-        try { sessionStorage.setItem("gd_pending_email", json.email); } catch {}
+        try { localStorage.setItem("gd_pending_email", json.email); } catch {}
         return { ok: false, error: json.error, needsVerification: true };
       }
       return { ok: false, error: json.error || "Login failed." };

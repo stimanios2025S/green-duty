@@ -4,7 +4,7 @@ import { X, ChevronLeft, ChevronRight, MoreHorizontal, Send, Music2, Check } fro
 import { InstaAvatar } from "./InstaAvatar";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
-import { MUSIC_TRACKS, getAudioCtx } from "@/lib/instagro-music";
+import { MUSIC_TRACKS, getAudioCtx, unlockAudio } from "@/lib/instagro-music";
 
 interface Props {
   startIndex: number;
@@ -79,17 +79,21 @@ export function StoryViewer({ startIndex, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
-  // Keyboard + lock scroll
+  // Keyboard + lock scroll + unlock audio on first interaction
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      unlockAudio();
       if (e.key === "Escape") onClose();
       if (e.key === "ArrowRight") goNext();
       if (e.key === "ArrowLeft") goPrev();
     };
+    const onPointer = () => unlockAudio();
     window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointer);
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
       document.body.style.overflow = "";
       stopMusic();
     };

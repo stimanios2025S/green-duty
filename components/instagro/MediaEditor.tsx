@@ -101,19 +101,26 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
         </button>
       </div>
 
-      {/* Preview */}
-      <div className="relative flex items-center justify-center overflow-hidden bg-black" style={{ minHeight: 260 }}>
+      {/* Preview — reflects the real crop via aspect container + cover */}
+      <div
+        className="relative mx-auto flex items-center justify-center overflow-hidden bg-black"
+        style={{
+          aspectRatio: aspect > 0 ? String(aspect) : undefined,
+          maxHeight: "46vh",
+          width: aspect > 0 ? "min(46vh, 100%)" : "100%",
+        }}
+      >
         {mediaType === "image" ? (
           <img
             ref={imgRef}
             src={mediaUrl}
             alt="Edit preview"
-            className="max-h-[44vh] w-auto object-contain"
-            style={{ filter: filterCss, transform: `rotate(${rotation}deg)`, maxWidth: "100%" }}
+            className="h-full w-full"
+            style={{ filter: filterCss, transform: `rotate(${rotation}deg)`, objectFit: aspect > 0 ? "cover" : "contain" }}
             draggable={false}
           />
         ) : (
-          <video src={mediaUrl} muted loop autoPlay playsInline className="max-h-[44vh] w-full object-contain" style={{ filter: filterCss }} />
+          <video src={mediaUrl} muted loop autoPlay playsInline className="h-full w-full" style={{ filter: filterCss, objectFit: aspect > 0 ? "cover" : "contain" }} />
         )}
         {/* Text overlays */}
         {texts.map(t => (
