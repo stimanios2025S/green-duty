@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import anime from "animejs";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { b2bServices } from "@/lib/mock-data";
-import { Check, Send, Thermometer, Droplets as WaterDroplets, Sun, Wind, Cpu } from "lucide-react";
+import { Check, Send, Thermometer, Droplets as WaterDroplets, Sun, Wind, Loader2, CheckCircle2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 const greenhouseSensors = [
   { icon: Thermometer, label: "Temp", value: "24.5°C", color: "text-gd-ember-400" },
@@ -15,8 +16,43 @@ const greenhouseSensors = [
 ];
 
 export default function B2BPage() {
+  const { user } = useAuth();
   const titleRef = useRef<HTMLDivElement>(null);
+  const [form, setForm] = useState({ company: user?.businessProfile?.businessName || "", email: user?.email || "", phone: "", service: "Custom Farm Dashboard", message: "" });
+  const [sending, setSending] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
   useEffect(() => { if (titleRef.current) anime({ targets: titleRef.current, opacity: [0, 1], translateY: [20, 0], duration: 600, easing: "easeOutCubic" }); }, []);
+
+  const sendInquiry = async () => {
+    setError("");
+    if (!form.company.trim() || !form.email.trim() || !form.message.trim()) {
+      setError("Please fill in company, email, and message.");
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await fetch("/api/inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?.id || null,
+          companyName: form.company.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          service: form.service,
+          message: form.message.trim(),
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setDone(true);
+      setTimeout(() => { setDone(false); setForm(f => ({ ...f, message: "" })); }, 2200);
+    } catch {
+      setError("Failed to send inquiry. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -50,7 +86,10 @@ export default function B2BPage() {
               <span className="text-sm font-semibold text-gd-accent-400">{svc.priceRange}</span>
               <span className="text-[10px] text-gd-text-muted">{svc.deliveryTime}</span>
             </div>
-            <button className="mt-4 w-full rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-2.5 text-sm font-semibold text-gd-text-inverse hover:brightness-110 transition-all shadow-sm shadow-gd-accent-500/10">
+            <button
+              onClick={() => { setForm(f => ({ ...f, service: svc.name })); document.getElementById("quote-form")?.scrollIntoView({ behavior: "smooth" }); }}
+              className="mt-4 w-full rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-2.5 text-sm font-semibold text-gd-text-inverse hover:brightness-110 transition-all shadow-sm shadow-gd-accent-500/10"
+            >
               Book Consultation
             </button>
           </Card>
@@ -85,20 +124,29 @@ export default function B2BPage() {
       </Card>
 
       {/* Quote form */}
-      <Card>
+      <Card id="quote-form">
         <h2 className="text-xl font-bold text-gd-text-primary mb-5">Get a Custom Quote</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <input placeholder="Company Name" className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-          <input placeholder="Email" className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-          <input placeholder="Phone" className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-          <select className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary outline-none focus:border-gd-accent-500/40 transition-colors">
-            <option className="bg-gd-card">Select Service</option>
+          <input value={form.company} onChange={e => setForm({...form, company: e.target.value})} placeholder="Company Name" className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
+          <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} type="email" placeholder="Email" className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
+          <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="Phone" className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
+          <select value={form.service} onChange={e => setForm({...form, service: e.target.value})} className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary outline-none focus:border-gd-accent-500/40 transition-colors">
             {b2bServices.map(s => <option key={s.id} className="bg-gd-card">{s.name}</option>)}
           </select>
-          <textarea placeholder="Describe your project..." rows={3} className="sm:col-span-2 rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
+          <textarea value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder="Describe your project..." rows={3} className="sm:col-span-2 rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors resize-none" />
         </div>
-        <button className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-6 py-2.5 text-sm font-semibold text-gd-text-inverse hover:brightness-110 transition-all shadow-sm shadow-gd-accent-500/10">
-          <Send className="h-4 w-4" /> Send Inquiry
+        {error && <p className="mt-3 rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">{error}</p>}
+        {done && (
+          <p className="mt-3 flex items-center gap-2 rounded-xl border border-gd-success/20 bg-gd-success/5 px-4 py-2.5 text-xs text-gd-success">
+            <CheckCircle2 className="h-4 w-4" /> Inquiry sent! Our team will reach out within 24h.
+          </p>
+        )}
+        <button
+          onClick={sendInquiry}
+          disabled={sending}
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-6 py-2.5 text-sm font-semibold text-gd-text-inverse hover:brightness-110 transition-all shadow-sm shadow-gd-accent-500/10 disabled:opacity-50"
+        >
+          {sending ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</> : <><Send className="h-4 w-4" /> Send Inquiry</>}
         </button>
       </Card>
     </div>

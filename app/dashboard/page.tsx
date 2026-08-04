@@ -1,7 +1,7 @@
 "use client";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ROLE_LABEL } from "@/lib/nav-config";
 import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
@@ -10,7 +10,7 @@ import {
   Trees, MapPin, Users, ShieldCheck, Sprout, Droplets, CalendarCheck,
   Building2, Package, ShoppingCart, Truck, Store, Wallet, BadgeCheck, TrendingUp, Briefcase
 } from "lucide-react";
-import { platformStats, cleanupEvents, hotspotReports, educationalPosts, products } from "@/lib/mock-data";
+import { products } from "@/lib/mock-data";
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
@@ -78,32 +78,32 @@ function SectionHead({ icon, title, sub }: { icon: React.ReactNode; title: strin
 
 /* ── Guest / Citizen portal ── */
 function GuestPortal() {
-  const certifiedPosts = educationalPosts.filter(p => p.status === "certified").length;
-  const activities = ([] as { text: string; time: string; type: string }[])
-    .concat(
-      hotspotReports.slice(0, 3).map(h => ({ text: `Hotspot reported: ${h.title}`, time: h.createdAt, type: "hotspot" })),
-      cleanupEvents.slice(0, 2).map(e => ({ text: `Cleanup event: ${e.title}`, time: e.date, type: "event" }))
-    )
-    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-    .slice(0, 4);
+  const [stats, setStats] = useState<any>(null);
+  const [hotspots, setHotspots] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/stats").then(r => r.ok ? r.json() : null).then(d => d && setStats(d)).catch(() => {});
+    fetch("/api/hotspots").then(r => r.ok ? r.json() : null).then(d => d && setHotspots(d.hotspots || [])).catch(() => {});
+  }, []);
 
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Trees Planted" value={platformStats.treesPlanted.toLocaleString()} icon={<Trees className="h-5 w-5" />} trend={{ value: 12, isPositive: true }} />
-        <StatCard label="Hotspots Cleaned" value={platformStats.hotspotsCleaned.toLocaleString()} icon={<MapPin className="h-5 w-5" />} trend={{ value: 8, isPositive: true }} />
-        <StatCard label="Active Farmers" value={platformStats.activeFarmers.toLocaleString()} icon={<Users className="h-5 w-5" />} trend={{ value: 5, isPositive: true }} />
-        <StatCard label="Certified Posts" value={certifiedPosts} icon={<ShieldCheck className="h-5 w-5" />} />
+        <StatCard label="Trees Planted" value={(stats?.trees || 0).toLocaleString()} icon={<Trees className="h-5 w-5" />} />
+        <StatCard label="Hotspots Reported" value={(stats?.hotspots || 0).toLocaleString()} icon={<MapPin className="h-5 w-5" />} />
+        <StatCard label="Community Members" value={(stats?.users || 0).toLocaleString()} icon={<Users className="h-5 w-5" />} />
+        <StatCard label="InstaGro Posts" value={(stats?.posts || 0).toLocaleString()} icon={<ShieldCheck className="h-5 w-5" />} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <SectionHead icon={<Sprout className="h-4 w-4" />} title="Sustainability Impact" />
+          <SectionHead icon={<Sprout className="h-4 w-4" />} title="Community Impact" />
           <div className="space-y-5">
             {[
-              { label: "CO₂ Offset", value: platformStats.co2Offset.toLocaleString(), unit: "tons", color: "bg-gd-accent-500", pct: 65 },
-              { label: "Water Saved", value: (platformStats.waterSaved/1000000).toFixed(1), unit: "M liters", color: "bg-blue-500", pct: 45 },
-              { label: "Trees Planted", value: platformStats.treesPlanted.toLocaleString(), unit: "trees", color: "bg-gd-olive-500", pct: 63 },
+              { label: "Trees Planted", value: (stats?.trees || 0).toLocaleString(), unit: "trees", color: "bg-gd-olive-500", pct: Math.min(100, ((stats?.trees || 0) / 20000) * 100) },
+              { label: "Articles Shared", value: (stats?.articles || 0).toLocaleString(), unit: "posts", color: "bg-gd-accent-500", pct: Math.min(100, (stats?.articles || 0) * 5) },
+              { label: "Videos Published", value: (stats?.videos || 0).toLocaleString(), unit: "videos", color: "bg-blue-500", pct: Math.min(100, (stats?.videos || 0) * 5) },
+              { label: "Total Likes", value: (stats?.likes || 0).toLocaleString(), unit: "likes", color: "bg-gd-ember-500", pct: Math.min(100, (stats?.likes || 0) / 5) },
             ].map((item, i) => (
               <div key={i}>
                 <div className="flex justify-between text-sm mb-1.5">
@@ -119,15 +119,19 @@ function GuestPortal() {
         </Card>
 
         <Card>
-          <SectionHead icon={<CalendarCheck className="h-4 w-4" />} title="Recent Activity" />
+          <SectionHead icon={<CalendarCheck className="h-4 w-4" />} title="Recent Hotspot Reports" />
           <div className="space-y-2">
-            {activities.map((a, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-xl border border-gd-border bg-gd-elevated/50 px-3.5 py-3 hover:bg-gd-elevated transition-colors">
-                <div className={`h-2 w-2 rounded-full ${a.type === "hotspot" ? "bg-gd-ember-500" : "bg-gd-olive-500"}`} />
-                <p className="text-sm text-gd-text-secondary flex-1 truncate">{a.text}</p>
-                <span className="text-[10px] text-gd-text-muted whitespace-nowrap">{new Date(a.time).toLocaleDateString()}</span>
-              </div>
-            ))}
+            {hotspots.length === 0 ? (
+              <p className="py-8 text-center text-sm text-gd-text-muted">No reports yet. Be the first!</p>
+            ) : (
+              hotspots.slice(0, 5).map(h => (
+                <div key={h.id} className="flex items-center gap-3 rounded-xl border border-gd-border bg-gd-elevated/50 px-3.5 py-3 hover:bg-gd-elevated transition-colors">
+                  <div className="h-2 w-2 rounded-full bg-gd-ember-500" />
+                  <p className="text-sm text-gd-text-secondary flex-1 truncate">{h.title}</p>
+                  <span className="text-[10px] text-gd-text-muted whitespace-nowrap">{new Date(h.created_at).toLocaleDateString()}</span>
+                </div>
+              ))
+            )}
           </div>
         </Card>
       </div>
@@ -139,13 +143,17 @@ function GuestPortal() {
 function BusinessPortal() {
   const { user } = useAuth();
   const biz = user?.businessProfile;
+  const [stats, setStats] = useState<any>(null);
+  useEffect(() => {
+    fetch("/api/stats").then(r => r.ok ? r.json() : null).then(d => d && setStats(d)).catch(() => {});
+  }, []);
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Company Revenue" value="$48.2K" icon={<Wallet className="h-5 w-5" />} trend={{ value: 18, isPositive: true }} />
         <StatCard label="Active Projects" value="7" icon={<Briefcase className="h-5 w-5" />} trend={{ value: 3, isPositive: true }} />
-        <StatCard label="CSR Trees Planted" value={platformStats.treesPlanted.toLocaleString()} icon={<Trees className="h-5 w-5" />} trend={{ value: 22, isPositive: true }} />
-        <StatCard label="CO₂ Offset" value={platformStats.co2Offset.toLocaleString()} icon={<Sprout className="h-5 w-5" />} />
+        <StatCard label="CSR Trees Planted" value={(stats?.trees || 0).toLocaleString()} icon={<Trees className="h-5 w-5" />} />
+        <StatCard label="B2B Inquiries" value={(stats?.inquiries || 0).toLocaleString()} icon={<Sprout className="h-5 w-5" />} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -264,37 +272,50 @@ function DriverPortal() {
 
 /* ── Buyer portal ── */
 function BuyerPortal() {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch(`/api/orders?buyerId=${encodeURIComponent(user.id)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setOrders(d.orders || []))
+      .catch(() => {});
+  }, [user]);
+
+  const totalSpent = orders.reduce((s, o) => s + Number(o.total_price || 0), 0);
+
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Active Orders" value="4" icon={<ShoppingCart className="h-5 w-5" />} />
-        <StatCard label="In Transit" value="2" icon={<Truck className="h-5 w-5" />} trend={{ value: 1, isPositive: true }} />
-        <StatCard label="Total Spent" value="$1,240" icon={<Wallet className="h-5 w-5" />} />
-        <StatCard label="Verified Orders" value="18" icon={<BadgeCheck className="h-5 w-5" />} />
+        <StatCard label="Orders" value={orders.length} icon={<ShoppingCart className="h-5 w-5" />} />
+        <StatCard label="In Transit" value={orders.filter(o => o.status === "shipped" || o.status === "confirmed").length} icon={<Truck className="h-5 w-5" />} />
+        <StatCard label="Total Spent" value={`$${totalSpent.toLocaleString()}`} icon={<Wallet className="h-5 w-5" />} />
+        <StatCard label="Pending" value={orders.filter(o => o.status === "pending").length} icon={<BadgeCheck className="h-5 w-5" />} />
       </div>
       <Card>
         <SectionHead icon={<ShoppingCart className="h-4 w-4" />} title="Order Tracking" />
-        <div className="space-y-2">
-          {[
-            { name: "Smart Drip Irrigation Kit", qty: 1, status: "Shipped", eta: "Aug 5" },
-            { name: "Organic Bio-Fertilizer 5L", qty: 2, status: "Delivered", eta: "Aug 1" },
-            { name: "IoT Soil Sensor Array", qty: 1, status: "Processing", eta: "Aug 7" },
-          ].map((o, i) => (
-            <div key={i} className="flex items-center justify-between rounded-xl border border-gd-border bg-gd-elevated/50 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-gd-text-primary">{o.name} ×{o.qty}</p>
-                <p className="text-xs text-gd-text-muted mt-0.5">ETA {o.eta}</p>
+        {orders.length === 0 ? (
+          <p className="py-8 text-center text-sm text-gd-text-muted">No orders yet — shop the marketplace!</p>
+        ) : (
+          <div className="space-y-2">
+            {orders.map(o => (
+              <div key={o.id} className="flex items-center justify-between rounded-xl border border-gd-border bg-gd-elevated/50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gd-text-primary">{o.product_name} ×{o.quantity}</p>
+                  <p className="text-xs text-gd-text-muted mt-0.5">${Number(o.total_price).toFixed(2)} · {new Date(o.created_at).toLocaleDateString()}</p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
+                  o.status === "delivered"
+                    ? "bg-gd-success/10 text-gd-success border border-gd-success/20"
+                    : o.status === "shipped"
+                    ? "bg-gd-info/10 text-gd-info border border-gd-info/20"
+                    : "bg-gd-accent-500/10 text-gd-accent-400 border border-gd-accent-500/20"
+                }`}>{o.status}</span>
               </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-medium ${
-                o.status === "Delivered"
-                  ? "bg-gd-success/10 text-gd-success border border-gd-success/20"
-                  : o.status === "Shipped"
-                  ? "bg-gd-info/10 text-gd-info border border-gd-info/20"
-                  : "bg-gd-accent-500/10 text-gd-accent-400 border border-gd-accent-500/20"
-              }`}>{o.status}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Card>
     </>
   );

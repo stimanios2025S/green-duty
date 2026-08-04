@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-interface CardProps { children: React.ReactNode; className?: string; hover?: boolean; }
-export function Card({ children, className, hover = false }: CardProps) {
-  return <div className={cn(
+interface CardProps { children: React.ReactNode; className?: string; hover?: boolean; id?: string; }
+export function Card({ children, className, hover = false, id }: CardProps) {
+  return <div id={id} className={cn(
     "rounded-2xl border border-gd-border-soft bg-gd-card p-5 transition-all duration-300",
     hover && "hover:border-gd-border-strong hover:bg-gd-elevated hover:glow-ring",
     className

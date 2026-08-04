@@ -1,11 +1,22 @@
 "use client";
-import { ShoppingCart, Star, ShieldCheck, Leaf as LeafIcon } from "lucide-react";
+import { ShoppingCart, Star, ShieldCheck, Leaf as LeafIcon, Check } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { formatCurrency } from "@/lib/utils";
+import { useCart } from "@/lib/cart-store";
+import { useState } from "react";
 import type { Product } from "@/types";
 
 export function ProductCard({ product }: { product: Product }) {
+  const { add } = useCart();
+  const [added, setAdded] = useState(false);
+
+  const handleAdd = () => {
+    add({ productId: product.id, name: product.name, price: product.price });
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1200);
+  };
+
   return (
     <Card hover className="flex flex-col">
       <div className="relative mb-3 flex h-40 items-center justify-center rounded-xl bg-gradient-to-br from-gd-accent-500/8 to-gd-olive-500/5 border border-gd-border">
@@ -36,8 +47,15 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="text-lg font-bold text-gd-text-primary">{formatCurrency(product.price)}</p>
           <p className="text-xs text-gd-text-muted">{product.stock} in stock</p>
         </div>
-        <button className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 p-2.5 text-gd-text-inverse hover:brightness-110 transition-all shadow-sm shadow-gd-accent-500/10">
-          <ShoppingCart className="h-4 w-4" />
+        <button
+          onClick={handleAdd}
+          className={`rounded-xl p-2.5 transition-all ${
+            added
+              ? "bg-gd-success text-white"
+              : "bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse hover:brightness-110 shadow-sm shadow-gd-accent-500/10"
+          }`}
+        >
+          {added ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
         </button>
       </div>
       {product.warrantyMonths > 0 && (

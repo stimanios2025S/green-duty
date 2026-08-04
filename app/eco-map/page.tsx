@@ -10,6 +10,7 @@ import { Plus } from "lucide-react";
 
 export default function EcoMapPage() {
   const [showReport, setShowReport] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const titleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,12 +36,12 @@ export default function EcoMapPage() {
         </div>
       </AnimeWrapper>
 
-      <HotspotMap />
+      <HotspotMap refreshKey={refreshKey} />
       <div className="grid gap-6 sm:grid-cols-2">
         <SponsorPanel />
         <LeaderboardPanel />
       </div>
-      <ReportModal isOpen={showReport} onClose={() => setShowReport(false)} />
+      <ReportModal isOpen={showReport} onClose={() => setShowReport(false)} onSubmitted={() => setRefreshKey(k => k + 1)} />
     </div>
   );
 }
