@@ -135,10 +135,14 @@ export function Header() {
 
         <Link
           href="/dashboard"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-gd-accent-500 to-gd-ember-500 text-gd-text-inverse text-xs font-bold shadow-md shadow-gd-accent-500/20 transition-transform hover:scale-105"
+          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-gd-accent-500 to-gd-ember-500 text-gd-text-inverse text-xs font-bold shadow-md shadow-gd-accent-500/20 transition-transform hover:scale-105"
           title={user?.name || "My Portal"}
         >
-          {user?.name?.charAt(0)?.toUpperCase() || "G"}
+          {user?.avatarUrl && user.avatarUrl !== "/logo.png" ? (
+            <img src={user.avatarUrl} alt={user.name} className="h-full w-full object-cover" />
+          ) : (
+            user?.name?.charAt(0)?.toUpperCase() || "G"
+          )}
         </Link>
       </div>
     </header>

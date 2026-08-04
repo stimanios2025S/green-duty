@@ -9,12 +9,16 @@ export function publicUser(u: DbUser): User {
     id: u.id,
     name: u.name,
     email: u.email,
-    avatarUrl: "/logo.png",
+    avatarUrl: (u as any).avatar_media || "/logo.png",
     role: u.account_type as User["role"],
     accountType: u.account_type as User["accountType"],
     points: u.points,
     badges: ["New Member"],
     joinedAt: u.created_at,
+    username: (u as any).username || u.name.toLowerCase().replace(/\s+/g, "."),
+    bio: (u as any).bio || "",
+    emoji: (u as any).emoji || "",
+    gradient: (u as any).gradient || "",
   };
   if (u.business_name) {
     user.businessProfile = {

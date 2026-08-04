@@ -19,10 +19,12 @@ interface InstaStoreValue {
   }) => Promise<{ ok: boolean; error?: string }>;
   createStory: (input: { emoji?: string; gradient?: string; caption?: string; mediaUrl?: string; musicId?: string | null; texts?: any[] }) => Promise<boolean>;
   toggleLike: (postId: string) => Promise<void>;
+  toggleSave: (postId: string) => void;
   addComment: (postId: string, text: string) => Promise<void>;
   removeComment: (postId: string, commentId: string) => Promise<void>;
   toggleFollow: (userId: string) => Promise<void>;
   markStoryViewed: (storyId: string) => Promise<void>;
+  deletePost: (postId: string) => Promise<boolean>;
 }
 
 const InstaContext = createContext<InstaStoreValue | null>(null);
@@ -112,6 +114,26 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
     }
   }, [user, posts]);
 
+  /** Save/bookmark a post (client-side for now — like a saved collection) */
+  const toggleSave = useCallback((postId: string) => {
+    setPosts(ps => ps.map(p => (p.id === postId ? { ...p, saved: !p.saved } : p)));
+  }, []);
+
+  /** Delete a post (owner only) */
+  const deletePost = useCallback(async (postId: string) => {
+    if (!user) return false;
+    const res = await fetch("/api/instagro/posts", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId, userId: user.id }),
+    });
+    if (res.ok) {
+      setPosts(ps => ps.filter(p => p.id !== postId));
+      return true;
+    }
+    return false;
+  }, [user]);
+
   const addComment = useCallback(async (postId: string, text: string) => {
     if (!user) return;
     const res = await fetch("/api/instagro/comment", {
@@ -162,7 +184,7 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   return (
-    <InstaContext.Provider value={{ posts, stories, suggestions, loading, refresh, createPost, createStory, toggleLike, addComment, removeComment, toggleFollow, markStoryViewed }}>
+    <InstaContext.Provider value={{ posts, stories, suggestions, loading, refresh, createPost, createStory, toggleLike, toggleSave, addComment, removeComment, toggleFollow, markStoryViewed, deletePost }}>
       {children}
     </InstaContext.Provider>
   );

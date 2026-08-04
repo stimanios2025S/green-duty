@@ -4,7 +4,7 @@ import { X, ChevronLeft, ChevronRight, MoreHorizontal, Send, Music2, Check } fro
 import { InstaAvatar } from "./InstaAvatar";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
-import { MUSIC_TRACKS, getAudioCtx, unlockAudio } from "@/lib/instagro-music";
+import { MUSIC_TRACKS, playTrack, stopMusic, unlockAudio } from "@/lib/instagro-music";
 
 interface Props {
   startIndex: number;
@@ -64,18 +64,13 @@ export function StoryViewer({ startIndex, onClose }: Props) {
     return () => clearTimeout(t);
   }, [idx, story, goNext]);
 
-  // Music per story
+  // Music per story (real MP3, with fallback)
   useEffect(() => {
     stopMusic();
     if (story?.musicId) {
-      const track = MUSIC_TRACKS.find(m => m.id === story.musicId);
-      if (track) {
-        const ac = getAudioCtx();
-        if (ac.state === "suspended") ac.resume().catch(() => {});
-        musicHandleRef.current = track.start(ac);
-      }
+      musicHandleRef.current = playTrack(story.musicId);
     }
-    return () => stopMusic();
+    return () => { stopMusic(); musicHandleRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 

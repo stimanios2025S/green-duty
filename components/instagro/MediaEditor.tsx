@@ -2,7 +2,7 @@
 import { useRef, useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Sliders, Crop, Type, Music2, Wand2, RotateCw, Plus, X, Play, Pause } from "lucide-react";
 import { FILTERS, ASPECTS, Adjustments, DEFAULT_ADJUST, buildFilterCss, exportFilteredImage } from "@/lib/instagro-editor";
-import { MUSIC_TRACKS, previewTrack, stopPreview, getAudioCtx } from "@/lib/instagro-music";
+import { MUSIC_TRACKS, previewTrack, stopPreview } from "@/lib/instagro-music";
 import { cn } from "@/lib/utils";
 
 interface TextOverlay {

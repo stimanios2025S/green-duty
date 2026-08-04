@@ -8,6 +8,7 @@ export interface ApiUser {
   bio: string;
   emoji: string;
   gradient: string;
+  avatarUrl?: string;
   verified: boolean;
   followers: number;
   following: number;
@@ -90,6 +91,7 @@ export async function apiUserFromRow(u: any, viewerId?: string): Promise<ApiUser
     bio: u.bio || "",
     emoji: u.emoji || pick(EMOJIS, u.id),
     gradient: u.gradient || pick(GRADIENTS, u.id),
+    avatarUrl: u.avatar_media || undefined,
     verified: !!u.verified,
     followers: Number((followers as any)?.c || 0),
     following: Number((following as any)?.c || 0),

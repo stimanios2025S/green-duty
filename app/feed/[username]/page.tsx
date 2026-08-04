@@ -46,6 +46,27 @@ export default function ProfilePage() {
     await toggleFollow(profile.user.id);
   };
 
+  const handleMessage = async () => {
+    if (!authUser) { router.push("/login"); return; }
+    const msg = prompt(`Send a message to @${profile?.user.username}:`);
+    if (!msg?.trim()) return;
+    try {
+      await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: profile!.user.id,
+          title: `New message from ${authUser.name}`,
+          message: msg.trim().slice(0, 200),
+          type: "system",
+        }),
+      });
+      alert("Message sent!");
+    } catch {
+      alert("Couldn't send the message.");
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-gd-text-muted" /></div>;
   }
@@ -102,7 +123,10 @@ export default function ProfilePage() {
                 >
                   {following ? "Following" : "Follow"}
                 </button>
-                <button className="rounded-lg border border-gd-border bg-gd-elevated px-4 py-1.5 text-sm font-semibold text-gd-text-primary hover:bg-gd-overlay transition-colors">
+                <button
+                  onClick={handleMessage}
+                  className="rounded-lg border border-gd-border bg-gd-elevated px-4 py-1.5 text-sm font-semibold text-gd-text-primary hover:bg-gd-overlay transition-colors"
+                >
                   Message
                 </button>
               </>

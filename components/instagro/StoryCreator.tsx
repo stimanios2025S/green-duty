@@ -140,14 +140,62 @@ export function StoryCreator({ onClose }: Props) {
 
   const [devicePhotos, setDevicePhotos] = useState<{ url: string; file: File }[]>([]);
 
-  const handleFile = async (file: File | undefined) => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setMediaUrl(url); setMediaType(file.type.startsWith("video") ? "video" : "image"); setStep("edit");
+  /** Convert to a PERSISTENT data URL (blob URLs die on refresh and can't be seen by others) */
+  const toPersistentUrl = async (file: File): Promise<{ url: string; type: "image" | "video" } | { error: string }> => {
+    if (file.type.startsWith("image/")) {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const scale = Math.min(1, 1200 / Math.max(img.width, img.height));
+            const w = Math.round(img.width * scale);
+            const h = Math.round(img.height * scale);
+            const canvas = document.createElement("canvas");
+            canvas.width = w; canvas.height = h;
+            canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+            resolve({ url: canvas.toDataURL("image/jpeg", 0.85), type: "image" });
+          };
+          img.onerror = () => resolve({ error: "Couldn't read that image." });
+          img.src = String(reader.result);
+        };
+        reader.onerror = () => resolve({ error: "Couldn't read that file." });
+        reader.readAsDataURL(file);
+      });
+    }
+    if (file.type.startsWith("video/")) {
+      if (file.size > 2.5 * 1024 * 1024) return { error: "Video is too large (max 2.5MB for stories)." };
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ url: String(reader.result), type: "video" });
+        reader.onerror = () => resolve({ error: "Couldn't read that file." });
+        reader.readAsDataURL(file);
+      });
+    }
+    return { error: "Unsupported file type." };
   };
 
-  const pickDevicePhoto = (url: string) => {
-    setMediaUrl(url); setMediaType("image"); setStep("edit");
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setError("");
+    const result = await toPersistentUrl(file);
+    if ("error" in result) { setError(result.error); return; }
+    setMediaUrl(result.url); setMediaType(result.type); setStep("edit");
+  };
+
+  const pickDevicePhoto = async (url: string) => {
+    // blob URL from the device browser → fetch + convert to data URL
+    setError("");
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const file = new File([blob], "device-photo.jpg", { type: blob.type || "image/jpeg" });
+      const result = await toPersistentUrl(file);
+      if ("error" in result) { setError(result.error); return; }
+      setMediaUrl(result.url); setMediaType("image"); setStep("edit");
+    } catch {
+      setError("Couldn't load that photo.");
+    }
   };
 
   const pickSuggested = (s: typeof SUGGESTED[number]) => {

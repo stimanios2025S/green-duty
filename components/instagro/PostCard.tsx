@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, MapPin, BookOpen, Trash2, Music2 } from "lucide-react";
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, MapPin, BookOpen, Trash2, Music2, Link2, Check } from "lucide-react";
 import { InstaAvatar } from "./InstaAvatar";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
@@ -20,11 +20,13 @@ function renderCaption(text: string) {
 }
 
 export function PostCard({ post }: { post: ApiPost }) {
-  const { toggleLike, addComment, removeComment } = useInsta();
+  const { toggleLike, toggleSave, addComment, removeComment, deletePost } = useInsta();
   const { user } = useAuth();
   const [commentText, setCommentText] = useState("");
   const [showAllComments, setShowAllComments] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const isMine = user?.id === post.user.id;
 
   const submitComment = (e: React.FormEvent) => {
@@ -32,6 +34,25 @@ export function PostCard({ post }: { post: ApiPost }) {
     if (!commentText.trim()) return;
     addComment(post.id, commentText.trim());
     setCommentText("");
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/feed/${post.user.username}`);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1500);
+    } catch {}
+    setMenuOpen(false);
+  };
+
+  const handleDelete = async () => {
+    if (!isMine) return;
+    if (!confirm("Delete this post?")) { setMenuOpen(false); return; }
+    setDeleting(true);
+    const ok = await deletePost(post.id);
+    setDeleting(false);
+    setMenuOpen(false);
+    if (!ok) alert("Couldn't delete the post.");
   };
 
   const music = post.musicId ? MUSIC_TRACKS.find(m => m.id === post.musicId) : null;
@@ -60,15 +81,27 @@ export function PostCard({ post }: { post: ApiPost }) {
             <div className="absolute right-0 top-9 z-20 w-44 overflow-hidden rounded-xl border border-gd-border bg-gd-card shadow-xl">
               {isMine ? (
                 <>
-                  <button className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">Edit post</button>
-                  <button className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">Delete post</button>
-                  <button onClick={() => { setMenuOpen(false); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">Copy link</button>
+                  <button onClick={() => setMenuOpen(false)} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">
+                    <Link2 className="h-4 w-4" /> Edit post
+                  </button>
+                  <button onClick={handleDelete} disabled={deleting} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-gd-elevated transition-colors">
+                    <Trash2 className="h-4 w-4" /> {deleting ? "Deleting..." : "Delete post"}
+                  </button>
+                  <button onClick={copyLink} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">
+                    <Link2 className="h-4 w-4" /> Copy link
+                  </button>
                 </>
               ) : (
                 <>
-                  <button className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-gd-elevated transition-colors">Report post</button>
-                  <button className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">Not interested</button>
-                  <button className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">Copy link</button>
+                  <button onClick={() => setMenuOpen(false)} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-gd-elevated transition-colors">
+                    <Link2 className="h-4 w-4" /> Report post
+                  </button>
+                  <button onClick={() => setMenuOpen(false)} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">
+                    <Link2 className="h-4 w-4" /> Not interested
+                  </button>
+                  <button onClick={copyLink} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">
+                    <Link2 className="h-4 w-4" /> Copy link
+                  </button>
                 </>
               )}
             </div>
@@ -123,11 +156,11 @@ export function PostCard({ post }: { post: ApiPost }) {
             <MessageCircle className="h-6 w-6 text-gd-text-secondary hover:text-gd-text-primary" />
           </button>
         )}
-        <button className="transition-transform hover:scale-110 active:scale-95">
-          <Send className="h-6 w-6 text-gd-text-secondary hover:text-gd-text-primary" />
+        <button onClick={copyLink} className="transition-transform hover:scale-110 active:scale-95" title="Copy link">
+          {linkCopied ? <Check className="h-6 w-6 text-gd-success" /> : <Send className="h-6 w-6 text-gd-text-secondary hover:text-gd-text-primary" />}
         </button>
         <div className="flex-1" />
-        <button onClick={() => toggleLike(post.id)} className="transition-transform hover:scale-110 active:scale-95">
+        <button onClick={() => toggleSave(post.id)} className="transition-transform hover:scale-110 active:scale-95">
           <Bookmark className={`h-6 w-6 transition-colors ${post.saved ? "fill-gd-accent-400 text-gd-accent-400" : "text-gd-text-secondary hover:text-gd-text-primary"}`} />
         </button>
       </div>

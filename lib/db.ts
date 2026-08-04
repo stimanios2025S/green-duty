@@ -58,6 +58,7 @@ const SCHEMA = `
     bio TEXT,
     emoji TEXT,
     gradient TEXT,
+    avatar_media TEXT,
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -263,6 +264,7 @@ async function migrate(db: Db): Promise<void> {
     ["posts.likes_hidden", "ALTER TABLE posts ADD COLUMN likes_hidden INTEGER NOT NULL DEFAULT 0"],
     ["posts.comments_disabled", "ALTER TABLE posts ADD COLUMN comments_disabled INTEGER NOT NULL DEFAULT 0"],
     ["posts.music_id", "ALTER TABLE posts ADD COLUMN music_id TEXT"],
+    ["users.avatar_media", "ALTER TABLE users ADD COLUMN avatar_media TEXT"],
   ];
   for (const [name, sql] of migrations) {
     try {

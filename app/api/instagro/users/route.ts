@@ -5,7 +5,7 @@ import { apiUserFromRow } from "@/lib/instagro-api";
 // PATCH /api/instagro/users → update profile (username, bio, emoji, gradient, name)
 export async function PATCH(req: Request) {
   try {
-    const { userId, username, bio, emoji, gradient, name } = await req.json();
+    const { userId, username, bio, emoji, gradient, name, avatarUrl } = await req.json();
     if (!userId) return NextResponse.json({ error: "Missing userId." }, { status: 400 });
     const d = await getDb();
     const existing = await d.prepare("SELECT * FROM users WHERE id = ?").get(userId);
@@ -23,7 +23,8 @@ export async function PATCH(req: Request) {
         bio = COALESCE(?, bio),
         emoji = COALESCE(?, emoji),
         gradient = COALESCE(?, gradient),
-        name = COALESCE(?, name)
+        name = COALESCE(?, name),
+        avatar_media = COALESCE(?, avatar_media)
       WHERE id = ?
     `).run(
       username?.trim().toLowerCase() || null,
@@ -31,6 +32,7 @@ export async function PATCH(req: Request) {
       emoji || null,
       gradient || null,
       name?.trim() || null,
+      avatarUrl || null,
       userId
     );
 

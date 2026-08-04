@@ -36,3 +36,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to create post." }, { status: 500 });
   }
 }
+
+// DELETE /api/instagro/posts — owner only; removes post + its likes + comments
+export async function DELETE(req: Request) {
+  try {
+    const { postId, userId } = await req.json();
+    if (!postId || !userId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const d = await getDb();
+    const post = await d.prepare("SELECT user_id FROM posts WHERE id = ?").get(postId) as any;
+    if (!post) return NextResponse.json({ error: "Post not found." }, { status: 404 });
+    if (post.user_id !== userId) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+
+    await d.prepare("DELETE FROM comments WHERE post_id = ?").run(postId);
+    await d.prepare("DELETE FROM post_likes WHERE post_id = ?").run(postId);
+    await d.prepare("DELETE FROM posts WHERE id = ?").run(postId);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[instagro/posts DELETE]", err);
+    return NextResponse.json({ error: "Failed to delete." }, { status: 500 });
+  }
+}
