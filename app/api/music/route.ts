@@ -31,7 +31,7 @@ export async function GET(req: Request) {
       url.searchParams.set("limit", "30");
       url.searchParams.set("include", "musicinfo");
       url.searchParams.set("audioformat", "mp32");
-      url.searchParams.set("order", "popularity_desc");
+      url.searchParams.set("order", "popularity_total");
       if (q) url.searchParams.set("search", q);
       if (genre && genre !== "all") url.searchParams.set("tags", genre);
 
