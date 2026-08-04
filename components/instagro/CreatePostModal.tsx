@@ -87,6 +87,11 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
   const [selectedMusic, setSelectedMusic] = useState<{ id: string; name: string; artist: string; url: string } | null>(null);
   const [likesHidden, setLikesHidden] = useState(false);
   const [commentsDisabled, setCommentsDisabled] = useState(false);
+  // Editor output (media + texts + music) — MUST be kept so music picked in
+  // the edit step actually carries through to the caption step and publish.
+  const [editResult, setEditResult] = useState<{
+    mediaUrl: string; texts: any[]; musicId: string | null; musicUrl?: string | null; musicName?: string | null;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // article fields
@@ -114,7 +119,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
     setLocation(""); setError(""); setDone(false);
     setTitle(""); setContent(""); setTags(""); setEmoji("🌾"); setGradient(GRADIENTS[0]); setVideoIdx(0);
     setHashtagOpen(false); setShowMusic(false);
-    setSelectedMusic(null); stopPreview();
+    setSelectedMusic(null); setEditResult(null); stopPreview();
     setLikesHidden(false); setCommentsDisabled(false);
   };
 
@@ -148,14 +153,16 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
     setPublishing(true);
     // Extract real hashtags from the caption (#word)
     const hashtags = Array.from(caption.matchAll(/#([a-zA-Z0-9_]+)/g)).map(m => m[1]).slice(0, 5);
+    // Music may come from the edit step (editResult) or the caption step (selectedMusic)
+    const music = selectedMusic || (editResult?.musicId ? { id: editResult.musicId, name: editResult.musicName || "", artist: "", url: editResult.musicUrl || "" } : null);
     const baseOptions = {
       caption: caption.trim() || undefined,
       location: location.trim() || undefined,
       likesHidden,
       commentsDisabled,
-      musicId: selectedMusic ? selectedMusic.id : null,
-      musicUrl: selectedMusic ? selectedMusic.url : null,
-      musicName: selectedMusic ? selectedMusic.name : null,
+      musicId: music ? music.id : null,
+      musicUrl: music ? music.url : null,
+      musicName: music ? music.name : null,
       tags: hashtags.length ? hashtags : undefined,
     };
     const result = tab === "article"
@@ -245,9 +252,15 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
               mediaUrl={mediaUrl}
               mediaType={mediaType}
               onBack={() => setStep("select")}
-              onNext={() => setStep("caption")}
+              onNext={result => {
+                // STORE the editor output (edited media, texts, music) so it
+                // carries through to the caption step and publish.
+                setEditResult(result);
+                if (result.mediaUrl) setMediaUrl(result.mediaUrl);
+                setStep("caption");
+              }}
               nextLabel="Next"
-              allowMusic={false}
+              allowMusic
             />
           ) : step === "caption" && tab !== "article" && mediaUrl ? (
             /* ── IG caption editor ── */
@@ -316,9 +329,13 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
                   >
                     <Music2 className="h-4 w-4 text-gd-text-muted" />
                     <span className="flex-1 text-left truncate">
-                      {selectedMusic ? `${selectedMusic.name} — ${selectedMusic.artist}` : "Add music"}
+                      {selectedMusic
+                        ? `${selectedMusic.name} — ${selectedMusic.artist}`
+                        : editResult?.musicId && editResult.musicName
+                        ? `${editResult.musicName}`
+                        : "Add music"}
                     </span>
-                    {selectedMusic && <span className="text-xs text-gd-accent-400">✓</span>}
+                    {(selectedMusic || editResult?.musicId) && <span className="text-xs text-gd-accent-400">✓</span>}
                   </button>
                 </div>
 
@@ -461,8 +478,8 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
 
       {showMusic && (
         <MusicPicker
-          currentId={selectedMusic?.id}
-          onSelect={t => setSelectedMusic(t)}
+          currentId={selectedMusic?.id || editResult?.musicId || undefined}
+          onSelect={t => { setSelectedMusic(t); if (!t) setEditResult(e => e ? { ...e, musicId: null, musicUrl: null, musicName: null } : e); }}
           onClose={() => setShowMusic(false)}
         />
       )}
