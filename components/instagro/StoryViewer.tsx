@@ -11,7 +11,8 @@ interface Props {
   onClose: () => void;
 }
 
-const AUTO_ADVANCE_MS = 6000;
+const AUTO_ADVANCE_MS = 6000;   // photos: 6s like Instagram
+const MAX_STORY_MS = 60000;     // videos: cap at 60s (Instagram limit)
 
 export function StoryViewer({ startIndex, onClose }: Props) {
   const { stories, deleteStory } = useInsta();
@@ -86,10 +87,11 @@ export function StoryViewer({ startIndex, onClose }: Props) {
     setIdx(prev => (prev <= 0 ? prev : prev - 1));
   }, []);
 
-  // Auto-advance
+  // Auto-advance: photos 6s (like IG); videos advance when they end or at 60s max
   useEffect(() => {
     if (!story) return;
-    const t = setTimeout(goNext, AUTO_ADVANCE_MS);
+    const isVideo = !!story.mediaUrl && (story.mediaUrl.startsWith("data:video") || story.mediaUrl.includes("commondatastorage"));
+    const t = setTimeout(goNext, isVideo ? MAX_STORY_MS : AUTO_ADVANCE_MS);
     return () => clearTimeout(t);
   }, [idx, story, goNext]);
 
@@ -203,7 +205,15 @@ export function StoryViewer({ startIndex, onClose }: Props) {
         {isMedia ? (
           <>
             {story.mediaUrl!.startsWith("data:video") || story.mediaUrl!.startsWith("https://commondatastorage") ? (
-              <video src={story.mediaUrl} autoPlay loop muted playsInline className="absolute inset-0 h-full w-full object-cover" />
+              <video
+                src={story.mediaUrl}
+                autoPlay
+                loop={false}
+                muted
+                playsInline
+                onEnded={goNext}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
             ) : (
               <img src={story.mediaUrl} alt="Story" className="absolute inset-0 h-full w-full object-cover" />
             )}

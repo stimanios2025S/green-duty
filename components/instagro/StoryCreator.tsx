@@ -167,9 +167,23 @@ export function StoryCreator({ onClose }: Props) {
     }
     if (file.type.startsWith("video/")) {
       if (file.size > 2.5 * 1024 * 1024) return { error: "Video is too large (max 2.5MB for stories)." };
+      // Instagram-style: stories are capped at 60 seconds
       return new Promise(resolve => {
         const reader = new FileReader();
-        reader.onload = () => resolve({ url: String(reader.result), type: "video" });
+        reader.onload = () => {
+          const vid = document.createElement("video");
+          vid.preload = "metadata";
+          vid.onloadedmetadata = () => {
+            const dur = vid.duration;
+            if (dur > 60) {
+              resolve({ error: "Story videos are limited to 60 seconds (Instagram-style)." });
+            } else {
+              resolve({ url: String(reader.result), type: "video" });
+            }
+          };
+          vid.onerror = () => resolve({ error: "Couldn't read that video." });
+          vid.src = String(reader.result);
+        };
         reader.onerror = () => resolve({ error: "Couldn't read that file." });
         reader.readAsDataURL(file);
       });

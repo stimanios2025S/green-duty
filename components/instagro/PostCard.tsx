@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, MapPin, BookOpen, Trash2, Music2, Link2, Check } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, MapPin, BookOpen, Trash2, Music2, Link2, Check, Volume2, VolumeX, Pause, Play } from "lucide-react";
 import { InstaAvatar } from "./InstaAvatar";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
 import { ApiPost } from "@/lib/instagro-api";
-import { MUSIC_TRACKS } from "@/lib/instagro-music";
+import { MUSIC_TRACKS, playTrack, stopMusic, MusicHandle } from "@/lib/instagro-music";
 
 /** Render caption with #hashtags clickable */
 function renderCaption(text: string) {
@@ -27,7 +27,32 @@ export function PostCard({ post }: { post: ApiPost }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [videoMuted, setVideoMuted] = useState(true);
+  const musicHandleRef = useRef<MusicHandle | null>(null);
   const isMine = user?.id === post.user.id;
+
+  // Stop this post's music when unmounting
+  useEffect(() => () => { if (musicHandleRef.current) stopMusic(); }, []);
+
+  const music = post.musicId
+    ? (post.musicName ? { id: post.musicId, name: post.musicName } : MUSIC_TRACKS.find(m => m.id === post.musicId) || null)
+    : null;
+
+  /** Toggle the post's music on the feed (like Instagram's audio on posts) */
+  const toggleMusicPlay = () => {
+    if (musicPlaying) {
+      stopMusic();
+      musicHandleRef.current = null;
+      setMusicPlaying(false);
+      return;
+    }
+    const url = post.musicUrl || music?.id || null;
+    if (!url) return;
+    const handle = playTrack(url);
+    musicHandleRef.current = handle;
+    setMusicPlaying(true);
+  };
 
   const submitComment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,10 +79,6 @@ export function PostCard({ post }: { post: ApiPost }) {
     setMenuOpen(false);
     if (!ok) alert("Couldn't delete the post.");
   };
-
-  const music = post.musicId
-    ? (post.musicName ? { id: post.musicId, name: post.musicName } : MUSIC_TRACKS.find(m => m.id === post.musicId) || null)
-    : null;
 
   return (
     <div className="mb-5 overflow-hidden rounded-2xl border border-gd-border bg-gd-card">
@@ -116,14 +137,39 @@ export function PostCard({ post }: { post: ApiPost }) {
         <div className="relative aspect-square w-full overflow-hidden bg-black">
           <img src={post.mediaUrl} alt={post.caption || "Post"} className="h-full w-full object-cover" />
           {music && (
-            <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs text-white backdrop-blur-sm">
-              <Music2 className="h-3 w-3 text-gd-accent-400" /> {music.name}
-            </div>
+            <button
+              onClick={toggleMusicPlay}
+              className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/80 transition-colors"
+              title={musicPlaying ? "Pause music" : "Play music"}
+            >
+              {musicPlaying ? (
+                <Pause className="h-3 w-3 text-gd-accent-400" />
+              ) : (
+                <Music2 className="h-3 w-3 text-gd-accent-400" />
+              )}
+              <span className="max-w-[120px] truncate">{music.name}</span>
+              {musicPlaying && <span className="flex items-end gap-0.5"><span className="h-2 w-0.5 animate-pulse bg-gd-accent-400" /><span className="h-3 w-0.5 animate-pulse bg-gd-accent-400" /><span className="h-1 w-0.5 animate-pulse bg-gd-accent-400" /></span>}
+            </button>
           )}
         </div>
       ) : post.type === "video" ? (
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-black">
-          <video src={post.mediaUrl || post.videoUrl} controls playsInline preload="metadata" className="h-full w-full object-contain" />
+          <video
+            src={post.mediaUrl || post.videoUrl}
+            controls
+            playsInline
+            preload="metadata"
+            muted={videoMuted}
+            className="h-full w-full object-contain"
+          />
+          {/* Mute / unmute (like Instagram's audio toggle on videos) */}
+          <button
+            onClick={() => setVideoMuted(m => !m)}
+            className="absolute bottom-2 left-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 transition-colors"
+            title={videoMuted ? "Unmute" : "Mute"}
+          >
+            {videoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </button>
           {post.duration && (
             <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
               {post.duration}

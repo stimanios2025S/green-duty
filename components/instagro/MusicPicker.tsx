@@ -1,7 +1,11 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Search, X, Play, Pause, Music2, Loader2, Check } from "lucide-react";
+import { Search, X, Play, Pause, Music2, Loader2, Check, ChevronDown, ChevronRight, ListMusic } from "lucide-react";
 import { MUSIC_CATEGORIES, previewTrack, stopPreview, MusicTrack } from "@/lib/instagro-music";
+
+interface AlbumTrack extends MusicTrack {
+  trackNumber?: number;
+}
 
 interface Props {
   onSelect: (track: { id: string; name: string; artist: string; url: string } | null) => void;
@@ -18,7 +22,40 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
   const [previewing, setPreviewing] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(currentId || null);
   const [selectedTrack, setSelectedTrack] = useState<MusicTrack | null>(null);
+  // Album expansion: which search row is expanded to show its album tracks
+  const [expandedAlbum, setExpandedAlbum] = useState<string | null>(null);
+  const [albumTracks, setAlbumTracks] = useState<AlbumTrack[]>([]);
+  const [albumLoading, setAlbumLoading] = useState(false);
+  const [albumMeta, setAlbumMeta] = useState<{ albumId: string; albumImage: string; albumName: string; artistName: string } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** Load all tracks of a Deezer album so the user can pick the exact morceau */
+  const expandAlbum = async (t: MusicTrack) => {
+    const albumId = t.id.replace("dz_", "");
+    if (expandedAlbum === t.id) {
+      setExpandedAlbum(null);
+      setAlbumTracks([]);
+      return;
+    }
+    setExpandedAlbum(t.id);
+    setAlbumLoading(true);
+    setAlbumMeta({ albumId, albumImage: t.albumImage || "", albumName: t.album || t.name, artistName: t.artist });
+    try {
+      const params = new URLSearchParams({
+        albumId,
+        albumImage: t.albumImage || "",
+        albumName: t.album || t.name,
+        artistName: t.artist,
+      });
+      const res = await fetch(`/api/music/album?${params.toString()}`);
+      const data = await res.json();
+      setAlbumTracks(data.tracks || []);
+    } catch {
+      setAlbumTracks([]);
+    } finally {
+      setAlbumLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -142,41 +179,101 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
               tracks.map(t => {
                 const isPlaying = previewing === t.id;
                 const isSelected = selected === t.id;
+                const isExpanded = expandedAlbum === t.id;
+                const hasAlbum = !!t.albumImage || !!t.album;
                 return (
-                  <div
-                    key={t.id}
-                    className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-all ${isSelected ? "border-gd-accent-500/50 bg-gd-accent-500/5" : "border-transparent hover:bg-gd-elevated"}`}
-                  >
-                    {/* Play preview — stays in the picker, never closes it */}
-                    <button
-                      type="button"
-                      onClick={() => togglePreview(t.id)}
-                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gd-elevated text-gd-text-secondary hover:text-gd-text-primary transition-colors"
+                  <div key={t.id} className="space-y-1">
+                    <div
+                      className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-all ${isSelected ? "border-gd-accent-500/50 bg-gd-accent-500/5" : "border-transparent hover:bg-gd-elevated"}`}
                     >
-                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    </button>
-                    {/* Album cover */}
-                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br ${t.gradient} text-base`}>
-                      {t.albumImage ? (
-                        <img src={t.albumImage} alt={t.album || t.name} className="h-full w-full object-cover" />
-                      ) : (
-                        t.emoji
+                      {/* Play preview — stays in the picker, never closes it */}
+                      <button
+                        type="button"
+                        onClick={() => togglePreview(t.id)}
+                        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gd-elevated text-gd-text-secondary hover:text-gd-text-primary transition-colors"
+                      >
+                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </button>
+                      {/* Album cover — click to see all tracks of the album */}
+                      <button
+                        type="button"
+                        onClick={() => hasAlbum && expandAlbum(t)}
+                        className={`flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br ${t.gradient} text-base ${hasAlbum ? "cursor-pointer hover:ring-2 hover:ring-gd-accent-400/50" : "cursor-default"}`}
+                        title={hasAlbum ? "View all tracks in album" : undefined}
+                      >
+                        {t.albumImage ? (
+                          <img src={t.albumImage} alt={t.album || t.name} className="h-full w-full object-cover" />
+                        ) : (
+                          t.emoji
+                        )}
+                      </button>
+                      {/* Info — click to preview */}
+                      <div className="min-w-0 flex-1 cursor-pointer" onClick={() => togglePreview(t.id)}>
+                        <p className="truncate text-sm font-medium text-gd-text-primary">{t.name}</p>
+                        <p className="truncate text-xs text-gd-text-muted">{t.artist}{t.album ? " · " + t.album : ""} · {t.duration}</p>
+                      </div>
+                      {/* Expand album (choose the exact morceau) */}
+                      {hasAlbum && (
+                        <button
+                          type="button"
+                          onClick={() => expandAlbum(t)}
+                          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-gd-text-muted hover:bg-gd-elevated hover:text-gd-text-primary transition-colors"
+                          title="Choose a track from this album"
+                        >
+                          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ListMusic className="h-4 w-4" />}
+                        </button>
                       )}
+                      {/* Choose — selects with ✓, stays open */}
+                      <button
+                        type="button"
+                        onClick={() => choose(t)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${isSelected ? "flex items-center gap-1 text-gd-success" : "bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse hover:brightness-110"}`}
+                      >
+                        {isSelected ? <><Check className="h-3.5 w-3.5" /> Added</> : "Use"}
+                      </button>
                     </div>
-                    {/* Info — click to preview */}
-                    <div className="min-w-0 flex-1 cursor-pointer" onClick={() => togglePreview(t.id)}>
-                      <p className="truncate text-sm font-medium text-gd-text-primary">{t.name}</p>
-                      <p className="truncate text-xs text-gd-text-muted">{t.artist}{t.album ? " · " + t.album : ""} · {t.duration}</p>
-                    </div>
-                    {t.genre && <span className="hidden text-[10px] text-gd-text-muted sm:block">{t.genre}</span>}
-                    {/* Choose — selects with ✓, stays open */}
-                    <button
-                      type="button"
-                      onClick={() => choose(t)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${isSelected ? "flex items-center gap-1 text-gd-success" : "bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse hover:brightness-110"}`}
-                    >
-                      {isSelected ? <><Check className="h-3.5 w-3.5" /> Added</> : "Use"}
-                    </button>
+
+                    {/* Album tracks — pick the exact morceau you like */}
+                    {isExpanded && (
+                      <div className="ml-10 space-y-1 rounded-xl border border-gd-border bg-gd-elevated/40 p-2">
+                        <p className="flex items-center gap-1.5 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gd-text-muted">
+                          <Music2 className="h-3 w-3" /> {albumMeta?.albumName} — choose a track
+                        </p>
+                        {albumLoading ? (
+                          <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-gd-text-muted" /></div>
+                        ) : albumTracks.length === 0 ? (
+                          <p className="px-2 py-2 text-xs text-gd-text-muted">No previewable tracks in this album.</p>
+                        ) : (
+                          albumTracks.map(at => {
+                            const atSelected = selected === at.id;
+                            const atPlaying = previewing === at.id;
+                            return (
+                              <div key={at.id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-gd-elevated transition-colors">
+                                <span className="w-5 text-center text-[10px] text-gd-text-muted">{at.trackNumber || "•"}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => togglePreview(at.id)}
+                                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-gd-elevated text-gd-text-secondary hover:text-gd-text-primary"
+                                >
+                                  {atPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                                </button>
+                                <div className="min-w-0 flex-1 cursor-pointer" onClick={() => togglePreview(at.id)}>
+                                  <p className="truncate text-sm text-gd-text-primary">{at.name}</p>
+                                </div>
+                                <span className="text-[10px] text-gd-text-muted">{at.duration}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => choose(at)}
+                                  className={`rounded-md px-2 py-1 text-[11px] font-semibold transition-all ${atSelected ? "text-gd-success" : "bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse hover:brightness-110"}`}
+                                >
+                                  {atSelected ? "✓" : "Use"}
+                                </button>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })
