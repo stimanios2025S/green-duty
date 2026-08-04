@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, MapPin, BookOpen, Trash2, Music2, Link2, Check, Volume2, VolumeX, Pause, Play } from "lucide-react";
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, MapPin, BookOpen, Trash2, Music2, Link2, Check, Volume2, VolumeX, Pause, Play, Flag } from "lucide-react";
 import { InstaAvatar } from "./InstaAvatar";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
@@ -116,11 +116,11 @@ export function PostCard({ post }: { post: ApiPost }) {
                 </>
               ) : (
                 <>
-                  <button onClick={() => setMenuOpen(false)} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-gd-elevated transition-colors">
-                    <Link2 className="h-4 w-4" /> Report post
+                  <button onClick={() => { setMenuOpen(false); alert("Thanks — the post has been reported for review."); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-gd-elevated transition-colors">
+                    <Flag className="h-4 w-4" /> Report post
                   </button>
-                  <button onClick={() => setMenuOpen(false)} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">
-                    <Link2 className="h-4 w-4" /> Not interested
+                  <button onClick={() => { setMenuOpen(false); alert("Thanks for the feedback — we'll show fewer posts like this."); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">
+                    <Flag className="h-4 w-4" /> Not interested
                   </button>
                   <button onClick={copyLink} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">
                     <Link2 className="h-4 w-4" /> Copy link

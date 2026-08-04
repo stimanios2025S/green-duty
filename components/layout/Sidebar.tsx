@@ -77,17 +77,34 @@ export function Sidebar() {
       {/* User footer */}
       <div className="border-t border-gd-border p-3 space-y-1">
         {!collapsed && (
-          <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 mb-1">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-gd-accent-500 to-gd-ember-500 text-gd-text-inverse text-xs font-bold shadow-md">
-              {user?.name?.charAt(0) || "G"}
+          <Link
+            href={`/feed/${user?.name?.toLowerCase().replace(/\s+/g, ".") || "you"}`}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 mb-1 hover:bg-gd-elevated transition-colors"
+          >
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-gd-accent-500 to-gd-ember-500 text-gd-text-inverse text-xs font-bold shadow-md">
+              {user?.avatarUrl && user.avatarUrl !== "/logo.png" ? (
+                <img src={user.avatarUrl} alt={user.name} className="h-full w-full object-cover" />
+              ) : (
+                user?.name?.charAt(0) || "G"
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gd-text-primary truncate">{user?.name || "Guest"}</p>
               <p className="text-xs text-gd-accent-400 font-medium">{label} · {(user?.points || 0).toLocaleString()} pts</p>
             </div>
-          </div>
+          </Link>
         )}
-        <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gd-text-muted hover:text-gd-text-secondary hover:bg-gd-elevated transition-colors">
+        <Link
+          href={`/feed/${user?.name?.toLowerCase().replace(/\s+/g, ".") || "you"}`}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gd-text-muted hover:text-gd-text-secondary hover:bg-gd-elevated transition-colors"
+        >
+          <User className="h-5 w-5" />
+          {!collapsed && <span>My Profile</span>}
+        </Link>
+        <button
+          onClick={() => alert("Settings coming soon — check back shortly!")}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gd-text-muted hover:text-gd-text-secondary hover:bg-gd-elevated transition-colors"
+        >
           <Settings className="h-5 w-5" />
           {!collapsed && <span>Settings</span>}
         </button>

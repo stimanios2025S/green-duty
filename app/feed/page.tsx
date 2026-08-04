@@ -9,12 +9,14 @@ import { CreatePostModal } from "@/components/instagro/CreatePostModal";
 import { useInsta } from "@/lib/instagro-store";
 import { Plus, Heart, Camera, Search, Loader2, Send } from "lucide-react";
 import { SearchModal } from "@/components/instagro/SearchModal";
+import { ActivityPanel } from "@/components/instagro/ActivityPanel";
 
 export default function FeedPage() {
   const { user } = useAuth();
   const { posts, loading } = useInsta();
   const [showCreate, setShowCreate] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
   const myUsername = user?.name?.toLowerCase().replace(/\s+/g, ".") || "you";
 
   // Mobile bottom-nav buttons dispatch events → open the modals here
@@ -56,7 +58,11 @@ export default function FeedPage() {
             <button onClick={() => setShowCreate(true)} className="text-gd-text-secondary hover:text-gd-text-primary transition-colors" title="Create">
               <Plus className="h-6 w-6" />
             </button>
-            <button className="text-gd-text-secondary hover:text-gd-text-primary transition-colors" title="Activity">
+            <button
+              onClick={() => setShowActivity(true)}
+              className="text-gd-text-secondary hover:text-gd-text-primary transition-colors"
+              title="Activity"
+            >
               <Heart className="h-6 w-6" />
             </button>
             <Link href="/feed/messages" className="text-gd-text-secondary hover:text-gd-text-primary transition-colors" title="Messages">
@@ -100,6 +106,7 @@ export default function FeedPage() {
 
       <CreatePostModal isOpen={showCreate} onClose={() => setShowCreate(false)} />
       <SearchModal isOpen={showSearch} onClose={() => setShowSearch(false)} />
+      <ActivityPanel isOpen={showActivity} onClose={() => setShowActivity(false)} />
     </div>
   );
 }

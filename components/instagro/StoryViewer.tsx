@@ -24,6 +24,7 @@ export function StoryViewer({ startIndex, onClose }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [reported, setReported] = useState(false);
+  const [progress, setProgress] = useState(0); // 0..100 for the active story bar
   const musicHandleRef = useRef<{ stop: () => void } | null>(null);
 
   const story = stories[idx];
@@ -87,12 +88,23 @@ export function StoryViewer({ startIndex, onClose }: Props) {
     setIdx(prev => (prev <= 0 ? prev : prev - 1));
   }, []);
 
-  // Auto-advance: photos 6s (like IG); videos advance when they end or at 60s max
+  // Auto-advance + VISIBLE progress bar: photos 6s, videos 60s max (IG-style)
   useEffect(() => {
     if (!story) return;
     const isVideo = !!story.mediaUrl && (story.mediaUrl.startsWith("data:video") || story.mediaUrl.includes("commondatastorage"));
-    const t = setTimeout(goNext, isVideo ? MAX_STORY_MS : AUTO_ADVANCE_MS);
-    return () => clearTimeout(t);
+    const durationMs = isVideo ? MAX_STORY_MS : AUTO_ADVANCE_MS;
+    const start = Date.now();
+    setProgress(0);
+    let raf = 0;
+    const tick = () => {
+      const elapsed = Date.now() - start;
+      const pct = Math.min(100, (elapsed / durationMs) * 100);
+      setProgress(pct);
+      if (pct >= 100) { goNext(); return; }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [idx, story, goNext]);
 
   // Music per story (real MP3 — play by URL if saved, else by catalog id)
@@ -135,17 +147,17 @@ export function StoryViewer({ startIndex, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95" onClick={onClose}>
       {/* Progress bars */}
-      <div className="absolute left-0 right-0 top-3 flex gap-1.5 px-3">
+      {/* Progress bars — visible timer for each story */}
+      <div className="absolute left-0 right-0 top-3 z-[72] flex gap-1.5 px-3">
         {stories.map((_, i) => (
           <div key={i} className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/25">
             <div
-              className="h-full bg-white"
-              style={{ width: i < idx ? "100%" : i === idx ? "100%" : "0%", animation: i === idx ? "storyProgress 6s linear forwards" : undefined }}
+              className="h-full rounded-full bg-white transition-[width] duration-100 ease-linear"
+              style={{ width: i < idx ? "100%" : i === idx ? progress + "%" : "0%" }}
             />
           </div>
         ))}
       </div>
-      <style>{`@keyframes storyProgress { from { width: 0% } to { width: 100% } }`}</style>
 
       {/* Header */}
       <div className="absolute left-0 right-0 top-8 flex items-center gap-3 px-4">
