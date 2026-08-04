@@ -1,12 +1,17 @@
 "use client";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { ArrowRight, Play } from "lucide-react";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
-import { platformStats } from "@/lib/mock-data";
 import { formatNumber } from "@/lib/utils";
 import Link from "next/link";
 
 export function HeroSection() {
+  const [stats, setStats] = useState<any>(null);
+  useEffect(() => {
+    fetch("/api/stats").then(r => (r.ok ? r.json() : null)).then(d => d && setStats(d)).catch(() => {});
+  }, []);
+
   return (
     <section data-perch className="relative overflow-hidden bg-gd-deepest pt-20 pb-24">
       {/* Subtle grid background */}
@@ -60,10 +65,10 @@ export function HeroSection() {
           {/* Stats row */}
           <div className="mt-16 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
-              { label: "Trees Planted", value: platformStats.treesPlanted },
-              { label: "Hotspots Cleaned", value: platformStats.hotspotsCleaned },
-              { label: "Active Farmers", value: platformStats.activeFarmers },
-              { label: "CO₂ Offset (tons)", value: platformStats.co2Offset },
+              { label: "Trees Planted", value: stats?.trees ?? 0 },
+              { label: "Hotspots Reported", value: stats?.hotspots ?? 0 },
+              { label: "Community Members", value: stats?.users ?? 0 },
+              { label: "InstaGro Posts", value: stats?.posts ?? 0 },
             ].map((s, i) => (
               <div
                 key={i}
