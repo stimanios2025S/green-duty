@@ -21,7 +21,8 @@ export async function GET(req: Request) {
   const q = (searchParams.get("q") || "").trim();
   const genre = (searchParams.get("genre") || "all").trim();
 
-  const key = process.env.JAMENDO_CLIENT_ID;
+  // Read at request time so env changes apply without a rebuild
+  const key = process.env.JAMENDO_CLIENT_ID?.trim();
 
   if (key) {
     try {
@@ -38,17 +39,19 @@ export async function GET(req: Request) {
       const res = await fetch(url.toString(), { next: { revalidate: 300 } });
       if (res.ok) {
         const data = await res.json();
-        const tracks = (data.results || []).map((t: any, i: number) => ({
-          id: "j_" + t.id,
-          name: t.name,
-          artist: t.artist_name,
-          duration: fmt(t.duration),
-          emoji: EMOJIS[i % EMOJIS.length],
-          gradient: GRADIENTS[i % GRADIENTS.length],
-          url: t.audio,
-          genre: t.musicinfo?.tags?.join(", ") || "various",
-        }));
-        return NextResponse.json({ tracks, source: "jamendo" });
+        if (data.headers?.status === "success" && data.results?.length) {
+          const tracks = (data.results || []).map((t: any, i: number) => ({
+            id: "j_" + t.id,
+            name: t.name,
+            artist: t.artist_name,
+            duration: fmt(t.duration),
+            emoji: EMOJIS[i % EMOJIS.length],
+            gradient: GRADIENTS[i % GRADIENTS.length],
+            url: t.audio,
+            genre: t.musicinfo?.tags?.join(", ") || "various",
+          }));
+          return NextResponse.json({ tracks, source: "jamendo" });
+        }
       }
     } catch (e) {
       console.error("[music] Jamendo failed:", e);
