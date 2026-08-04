@@ -50,6 +50,9 @@ export interface ApiStory {
   emoji: string;
   gradient: string;
   caption?: string;
+  mediaUrl?: string;
+  musicId?: string | null;
+  texts?: { id: string; text: string; x: number; y: number; size: number; color: string }[];
   viewed: boolean;
   createdAt: string;
 }
@@ -89,6 +92,7 @@ export async function apiUserFromRow(u: any, viewerId?: string): Promise<ApiUser
     following: Number((following as any)?.c || 0),
   };
 }
+
 
 export async function serializePost(row: any, viewerId?: string): Promise<ApiPost> {
   const d = await getDb();
@@ -133,12 +137,17 @@ export async function serializeStory(row: any, viewerId?: string): Promise<ApiSt
   const d = await getDb();
   const userRow = await d.prepare("SELECT * FROM users WHERE id = ?").get(row.user_id);
   const viewed = viewerId ? await d.prepare("SELECT 1 FROM story_views WHERE story_id = ? AND user_id = ?").get(row.id, viewerId) : undefined;
+  let texts: ApiStory["texts"];
+  try { texts = row.texts ? JSON.parse(row.texts) : undefined; } catch { texts = undefined; }
   return {
     id: row.id,
     user: userRow ? await apiUserFromRow(userRow) : ({} as ApiUser),
     emoji: row.emoji || "🌿",
     gradient: row.gradient || "from-amber-400 to-orange-600",
     caption: row.caption || undefined,
+    mediaUrl: row.media_url || undefined,
+    musicId: row.music_id || null,
+    texts,
     viewed: !!viewed,
     createdAt: row.created_at,
   };

@@ -54,6 +54,10 @@ const SCHEMA = `
     verified INTEGER NOT NULL DEFAULT 0,
     verification_code TEXT,
     verification_expires INTEGER,
+    username TEXT,
+    bio TEXT,
+    emoji TEXT,
+    gradient TEXT,
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -106,6 +110,9 @@ const SCHEMA = `
     emoji TEXT,
     gradient TEXT,
     caption TEXT,
+    media_url TEXT,
+    music_id TEXT,
+    texts TEXT,
     created_at TEXT NOT NULL
   );
 
@@ -241,10 +248,22 @@ function createLocalDb(): Db {
 
 /** Run idempotent migrations for tables created before a schema change */
 async function migrate(db: Db): Promise<void> {
-  try {
-    await db.prepare("ALTER TABLE posts ADD COLUMN media_url TEXT").run();
-    console.log("[db] Migration: added posts.media_url");
-  } catch {}
+  const migrations: [string, string][] = [
+    ["posts.media_url", "ALTER TABLE posts ADD COLUMN media_url TEXT"],
+    ["users.username", "ALTER TABLE users ADD COLUMN username TEXT"],
+    ["users.bio", "ALTER TABLE users ADD COLUMN bio TEXT"],
+    ["users.emoji", "ALTER TABLE users ADD COLUMN emoji TEXT"],
+    ["users.gradient", "ALTER TABLE users ADD COLUMN gradient TEXT"],
+    ["stories.media_url", "ALTER TABLE stories ADD COLUMN media_url TEXT"],
+    ["stories.music_id", "ALTER TABLE stories ADD COLUMN music_id TEXT"],
+    ["stories.texts", "ALTER TABLE stories ADD COLUMN texts TEXT"],
+  ];
+  for (const [name, sql] of migrations) {
+    try {
+      await db.prepare(sql).run();
+      console.log(`[db] Migration: added ${name}`);
+    } catch {}
+  }
 }
 
 export async function getDb(): Promise<Db> {

@@ -1,10 +1,13 @@
 "use client";
-import { useState, useRef, FormEvent, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { X, FileText, PlayCircle, ImagePlus, Loader2, CheckCircle2, MapPin, ChevronLeft } from "lucide-react";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
 import { InstaAvatar } from "./InstaAvatar";
+import { MediaEditor } from "./MediaEditor";
+import { LocationPicker } from "./LocationPicker";
 import { SAMPLE_VIDEOS } from "@/lib/instagro-data";
+import { stopPreview } from "@/lib/instagro-music";
 
 interface Props {
   isOpen: boolean;
@@ -21,11 +24,11 @@ const GRADIENTS = [
   "from-yellow-400 to-amber-700",
 ];
 const MAX_IMAGE_PX = 1200;
-const MAX_VIDEO_MB = 4;
+const MAX_VIDEO_MB = 2.5; // keep base64 under Vercel's 4.5MB body limit
 
 type Tab = "photo" | "video" | "article";
+type Step = "select" | "edit" | "caption";
 
-/** Compress an image file to a small JPEG data URL (canvas) */
 function fileToImageDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -51,7 +54,7 @@ function fileToImageDataUrl(file: File): Promise<string> {
 function fileToVideoDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
-      reject(new Error(`Video is too large (max ${MAX_VIDEO_MB}MB for now). Try a shorter clip.`));
+      reject(new Error(`Video is too large (max ${MAX_VIDEO_MB}MB). Try a shorter clip.`));
       return;
     }
     const reader = new FileReader();
@@ -66,12 +69,13 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
   const { user } = useAuth();
 
   const [tab, setTab] = useState<Tab>("photo");
-  const [step, setStep] = useState<"select" | "edit">("select");
+  const [step, setStep] = useState<Step>("select");
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
   const [dragging, setDragging] = useState(false);
   const [caption, setCaption] = useState("");
   const [location, setLocation] = useState("");
+  const [showLocation, setShowLocation] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
@@ -128,6 +132,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
     } else {
       if (!mediaUrl) { setError("Add a photo or video first."); return; }
     }
+    if (!user) { setError("Please sign in to share. Create an account first."); return; }
     setPublishing(true);
     const ok = tab === "article"
       ? await createPost({
@@ -139,12 +144,12 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
           coverEmoji: emoji,
           coverGradient: gradient,
           caption: caption.trim() || undefined,
+          location: location.trim() || undefined,
         })
       : tab === "video"
       ? await createPost({
           type: "video",
           mediaUrl: mediaUrl!,
-          duration: undefined,
           caption: caption.trim() || undefined,
           location: location.trim() || undefined,
         })
@@ -156,26 +161,32 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
         });
 
     setPublishing(false);
-    if (!ok) { setError("Failed to publish. Are you signed in?"); return; }
+    if (!ok) { setError("Failed to publish. Check your connection or sign-in."); return; }
     setDone(true);
     setTimeout(() => { reset(); onClose(); }, 1400);
   };
 
+  const close = () => { stopPreview(); reset(); onClose(); };
+
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={close} />
       <div className="fixed inset-0 z-[55] flex items-center justify-center p-4">
-        <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gd-border-soft bg-gd-card shadow-2xl shadow-black/50">
-          {/* ── IG top bar ── */}
+        <div className="flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-gd-border-soft bg-gd-card shadow-2xl shadow-black/50">
+          {/* ── Top bar ── */}
           <div className="flex h-12 items-center justify-between border-b border-gd-border px-4">
-            {step === "edit" && tab !== "article" ? (
+            {step === "caption" && tab !== "article" ? (
+              <button onClick={() => setStep("edit")} className="rounded-lg p-1.5 text-gd-text-secondary hover:text-gd-text-primary transition-colors">
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+            ) : step === "edit" && tab !== "article" ? (
               <button onClick={() => setStep("select")} className="rounded-lg p-1.5 text-gd-text-secondary hover:text-gd-text-primary transition-colors">
                 <ChevronLeft className="h-5 w-5" />
               </button>
             ) : <div className="w-8" />}
             <h3 className="text-base font-semibold text-gd-text-primary">Create new post</h3>
             <div className="flex items-center gap-2">
-              {step === "edit" && tab !== "article" && (
+              {step === "caption" && tab !== "article" && (
                 <button
                   onClick={publish}
                   disabled={publishing}
@@ -184,7 +195,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
                   {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Share"}
                 </button>
               )}
-              <button onClick={onClose} className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-primary transition-colors">
+              <button onClick={close} className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-primary transition-colors">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -217,9 +228,18 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
               <CheckCircle2 className="h-14 w-14 text-gd-success" />
               <p className="mt-4 text-lg font-semibold text-gd-text-primary">Shared to InstaGro!</p>
             </div>
-          ) : step === "edit" && tab !== "article" && mediaUrl ? (
-            /* ── IG caption editor: media left, caption right ── */
-            <div className="flex flex-col sm:flex-row">
+          ) : step === "edit" && tab !== "article" && mediaUrl && mediaType ? (
+            <MediaEditor
+              mediaUrl={mediaUrl}
+              mediaType={mediaType}
+              onBack={() => setStep("select")}
+              onNext={() => setStep("caption")}
+              nextLabel="Next"
+              allowMusic={false}
+            />
+          ) : step === "caption" && tab !== "article" && mediaUrl ? (
+            /* ── IG caption editor ── */
+            <div className="flex flex-col overflow-y-auto sm:flex-row">
               <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-black sm:w-1/2">
                 {mediaType === "image" ? (
                   <img src={mediaUrl} alt="Post preview" className="h-full w-full object-cover" />
@@ -228,7 +248,6 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
                 )}
               </div>
               <div className="flex w-full flex-col p-4 sm:w-1/2">
-                {/* user row */}
                 <div className="mb-4 flex items-center gap-3">
                   <InstaAvatar user={{ username: myUsername, name: user?.name || "You", emoji: user?.name?.charAt(0) || "🌿", gradient: "from-amber-400 to-orange-600" }} size={36} />
                   <span className="text-sm font-semibold text-gd-text-primary">{myUsername}</span>
@@ -245,26 +264,27 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
                   <p className="mt-1 text-right text-[11px] text-gd-text-muted">{caption.length}/2200</p>
                 </div>
                 <div className="mb-4">
-                  <label className="text-xs font-medium text-gd-text-secondary">Location</label>
-                  <div className="relative mt-1">
-                    <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gd-text-muted" />
-                    <input
-                      value={location}
-                      onChange={e => setLocation(e.target.value)}
-                      placeholder="Add location"
-                      className="w-full rounded-xl border border-gd-border bg-gd-elevated py-2.5 pl-9 pr-3.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors"
-                    />
-                  </div>
+                  <button
+                    onClick={() => setShowLocation(true)}
+                    className="flex w-full items-center gap-2 rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-secondary hover:border-gd-accent-500/40 transition-colors"
+                  >
+                    <MapPin className="h-4 w-4 text-gd-text-muted" />
+                    <span className={location ? "text-gd-text-primary" : "text-gd-text-muted"}>{location || "Add location"}</span>
+                  </button>
                 </div>
                 {error && <p className="rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">{error}</p>}
+                <button
+                  onClick={publish}
+                  disabled={publishing}
+                  className="mt-auto rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-2.5 text-sm font-semibold text-gd-text-inverse shadow-lg shadow-gd-accent-500/20 hover:brightness-110 transition-all disabled:opacity-50 sm:hidden"
+                >
+                  {publishing ? "Sharing..." : "Share"}
+                </button>
               </div>
             </div>
           ) : tab === "article" ? (
             /* ── Article editor ── */
-            <form
-              onSubmit={e => { e.preventDefault(); publish(); }}
-              className="space-y-4 overflow-y-auto px-5 py-4"
-            >
+            <form onSubmit={e => { e.preventDefault(); publish(); }} className="space-y-4 overflow-y-auto px-5 py-4">
               <div>
                 <label className="text-xs font-medium text-gd-text-secondary">Title</label>
                 <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Soil Health Guide" className="mt-1 w-full rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
@@ -297,12 +317,14 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
                 <label className="text-xs font-medium text-gd-text-secondary">Caption (optional)</label>
                 <textarea value={caption} onChange={e => setCaption(e.target.value)} rows={2} placeholder="Add a caption..." className="mt-1 w-full resize-none rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
               </div>
+              <div>
+                <button type="button" onClick={() => setShowLocation(true)} className="flex w-full items-center gap-2 rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-secondary hover:border-gd-accent-500/40 transition-colors">
+                  <MapPin className="h-4 w-4 text-gd-text-muted" />
+                  <span className={location ? "text-gd-text-primary" : "text-gd-text-muted"}>{location || "Add location"}</span>
+                </button>
+              </div>
               {error && <p className="rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">{error}</p>}
-              <button
-                type="submit"
-                disabled={publishing}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-3 text-sm font-semibold text-gd-text-inverse shadow-lg shadow-gd-accent-500/20 transition-all hover:shadow-gd-accent-500/40 hover:brightness-110 disabled:opacity-50"
-              >
+              <button type="submit" disabled={publishing} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-3 text-sm font-semibold text-gd-text-inverse shadow-lg shadow-gd-accent-500/20 transition-all hover:shadow-gd-accent-500/40 hover:brightness-110 disabled:opacity-50">
                 {publishing ? <><Loader2 className="h-4 w-4 animate-spin" /> Publishing...</> : "Share"}
               </button>
             </form>
@@ -366,6 +388,14 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {showLocation && (
+        <LocationPicker
+          value={location}
+          onSelect={setLocation}
+          onClose={() => setShowLocation(false)}
+        />
+      )}
     </>
   );
 }

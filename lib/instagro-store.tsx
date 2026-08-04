@@ -15,7 +15,7 @@ interface InstaStoreValue {
     coverEmoji?: string; coverGradient?: string;
     videoUrl?: string; mediaUrl?: string; duration?: string; caption?: string; location?: string;
   }) => Promise<boolean>;
-  createStory: (emoji: string, gradient: string, caption?: string) => Promise<boolean>;
+  createStory: (input: { emoji?: string; gradient?: string; caption?: string; mediaUrl?: string; musicId?: string | null; texts?: any[] }) => Promise<boolean>;
   toggleLike: (postId: string) => Promise<void>;
   addComment: (postId: string, text: string) => Promise<void>;
   toggleFollow: (userId: string) => Promise<void>;
@@ -62,12 +62,12 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
     return true;
   }, [user, refresh]);
 
-  const createStory = useCallback(async (emoji: string, gradient: string, caption?: string) => {
+  const createStory = useCallback(async (input: any) => {
     if (!user) return false;
     const res = await fetch("/api/instagro/stories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id, emoji, gradient, caption }),
+      body: JSON.stringify({ userId: user.id, ...input }),
     });
     if (!res.ok) return false;
     await refresh();

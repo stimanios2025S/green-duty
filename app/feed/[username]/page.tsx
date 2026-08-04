@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BadgeCheck, Grid3x3, PlaySquare, BookOpen, Heart, MessageCircle, ArrowLeft, X, Loader2 } from "lucide-react";
 import { InstaAvatar } from "@/components/instagro/InstaAvatar";
 import { PostCard } from "@/components/instagro/PostCard";
+import { ProfileEditor } from "@/components/instagro/ProfileEditor";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
 import { ApiUser, ApiPost } from "@/lib/instagro-api";
@@ -23,6 +24,7 @@ export default function ProfilePage() {
   const [tab, setTab] = useState<Tab>("posts");
   const [selected, setSelected] = useState<ApiPost | null>(null);
   const [following, setFollowing] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -82,7 +84,10 @@ export default function ProfilePage() {
             <h1 className="text-xl font-semibold text-gd-text-primary">{user.username}</h1>
             {user.verified && <BadgeCheck className="h-5 w-5 text-gd-info" />}
             {isMe ? (
-              <button className="rounded-lg border border-gd-border bg-gd-elevated px-4 py-1.5 text-sm font-semibold text-gd-text-primary hover:bg-gd-overlay transition-colors">
+              <button
+                onClick={() => setEditingProfile(true)}
+                className="rounded-lg border border-gd-border bg-gd-elevated px-4 py-1.5 text-sm font-semibold text-gd-text-primary hover:bg-gd-overlay transition-colors"
+              >
                 Edit profile
               </button>
             ) : (
@@ -181,6 +186,22 @@ export default function ProfilePage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Profile editor */}
+      {isMe && (
+        <ProfileEditor
+          isOpen={editingProfile}
+          onClose={() => setEditingProfile(false)}
+          onSaved={() => {
+            // re-fetch profile after save
+            setLoading(true);
+            const q = authUser?.id ? `?viewerId=${encodeURIComponent(authUser.id)}` : "";
+            fetch(`/api/instagro/users/${encodeURIComponent(username)}${q}`)
+              .then(r => (r.ok ? r.json() : null))
+              .then(data => { if (data) { setProfile(data); setFollowing(data.isFollowing); } setLoading(false); });
+          }}
+        />
       )}
     </div>
   );

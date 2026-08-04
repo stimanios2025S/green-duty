@@ -1,21 +1,27 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
-import { X, ChevronLeft, ChevronRight, MoreHorizontal, Send } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { X, ChevronLeft, ChevronRight, MoreHorizontal, Send, Music2 } from "lucide-react";
 import { InstaAvatar } from "./InstaAvatar";
 import { useInsta } from "@/lib/instagro-store";
+import { MUSIC_TRACKS, getAudioCtx } from "@/lib/instagro-music";
 
 interface Props {
   startIndex: number;
   onClose: () => void;
 }
 
-const AUTO_ADVANCE_MS = 4500;
+const AUTO_ADVANCE_MS = 6000;
 
 export function StoryViewer({ startIndex, onClose }: Props) {
   const { stories } = useInsta();
   const [idx, setIdx] = useState(startIndex);
+  const musicHandleRef = useRef<{ stop: () => void } | null>(null);
 
   const story = stories[idx];
+
+  const stopMusic = () => {
+    if (musicHandleRef.current) { musicHandleRef.current.stop(); musicHandleRef.current = null; }
+  };
 
   const goNext = useCallback(() => {
     setIdx(prev => {
@@ -28,12 +34,29 @@ export function StoryViewer({ startIndex, onClose }: Props) {
     setIdx(prev => (prev <= 0 ? prev : prev - 1));
   }, []);
 
+  // Auto-advance
   useEffect(() => {
     if (!story) return;
     const t = setTimeout(goNext, AUTO_ADVANCE_MS);
     return () => clearTimeout(t);
   }, [idx, story, goNext]);
 
+  // Music per story
+  useEffect(() => {
+    stopMusic();
+    if (story?.musicId) {
+      const track = MUSIC_TRACKS.find(m => m.id === story.musicId);
+      if (track) {
+        const ac = getAudioCtx();
+        if (ac.state === "suspended") ac.resume().catch(() => {});
+        musicHandleRef.current = track.start(ac);
+      }
+    }
+    return () => stopMusic();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx]);
+
+  // Keyboard + lock scroll
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -45,10 +68,14 @@ export function StoryViewer({ startIndex, onClose }: Props) {
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
+      stopMusic();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose, goNext, goPrev]);
 
   if (!story) return null;
+
+  const isMedia = !!story.mediaUrl;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95" onClick={onClose}>
@@ -58,7 +85,7 @@ export function StoryViewer({ startIndex, onClose }: Props) {
           <div key={i} className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/25">
             <div
               className="h-full bg-white"
-              style={{ width: i < idx ? "100%" : i === idx ? "100%" : "0%", animation: i === idx ? "storyProgress 4.5s linear forwards" : undefined }}
+              style={{ width: i < idx ? "100%" : i === idx ? "100%" : "0%", animation: i === idx ? "storyProgress 6s linear forwards" : undefined }}
             />
           </div>
         ))}
@@ -73,6 +100,7 @@ export function StoryViewer({ startIndex, onClose }: Props) {
           <p className="text-[11px] text-white/60">just now</p>
         </div>
         <div className="flex-1" />
+        {story.musicId && <Music2 className="h-4 w-4 text-white/70" />}
         <button className="rounded-full p-1.5 text-white/80 hover:bg-white/10" onClick={e => { e.stopPropagation(); }}>
           <MoreHorizontal className="h-5 w-5" />
         </button>
@@ -82,9 +110,37 @@ export function StoryViewer({ startIndex, onClose }: Props) {
       </div>
 
       {/* Content */}
-      <div className={`flex h-[70vh] w-[min(420px,90vw)] items-center justify-center rounded-2xl bg-gradient-to-br ${story.gradient}`} onClick={e => e.stopPropagation()}>
-        <span className="text-7xl drop-shadow-lg">{story.emoji}</span>
-        {story.caption && <p className="mt-4 max-w-[80%] text-center text-white/95 font-medium">{story.caption}</p>}
+      <div
+        className={`relative flex h-[70vh] w-[min(420px,90vw)] items-center justify-center overflow-hidden rounded-2xl ${story.gradient}`}
+        onClick={e => e.stopPropagation()}
+      >
+        {isMedia ? (
+          <>
+            {story.mediaUrl!.startsWith("data:video") || story.mediaUrl!.startsWith("https://commondatastorage") ? (
+              <video src={story.mediaUrl} autoPlay loop muted playsInline className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <img src={story.mediaUrl} alt="Story" className="absolute inset-0 h-full w-full object-cover" />
+            )}
+            <div className="absolute inset-0 bg-black/20" />
+          </>
+        ) : (
+          <span className="text-7xl drop-shadow-lg">{story.emoji}</span>
+        )}
+
+        {/* Text overlays */}
+        {story.texts?.map(t => (
+          <div
+            key={t.id}
+            className="absolute font-bold drop-shadow-md"
+            style={{ left: t.x + "%", top: t.y + "%", fontSize: t.size, color: t.color, transform: "translate(-50%,-50%)" }}
+          >
+            {t.text}
+          </div>
+        ))}
+
+        {story.caption && (
+          <p className="absolute bottom-10 max-w-[80%] text-center text-white font-medium drop-shadow">{story.caption}</p>
+        )}
       </div>
 
       {/* Reply */}

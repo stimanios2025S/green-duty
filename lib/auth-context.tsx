@@ -26,6 +26,7 @@ interface AuthContextValue {
   verify: (code: string) => Promise<{ ok: boolean; error?: string }>;
   resendCode: () => Promise<{ ok: boolean; error?: string }>;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; needsVerification?: boolean }>;
+  updateUser: (patch: Partial<User>) => void;
   logout: () => void;
 }
 
@@ -130,10 +131,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, [persist]);
 
+  const updateUser = useCallback((patch: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      try { localStorage.setItem("gd_user", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
   const logout = useCallback(() => persist(null), [persist]);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, pendingEmail, verifyMode, fallbackCode, signup, verify, resendCode, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, pendingEmail, verifyMode, fallbackCode, signup, verify, resendCode, login, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   );
