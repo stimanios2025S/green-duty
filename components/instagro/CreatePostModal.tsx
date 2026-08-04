@@ -89,6 +89,14 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
   const [gradient, setGradient] = useState(GRADIENTS[0]);
   const [videoIdx, setVideoIdx] = useState(0);
 
+  // NOTE: all hooks MUST be above the early return (React rule — no conditional hooks)
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    handleFile(e.dataTransfer.files?.[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!isOpen) return null;
 
   const myUsername = user?.name?.toLowerCase().replace(/\s+/g, ".") || "you";
@@ -116,13 +124,6 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
       setError(e instanceof Error ? e.message : "Could not read that file.");
     }
   };
-
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    handleFile(e.dataTransfer.files?.[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const publish = async () => {
     setError("");
