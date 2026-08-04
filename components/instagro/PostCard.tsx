@@ -1,14 +1,31 @@
 "use client";
 import { useState } from "react";
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, MapPin, BookOpen } from "lucide-react";
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, MapPin, BookOpen, Trash2, Music2 } from "lucide-react";
 import { InstaAvatar } from "./InstaAvatar";
 import { useInsta } from "@/lib/instagro-store";
+import { useAuth } from "@/lib/auth-context";
 import { ApiPost } from "@/lib/instagro-api";
+import { MUSIC_TRACKS } from "@/lib/instagro-music";
+
+/** Render caption with #hashtags clickable */
+function renderCaption(text: string) {
+  const parts = text.split(/(#\w+)/g);
+  return parts.map((p, i) =>
+    p.startsWith("#") ? (
+      <span key={i} className="font-medium text-gd-info/90 hover:text-gd-info cursor-pointer">#{p.slice(1)}</span>
+    ) : (
+      <span key={i}>{p}</span>
+    )
+  );
+}
 
 export function PostCard({ post }: { post: ApiPost }) {
-  const { toggleLike, addComment } = useInsta();
+  const { toggleLike, addComment, removeComment } = useInsta();
+  const { user } = useAuth();
   const [commentText, setCommentText] = useState("");
   const [showAllComments, setShowAllComments] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isMine = user?.id === post.user.id;
 
   const submitComment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,6 +33,8 @@ export function PostCard({ post }: { post: ApiPost }) {
     addComment(post.id, commentText.trim());
     setCommentText("");
   };
+
+  const music = post.musicId ? MUSIC_TRACKS.find(m => m.id === post.musicId) : null;
 
   return (
     <div className="mb-5 overflow-hidden rounded-2xl border border-gd-border bg-gd-card">
@@ -33,15 +52,39 @@ export function PostCard({ post }: { post: ApiPost }) {
             </p>
           )}
         </div>
-        <button className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-primary transition-colors">
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
+        <div className="relative">
+          <button onClick={() => setMenuOpen(o => !o)} className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-primary transition-colors">
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-9 z-20 w-44 overflow-hidden rounded-xl border border-gd-border bg-gd-card shadow-xl">
+              {isMine ? (
+                <>
+                  <button className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">Edit post</button>
+                  <button className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">Delete post</button>
+                  <button onClick={() => { setMenuOpen(false); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">Copy link</button>
+                </>
+              ) : (
+                <>
+                  <button className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-gd-elevated transition-colors">Report post</button>
+                  <button className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">Not interested</button>
+                  <button className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">Copy link</button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Media */}
       {post.type === "image" ? (
         <div className="relative aspect-square w-full overflow-hidden bg-black">
           <img src={post.mediaUrl} alt={post.caption || "Post"} className="h-full w-full object-cover" />
+          {music && (
+            <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs text-white backdrop-blur-sm">
+              <Music2 className="h-3 w-3 text-gd-accent-400" /> {music.name}
+            </div>
+          )}
         </div>
       ) : post.type === "video" ? (
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-black">
@@ -75,9 +118,11 @@ export function PostCard({ post }: { post: ApiPost }) {
         <button onClick={() => toggleLike(post.id)} className="transition-transform hover:scale-110 active:scale-95">
           <Heart className={`h-6 w-6 transition-colors ${post.liked ? "fill-red-500 text-red-500" : "text-gd-text-secondary hover:text-gd-text-primary"}`} />
         </button>
-        <button className="transition-transform hover:scale-110 active:scale-95">
-          <MessageCircle className="h-6 w-6 text-gd-text-secondary hover:text-gd-text-primary" />
-        </button>
+        {!post.commentsDisabled && (
+          <button className="transition-transform hover:scale-110 active:scale-95">
+            <MessageCircle className="h-6 w-6 text-gd-text-secondary hover:text-gd-text-primary" />
+          </button>
+        )}
         <button className="transition-transform hover:scale-110 active:scale-95">
           <Send className="h-6 w-6 text-gd-text-secondary hover:text-gd-text-primary" />
         </button>
@@ -87,65 +132,82 @@ export function PostCard({ post }: { post: ApiPost }) {
         </button>
       </div>
 
-      {/* Likes */}
-      <p className="px-4 pt-2 text-sm font-semibold text-gd-text-primary">
-        {post.likes.toLocaleString()} likes
-      </p>
+      {/* Likes (respect hide-likes) */}
+      {!post.likesHidden && (
+        <p className="px-4 pt-2 text-sm font-semibold text-gd-text-primary">
+          {post.likes.toLocaleString()} likes
+        </p>
+      )}
 
       {/* Caption */}
       <div className="px-4 pt-1">
         <p className="text-sm text-gd-text-secondary leading-relaxed">
           <span className="mr-1.5 font-semibold text-gd-text-primary">{post.user.username}</span>
-          {post.caption}
+          {post.caption && renderCaption(post.caption)}
         </p>
         {post.type === "article" && post.excerpt && (
           <p className="mt-1 line-clamp-2 text-sm text-gd-text-muted">{post.excerpt}</p>
         )}
-        {post.type === "article" && post.tags && post.tags.length > 0 && (
+        {post.tags && post.tags.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-x-2">
             {post.tags.map(t => (
-              <span key={t} className="text-xs font-medium text-gd-info/90">#{t}</span>
+              <span key={t} className="cursor-pointer text-xs font-medium text-gd-info/90 hover:text-gd-info">#{t}</span>
             ))}
           </div>
         )}
       </div>
 
-      {/* Comments */}
-      <div className="px-4 pt-1">
-        {post.comments.length > 0 && (
-          <button
-            onClick={() => setShowAllComments(s => !s)}
-            className="text-xs text-gd-text-muted hover:text-gd-text-secondary transition-colors"
-          >
-            {showAllComments ? "Hide comments" : `View all ${post.comments.length} comments`}
-          </button>
-        )}
-        {(showAllComments ? post.comments : post.comments.slice(0, 2)).map(c => (
-          <p key={c.id} className="mt-1 text-sm text-gd-text-secondary leading-snug">
-            <span className="mr-1.5 font-semibold text-gd-text-primary">{c.user.username}</span>
-            {c.text}
+      {/* Comments (respect disable-comments) */}
+      {!post.commentsDisabled && (
+        <div className="px-4 pt-1">
+          {post.comments.length > 0 && (
+            <button
+              onClick={() => setShowAllComments(s => !s)}
+              className="text-xs text-gd-text-muted hover:text-gd-text-secondary transition-colors"
+            >
+              {showAllComments ? "Hide comments" : `View all ${post.comments.length} comments`}
+            </button>
+          )}
+          {(showAllComments ? post.comments : post.comments.slice(0, 2)).map(c => (
+            <div key={c.id} className="group flex items-start justify-between gap-2">
+              <p className="mt-1 text-sm text-gd-text-secondary leading-snug">
+                <span className="mr-1.5 font-semibold text-gd-text-primary">{c.user.username}</span>
+                {c.text}
+              </p>
+              {/* Remove comment (own comment or own post) */}
+              {(c.user.id === user?.id || isMine) && (
+                <button onClick={() => removeComment(post.id, c.id)} className="mt-1.5 text-gd-text-muted opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100">
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
+          <p className="mt-2 text-[10px] uppercase tracking-wide text-gd-text-muted">
+            {new Date(post.createdAt).toLocaleDateString(undefined, { month: "long", day: "numeric" })}
           </p>
-        ))}
-        <p className="mt-2 text-[10px] uppercase tracking-wide text-gd-text-muted">
-          {new Date(post.createdAt).toLocaleDateString(undefined, { month: "long", day: "numeric" })}
-        </p>
-      </div>
+        </div>
+      )}
+      {post.commentsDisabled && (
+        <p className="px-4 pt-1 text-[10px] uppercase tracking-wide text-gd-text-muted">Comments are turned off</p>
+      )}
 
       {/* Add comment */}
-      <form onSubmit={submitComment} className="flex items-center gap-2 border-t border-gd-border px-4 py-2.5">
-        <span className="text-lg">😊</span>
-        <input
-          value={commentText}
-          onChange={e => setCommentText(e.target.value)}
-          placeholder="Add a comment..."
-          className="flex-1 bg-transparent text-sm text-gd-text-primary placeholder-gd-text-muted outline-none"
-        />
-        {commentText.trim() && (
-          <button type="submit" className="text-sm font-semibold text-gd-accent-400 hover:text-gd-accent-300 transition-colors">
-            Post
-          </button>
-        )}
-      </form>
+      {!post.commentsDisabled && (
+        <form onSubmit={submitComment} className="flex items-center gap-2 border-t border-gd-border px-4 py-2.5">
+          <span className="text-lg">😊</span>
+          <input
+            value={commentText}
+            onChange={e => setCommentText(e.target.value)}
+            placeholder="Add a comment..."
+            className="flex-1 bg-transparent text-sm text-gd-text-primary placeholder-gd-text-muted outline-none"
+          />
+          {commentText.trim() && (
+            <button type="submit" className="text-sm font-semibold text-gd-accent-400 hover:text-gd-accent-300 transition-colors">
+              Post
+            </button>
+          )}
+        </form>
+      )}
     </div>
   );
 }

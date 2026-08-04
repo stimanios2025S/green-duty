@@ -40,6 +40,9 @@ export interface ApiPost {
   likes: number;
   liked: boolean;
   saved: boolean;
+  likesHidden?: boolean;
+  commentsDisabled?: boolean;
+  musicId?: string | null;
   comments: ApiComment[];
   createdAt: string;
 }
@@ -128,6 +131,9 @@ export async function serializePost(row: any, viewerId?: string): Promise<ApiPos
     likes: Number(likes?.c || 0),
     liked: !!likedRow,
     saved: false,
+    likesHidden: !!row.likes_hidden,
+    commentsDisabled: !!row.comments_disabled,
+    musicId: row.music_id || null,
     comments,
     createdAt: row.created_at,
   };

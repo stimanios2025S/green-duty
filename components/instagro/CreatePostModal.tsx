@@ -1,13 +1,15 @@
 "use client";
 import { useState, useRef, useCallback } from "react";
-import { X, FileText, PlayCircle, ImagePlus, Loader2, CheckCircle2, MapPin, ChevronLeft } from "lucide-react";
+import { X, FileText, PlayCircle, ImagePlus, Loader2, CheckCircle2, MapPin, ChevronLeft, Music2, Play, Pause } from "lucide-react";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
 import { InstaAvatar } from "./InstaAvatar";
 import { MediaEditor } from "./MediaEditor";
 import { LocationPicker } from "./LocationPicker";
 import { SAMPLE_VIDEOS } from "@/lib/instagro-data";
-import { stopPreview } from "@/lib/instagro-music";
+import { MUSIC_TRACKS, previewTrack, stopPreview } from "@/lib/instagro-music";
+
+const SUGGESTED_HASHTAGS = ["sustainable", "organic", "farming", "eco", "trees", "soil", "harvest", "greenhouse", "reforestation", "agritech"];
 
 interface Props {
   isOpen: boolean;
@@ -79,6 +81,12 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [hashtagOpen, setHashtagOpen] = useState(false);
+  const [showMusic, setShowMusic] = useState(false);
+  const [selectedMusicId, setSelectedMusicId] = useState<string | null>(null);
+  const [musicName, setMusicName] = useState("");
+  const [likesHidden, setLikesHidden] = useState(false);
+  const [commentsDisabled, setCommentsDisabled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // article fields
@@ -105,6 +113,9 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
     setStep("select"); setMediaUrl(null); setMediaType(null); setCaption("");
     setLocation(""); setError(""); setDone(false);
     setTitle(""); setContent(""); setTags(""); setEmoji("🌾"); setGradient(GRADIENTS[0]); setVideoIdx(0);
+    setHashtagOpen(false); setShowMusic(false);
+    setSelectedMusicId(null); setMusicName(""); stopPreview();
+    setLikesHidden(false); setCommentsDisabled(false);
   };
 
   const handleFile = async (file: File | undefined) => {
@@ -135,31 +146,29 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
     }
     if (!user) { setError("Please sign in to share. Create an account first."); return; }
     setPublishing(true);
+    // Extract real hashtags from the caption (#word)
+    const hashtags = Array.from(caption.matchAll(/#([a-zA-Z0-9_]+)/g)).map(m => m[1]).slice(0, 5);
+    const baseOptions = {
+      caption: caption.trim() || undefined,
+      location: location.trim() || undefined,
+      likesHidden,
+      commentsDisabled,
+      musicId: selectedMusicId,
+      tags: hashtags.length ? hashtags : undefined,
+    };
     const result = tab === "article"
       ? await createPost({
           type: "article",
           title: title.trim(),
           excerpt: content.trim().slice(0, 140) + (content.trim().length > 140 ? "…" : ""),
           content: content.trim(),
-          tags: tags.split(",").map(t => t.trim()).filter(Boolean).slice(0, 5),
           coverEmoji: emoji,
           coverGradient: gradient,
-          caption: caption.trim() || undefined,
-          location: location.trim() || undefined,
+          ...baseOptions,
         })
       : tab === "video"
-      ? await createPost({
-          type: "video",
-          mediaUrl: mediaUrl!,
-          caption: caption.trim() || undefined,
-          location: location.trim() || undefined,
-        })
-      : await createPost({
-          type: "image",
-          mediaUrl: mediaUrl!,
-          caption: caption.trim() || undefined,
-          location: location.trim() || undefined,
-        });
+      ? await createPost({ type: "video", mediaUrl: mediaUrl!, ...baseOptions })
+      : await createPost({ type: "image", mediaUrl: mediaUrl!, ...baseOptions });
 
     setPublishing(false);
     if (!result.ok) { setError(result.error || "Failed to publish. Check your connection or sign-in."); return; }
@@ -253,18 +262,41 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
                   <InstaAvatar user={{ username: myUsername, name: user?.name || "You", emoji: user?.name?.charAt(0) || "🌿", gradient: "from-amber-400 to-orange-600" }} size={36} />
                   <span className="text-sm font-semibold text-gd-text-primary">{myUsername}</span>
                 </div>
-                <div className="mb-4">
+                {/* Caption + hashtag suggestions */}
+                <div className="mb-3">
                   <label className="text-xs font-medium text-gd-text-secondary">Caption</label>
                   <textarea
                     value={caption}
-                    onChange={e => setCaption(e.target.value)}
-                    rows={5}
-                    placeholder="Write a caption..."
+                    onChange={e => { setCaption(e.target.value); setHashtagOpen(false); }}
+                    onKeyUp={e => {
+                      // Show hashtag suggestions when typing #
+                      if (e.key === "#") setHashtagOpen(true);
+                    }}
+                    rows={4}
+                    placeholder="Write a caption... #hashtag"
                     className="mt-1 w-full resize-none rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors"
                   />
                   <p className="mt-1 text-right text-[11px] text-gd-text-muted">{caption.length}/2200</p>
+                  {hashtagOpen && (
+                    <div className="mt-1 rounded-xl border border-gd-border bg-gd-card p-2">
+                      <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-gd-text-muted">Suggested hashtags</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {SUGGESTED_HASHTAGS.map(tag => (
+                          <button
+                            key={tag}
+                            onClick={() => { setCaption(c => (c.endsWith(" ") || c === "" ? c + "#" + tag + " " : c + " #" + tag + " ")); setHashtagOpen(false); }}
+                            className="rounded-full border border-gd-accent-500/20 bg-gd-accent-500/5 px-2.5 py-1 text-xs text-gd-accent-400 hover:bg-gd-accent-500/10 transition-colors"
+                          >
+                            #{tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="mb-4">
+
+                {/* Location */}
+                <div className="mb-3">
                   <button
                     onClick={() => setShowLocation(true)}
                     className="flex w-full items-center gap-2 rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-secondary hover:border-gd-accent-500/40 transition-colors"
@@ -273,6 +305,52 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
                     <span className={location ? "text-gd-text-primary" : "text-gd-text-muted"}>{location || "Add location"}</span>
                   </button>
                 </div>
+
+                {/* Music (reuse Web Audio tracks) */}
+                <div className="mb-3">
+                  <button
+                    onClick={() => setShowMusic(!showMusic)}
+                    className="flex w-full items-center gap-2 rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-secondary hover:border-gd-accent-500/40 transition-colors"
+                  >
+                    <Music2 className="h-4 w-4 text-gd-text-muted" />
+                    <span className="flex-1 text-left">{musicName || "Add music"}</span>
+                    {musicName && <span className="text-xs text-gd-accent-400">✓</span>}
+                  </button>
+                  {showMusic && (
+                    <div className="mt-1 space-y-1.5 rounded-xl border border-gd-border bg-gd-card p-2">
+                      {MUSIC_TRACKS.map(t => (
+                        <button
+                          key={t.id}
+                          onClick={() => {
+                            if (selectedMusicId === t.id) { setSelectedMusicId(null); setMusicName(""); stopPreview(); }
+                            else { setSelectedMusicId(t.id); setMusicName(t.name); previewTrack(t.id); }
+                          }}
+                          className={`flex w-full items-center gap-2.5 rounded-lg border p-2 text-left transition-all ${selectedMusicId === t.id ? "border-gd-accent-500/50 bg-gd-accent-500/5" : "border-transparent hover:bg-gd-elevated"}`}
+                        >
+                          <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${t.gradient} text-base`}>{t.emoji}</div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-gd-text-primary">{t.name}</p>
+                            <p className="truncate text-xs text-gd-text-muted">{t.artist}</p>
+                          </div>
+                          {selectedMusicId === t.id ? <Pause className="h-4 w-4 text-gd-accent-400" /> : <Play className="h-4 w-4 text-gd-text-muted" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Advanced: hide likes / disable comments */}
+                <div className="mb-3 space-y-2 rounded-xl border border-gd-border bg-gd-elevated/50 p-3">
+                  <label className="flex cursor-pointer items-center justify-between">
+                    <span className="text-sm text-gd-text-secondary">Hide like and view counts</span>
+                    <input type="checkbox" checked={likesHidden} onChange={e => setLikesHidden(e.target.checked)} className="h-4 w-4 accent-gd-accent-400" />
+                  </label>
+                  <label className="flex cursor-pointer items-center justify-between">
+                    <span className="text-sm text-gd-text-secondary">Turn off commenting</span>
+                    <input type="checkbox" checked={commentsDisabled} onChange={e => setCommentsDisabled(e.target.checked)} className="h-4 w-4 accent-gd-accent-400" />
+                  </label>
+                </div>
+
                 {error && <p className="rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">{error}</p>}
                 <button
                   onClick={publish}

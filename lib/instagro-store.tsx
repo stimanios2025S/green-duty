@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "./auth-context";
 import { ApiPost, ApiStory, ApiUser } from "./instagro-api";
 
@@ -14,10 +15,12 @@ interface InstaStoreValue {
     title?: string; excerpt?: string; content?: string; tags?: string[];
     coverEmoji?: string; coverGradient?: string;
     videoUrl?: string; mediaUrl?: string; duration?: string; caption?: string; location?: string;
+    likesHidden?: boolean; commentsDisabled?: boolean; musicId?: string | null;
   }) => Promise<{ ok: boolean; error?: string }>;
   createStory: (input: { emoji?: string; gradient?: string; caption?: string; mediaUrl?: string; musicId?: string | null; texts?: any[] }) => Promise<boolean>;
   toggleLike: (postId: string) => Promise<void>;
   addComment: (postId: string, text: string) => Promise<void>;
+  removeComment: (postId: string, commentId: string) => Promise<void>;
   toggleFollow: (userId: string) => Promise<void>;
   markStoryViewed: (storyId: string) => Promise<void>;
 }
@@ -25,11 +28,18 @@ interface InstaStoreValue {
 const InstaContext = createContext<InstaStoreValue | null>(null);
 
 export function InstaGroProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const router = useRouter();
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [stories, setStories] = useState<ApiStory[]>([]);
   const [suggestions, setSuggestions] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState(true);
+
+  /** If the server says the session user no longer exists, clear it → login */
+  const handleAuthError = useCallback(() => {
+    logout();
+    router.push("/login");
+  }, [logout, router]);
 
   const refresh = useCallback(async () => {
     try {
@@ -59,14 +69,17 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ userId: user.id, ...input }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) return { ok: false, error: data.error || "Server rejected the post." };
+      if (!res.ok) {
+        if (res.status === 401) { handleAuthError(); return { ok: false, error: "Your session expired — please sign in again." }; }
+        return { ok: false, error: data.error || "Server rejected the post." };
+      }
       await refresh();
       return { ok: true };
     } catch (e) {
       console.error("[instagro] createPost failed", e);
       return { ok: false, error: "Network error — check your connection." };
     }
-  }, [user, refresh]);
+  }, [user, refresh, handleAuthError]);
 
   const createStory = useCallback(async (input: any) => {
     if (!user) return false;
@@ -75,10 +88,13 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id, ...input }),
     });
-    if (!res.ok) return false;
+    if (!res.ok) {
+      if (res.status === 401) handleAuthError();
+      return false;
+    }
     await refresh();
     return true;
-  }, [user, refresh]);
+  }, [user, refresh, handleAuthError]);
 
   const toggleLike = useCallback(async (postId: string) => {
     if (!user) return;
@@ -106,6 +122,22 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
     if (res.ok) await refresh();
   }, [user, refresh]);
 
+  const removeComment = useCallback(async (postId: string, commentId: string) => {
+    if (!user) return;
+    // Optimistic remove
+    setPosts(ps => ps.map(p => p.id === postId ? { ...p, comments: p.comments.filter(c => c.id !== commentId) } : p));
+    try {
+      const res = await fetch("/api/instagro/comment", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentId, userId: user.id }),
+      });
+      if (!res.ok) await refresh(); // rollback via refresh on failure
+    } catch {
+      await refresh();
+    }
+  }, [user, refresh]);
+
   const toggleFollow = useCallback(async (targetId: string) => {
     if (!user) return;
     setSuggestions(ss => ss.map(s => (s.id === targetId ? { ...s, isFollowing: !s.isFollowing } : s)));
@@ -130,7 +162,7 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   return (
-    <InstaContext.Provider value={{ posts, stories, suggestions, loading, refresh, createPost, createStory, toggleLike, addComment, toggleFollow, markStoryViewed }}>
+    <InstaContext.Provider value={{ posts, stories, suggestions, loading, refresh, createPost, createStory, toggleLike, addComment, removeComment, toggleFollow, markStoryViewed }}>
       {children}
     </InstaContext.Provider>
   );

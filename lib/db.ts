@@ -78,6 +78,9 @@ const SCHEMA = `
     views INTEGER NOT NULL DEFAULT 0,
     caption TEXT,
     location TEXT,
+    likes_hidden INTEGER NOT NULL DEFAULT 0,
+    comments_disabled INTEGER NOT NULL DEFAULT 0,
+    music_id TEXT,
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id);
@@ -257,6 +260,9 @@ async function migrate(db: Db): Promise<void> {
     ["stories.media_url", "ALTER TABLE stories ADD COLUMN media_url TEXT"],
     ["stories.music_id", "ALTER TABLE stories ADD COLUMN music_id TEXT"],
     ["stories.texts", "ALTER TABLE stories ADD COLUMN texts TEXT"],
+    ["posts.likes_hidden", "ALTER TABLE posts ADD COLUMN likes_hidden INTEGER NOT NULL DEFAULT 0"],
+    ["posts.comments_disabled", "ALTER TABLE posts ADD COLUMN comments_disabled INTEGER NOT NULL DEFAULT 0"],
+    ["posts.music_id", "ALTER TABLE posts ADD COLUMN music_id TEXT"],
   ];
   for (const [name, sql] of migrations) {
     try {
