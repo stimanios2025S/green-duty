@@ -37,22 +37,21 @@ export async function GET(req: Request) {
       if (genre && genre !== "all") url.searchParams.set("tags", genre);
 
       const res = await fetch(url.toString(), { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.headers?.status === "success" && data.results?.length) {
-          const tracks = (data.results || []).map((t: any, i: number) => ({
-            id: "j_" + t.id,
-            name: t.name,
-            artist: t.artist_name,
-            duration: fmt(t.duration),
-            emoji: EMOJIS[i % EMOJIS.length],
-            gradient: GRADIENTS[i % GRADIENTS.length],
-            url: t.audio,
-            genre: t.musicinfo?.tags?.join(", ") || "various",
-          }));
-          return NextResponse.json({ tracks, source: "jamendo" });
-        }
+      const data = await res.json().catch(() => ({}));
+      if (data.headers?.status === "success" && Array.isArray(data.results)) {
+        const tracks = (data.results || []).map((t: any, i: number) => ({
+          id: "j_" + t.id,
+          name: t.name,
+          artist: t.artist_name,
+          duration: fmt(t.duration),
+          emoji: EMOJIS[i % EMOJIS.length],
+          gradient: GRADIENTS[i % GRADIENTS.length],
+          url: t.audio,
+          genre: t.musicinfo?.tags?.join(", ") || "various",
+        }));
+        return NextResponse.json({ tracks, source: "jamendo", count: tracks.length });
       }
+      console.error("[music] Jamendo response:", JSON.stringify(data).slice(0, 300));
     } catch (e) {
       console.error("[music] Jamendo failed:", e);
     }
