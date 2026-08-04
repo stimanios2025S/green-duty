@@ -63,10 +63,19 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 `;
 
+/** Split a multi-statement SQL string into individual statements */
+function splitStatements(sql: string): string[] {
+  return sql
+    .split(";")
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+}
+
 /** Turso / libSQL adapter (async) */
 function createTursoDb(url: string, authToken: string): Db {
   const client = createClient({ url, authToken });
-  client.execute({ sql: SCHEMA, args: [] }).catch(err => {
+  // libSQL `execute()` allows ONE statement only — use batch for schema
+  client.batch(splitStatements(SCHEMA)).catch(err => {
     console.error("[db] Turso schema init failed:", err);
   });
   return {
@@ -88,7 +97,7 @@ function createTursoDb(url: string, authToken: string): Db {
       };
     },
     async exec(sql: string) {
-      await client.execute({ sql, args: [] });
+      await client.batch(splitStatements(sql));
     },
   };
 }
