@@ -39,9 +39,13 @@ export function PostCard({ post }: { post: ApiPost }) {
       </div>
 
       {/* Media */}
-      {post.type === "video" ? (
+      {post.type === "image" ? (
+        <div className="relative aspect-square w-full overflow-hidden bg-black">
+          <img src={post.mediaUrl} alt={post.caption || "Post"} className="h-full w-full object-cover" />
+        </div>
+      ) : post.type === "video" ? (
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-black">
-          <video src={post.videoUrl} controls playsInline preload="metadata" className="h-full w-full object-contain" />
+          <video src={post.mediaUrl || post.videoUrl} controls playsInline preload="metadata" className="h-full w-full object-contain" />
           {post.duration && (
             <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
               {post.duration}

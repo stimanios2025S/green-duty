@@ -144,9 +144,15 @@ export default function ProfilePage() {
         <div className="grid grid-cols-3 gap-1 pt-4 sm:gap-4">
           {filtered.map(p => (
             <button key={p.id} onClick={() => setSelected(p)} className="group relative aspect-square overflow-hidden rounded-lg sm:rounded-xl">
-              {p.type === "video" ? (
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-600/40 to-red-900/40">
-                  <PlaySquare className="h-10 w-10 text-white/70" />
+              {p.type === "image" ? (
+                <img src={p.mediaUrl} alt={p.caption || "Post"} className="h-full w-full object-cover" />
+              ) : p.type === "video" ? (
+                <div className="relative flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-600/40 to-red-900/40">
+                  {p.mediaUrl ? (
+                    <video src={p.mediaUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                  ) : (
+                    <PlaySquare className="h-10 w-10 text-white/70" />
+                  )}
                 </div>
               ) : (
                 <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${p.coverGradient || "from-amber-400 to-orange-700"}`}>

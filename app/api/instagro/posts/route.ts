@@ -5,9 +5,9 @@ import { genId } from "@/lib/instagro-api";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { userId, type, title, excerpt, content, tags, coverEmoji, coverGradient, videoUrl, duration, caption } = body;
+    const { userId, type, title, excerpt, content, tags, coverEmoji, coverGradient, videoUrl, mediaUrl, duration, caption, location } = body;
 
-    if (!userId || !type || !["article", "video"].includes(type)) {
+    if (!userId || !type || !["article", "video", "image"].includes(type)) {
       return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     }
     const d = await getDb();
@@ -16,15 +16,15 @@ export async function POST(req: Request) {
 
     const id = genId("p");
     await d.prepare(`
-      INSERT INTO posts (id, user_id, type, title, excerpt, content, tags, cover_emoji, cover_gradient, video_url, duration, views, caption, created_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,0,?,?)
+      INSERT INTO posts (id, user_id, type, title, excerpt, content, tags, cover_emoji, cover_gradient, video_url, media_url, duration, views, caption, location, created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?)
     `).run(
       id, userId, type,
       title || null, excerpt || null, content || null,
       Array.isArray(tags) && tags.length ? tags.join(",") : null,
       coverEmoji || null, coverGradient || null,
-      videoUrl || null, duration || null,
-      caption || null,
+      videoUrl || null, mediaUrl || null, duration || null,
+      caption || null, location || null,
       new Date().toISOString()
     );
 

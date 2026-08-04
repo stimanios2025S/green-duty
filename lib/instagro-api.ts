@@ -24,7 +24,7 @@ export interface ApiComment {
 export interface ApiPost {
   id: string;
   user: ApiUser;
-  type: "article" | "video";
+  type: "article" | "video" | "image";
   title?: string;
   excerpt?: string;
   content?: string;
@@ -32,6 +32,7 @@ export interface ApiPost {
   coverEmoji?: string;
   coverGradient?: string;
   videoUrl?: string;
+  mediaUrl?: string;
   duration?: string;
   views: number;
   caption?: string;
@@ -115,6 +116,7 @@ export async function serializePost(row: any, viewerId?: string): Promise<ApiPos
     coverEmoji: row.cover_emoji || undefined,
     coverGradient: row.cover_gradient || undefined,
     videoUrl: row.video_url || undefined,
+    mediaUrl: row.media_url || undefined,
     duration: row.duration || undefined,
     views: Number(row.views || 0),
     caption: row.caption || undefined,

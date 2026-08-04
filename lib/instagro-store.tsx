@@ -10,10 +10,10 @@ interface InstaStoreValue {
   loading: boolean;
   refresh: () => Promise<void>;
   createPost: (input: {
-    type: "article" | "video";
+    type: "article" | "video" | "image";
     title?: string; excerpt?: string; content?: string; tags?: string[];
     coverEmoji?: string; coverGradient?: string;
-    videoUrl?: string; duration?: string; caption?: string;
+    videoUrl?: string; mediaUrl?: string; duration?: string; caption?: string; location?: string;
   }) => Promise<boolean>;
   createStory: (emoji: string, gradient: string, caption?: string) => Promise<boolean>;
   toggleLike: (postId: string) => Promise<void>;

@@ -69,6 +69,7 @@ const SCHEMA = `
     cover_emoji TEXT,
     cover_gradient TEXT,
     video_url TEXT,
+    media_url TEXT,
     duration TEXT,
     views INTEGER NOT NULL DEFAULT 0,
     caption TEXT,
@@ -238,6 +239,14 @@ function createLocalDb(): Db {
   };
 }
 
+/** Run idempotent migrations for tables created before a schema change */
+async function migrate(db: Db): Promise<void> {
+  try {
+    await db.prepare("ALTER TABLE posts ADD COLUMN media_url TEXT").run();
+    console.log("[db] Migration: added posts.media_url");
+  } catch {}
+}
+
 export async function getDb(): Promise<Db> {
   if (db) return db;
   const tursoUrl = process.env.TURSO_DATABASE_URL;
@@ -255,6 +264,7 @@ export async function getDb(): Promise<Db> {
     console.log("[db] Using local SQLite file");
     db = createLocalDb();
   }
+  await migrate(db);
   return db;
 }
 
