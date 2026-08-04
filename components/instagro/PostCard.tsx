@@ -55,7 +55,9 @@ export function PostCard({ post }: { post: ApiPost }) {
     if (!ok) alert("Couldn't delete the post.");
   };
 
-  const music = post.musicId ? MUSIC_TRACKS.find(m => m.id === post.musicId) : null;
+  const music = post.musicId
+    ? (post.musicName ? { id: post.musicId, name: post.musicName } : MUSIC_TRACKS.find(m => m.id === post.musicId) || null)
+    : null;
 
   return (
     <div className="mb-5 overflow-hidden rounded-2xl border border-gd-border bg-gd-card">

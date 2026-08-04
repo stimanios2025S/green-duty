@@ -82,6 +82,8 @@ const SCHEMA = `
     likes_hidden INTEGER NOT NULL DEFAULT 0,
     comments_disabled INTEGER NOT NULL DEFAULT 0,
     music_id TEXT,
+    music_url TEXT,
+    music_name TEXT,
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id);
@@ -116,6 +118,8 @@ const SCHEMA = `
     caption TEXT,
     media_url TEXT,
     music_id TEXT,
+    music_url TEXT,
+    music_name TEXT,
     texts TEXT,
     created_at TEXT NOT NULL
   );
@@ -261,9 +265,13 @@ async function migrate(db: Db): Promise<void> {
     ["stories.media_url", "ALTER TABLE stories ADD COLUMN media_url TEXT"],
     ["stories.music_id", "ALTER TABLE stories ADD COLUMN music_id TEXT"],
     ["stories.texts", "ALTER TABLE stories ADD COLUMN texts TEXT"],
+    ["stories.music_url", "ALTER TABLE stories ADD COLUMN music_url TEXT"],
+    ["stories.music_name", "ALTER TABLE stories ADD COLUMN music_name TEXT"],
     ["posts.likes_hidden", "ALTER TABLE posts ADD COLUMN likes_hidden INTEGER NOT NULL DEFAULT 0"],
     ["posts.comments_disabled", "ALTER TABLE posts ADD COLUMN comments_disabled INTEGER NOT NULL DEFAULT 0"],
     ["posts.music_id", "ALTER TABLE posts ADD COLUMN music_id TEXT"],
+    ["posts.music_url", "ALTER TABLE posts ADD COLUMN music_url TEXT"],
+    ["posts.music_name", "ALTER TABLE posts ADD COLUMN music_name TEXT"],
     ["users.avatar_media", "ALTER TABLE users ADD COLUMN avatar_media TEXT"],
   ];
   for (const [name, sql] of migrations) {

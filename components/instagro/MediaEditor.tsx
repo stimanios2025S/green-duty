@@ -1,8 +1,9 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Sliders, Crop, Type, Music2, Wand2, RotateCw, Plus, X, Play, Pause } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sliders, Crop, Type, Music2, Wand2, RotateCw, Plus, X } from "lucide-react";
 import { FILTERS, ASPECTS, Adjustments, DEFAULT_ADJUST, buildFilterCss, exportFilteredImage } from "@/lib/instagro-editor";
-import { MUSIC_TRACKS, previewTrack, stopPreview } from "@/lib/instagro-music";
+import { previewTrack, stopPreview } from "@/lib/instagro-music";
+import { MusicPicker } from "./MusicPicker";
 import { cn } from "@/lib/utils";
 
 interface TextOverlay {
@@ -17,7 +18,7 @@ interface TextOverlay {
 interface Props {
   mediaUrl: string;
   mediaType: "image" | "video";
-  onNext: (result: { mediaUrl: string; filterCss: string; aspect: number; texts: TextOverlay[]; musicId: string | null }) => void;
+  onNext: (result: { mediaUrl: string; filterCss: string; aspect: number; texts: TextOverlay[]; musicId: string | null; musicUrl?: string | null; musicName?: string | null }) => void;
   onBack: () => void;
   nextLabel?: string;
   allowText?: boolean;
@@ -38,7 +39,9 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
   const [draftText, setDraftText] = useState("");
   const [addingText, setAddingText] = useState(false);
   const [musicId, setMusicId] = useState<string | null>(null);
+  const [musicName, setMusicName] = useState("");
   const [playing, setPlaying] = useState(false);
+  const [musicPickerOpen, setMusicPickerOpen] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const [dragging, setDragging] = useState<string | null>(null);
 
@@ -48,15 +51,12 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
   const filterCss = buildFilterCss(filter, adj);
 
   const toggleMusic = (id: string) => {
-    if (musicId === id) {
+    if (musicId === id || id === "") {
       stopPreview();
       setMusicId(null);
+      setMusicName("");
       setPlaying(false);
-      return;
     }
-    setMusicId(id);
-    setPlaying(true);
-    previewTrack(id);
   };
 
   const handleNext = () => {
@@ -64,10 +64,10 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
     if (mediaType === "image" && imgRef.current) {
       // Bake filter + adjustments + REAL crop + rotation into a new JPEG
       const baked = exportFilteredImage(imgRef.current, filter, adj, aspect, rotation);
-      onNext({ mediaUrl: baked, filterCss: "none", aspect, texts, musicId });
+      onNext({ mediaUrl: baked, filterCss: "none", aspect, texts, musicId, musicName });
     } else {
       // Video: keep the original, store the CSS filter for re-application
-      onNext({ mediaUrl, filterCss, aspect, texts, musicId });
+      onNext({ mediaUrl, filterCss, aspect, texts, musicId, musicName });
     }
   };
 
@@ -285,23 +285,41 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
         {tab === "music" && (
           <div className="space-y-2">
             <p className="text-[11px] text-gd-text-muted">Pick a track — plays in preview, loops in the story</p>
-            {MUSIC_TRACKS.map(t => (
-              <button
-                key={t.id}
-                onClick={() => toggleMusic(t.id)}
-                className={cn("flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition-all", musicId === t.id ? "border-gd-accent-500/50 bg-gd-accent-500/5" : "border-gd-border bg-gd-elevated/50 hover:border-gd-border-strong")}
-              >
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br ${t.gradient} text-lg`}>{t.emoji}</div>
+            {musicId ? (
+              <div className="flex items-center gap-3 rounded-xl border border-gd-accent-500/40 bg-gd-accent-500/5 p-2.5">
+                <Music2 className="h-5 w-5 text-gd-accent-400" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-gd-text-primary">{t.name}</p>
-                  <p className="truncate text-xs text-gd-text-muted">{t.artist} · {t.duration}</p>
+                  <p className="truncate text-sm font-medium text-gd-text-primary">{musicName || "Selected track"}</p>
+                  <p className="truncate text-xs text-gd-text-muted">Added to your {allowText ? "story" : "post"}</p>
                 </div>
-                {musicId === t.id && (playing ? <Pause className="h-4 w-4 text-gd-accent-400" /> : <Play className="h-4 w-4 text-gd-accent-400" />)}
+                <button onClick={() => toggleMusic("")} className="rounded-lg border border-gd-border px-3 py-1.5 text-xs font-medium text-gd-text-secondary hover:bg-gd-elevated transition-colors">
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setMusicPickerOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-3 text-sm font-semibold text-gd-text-inverse shadow-lg shadow-gd-accent-500/20 hover:brightness-110 transition-all"
+              >
+                <Music2 className="h-4 w-4" /> Browse all music
               </button>
-            ))}
+            )}
           </div>
         )}
       </div>
+
+      {/* World-music picker */}
+      {musicPickerOpen && (
+        <MusicPicker
+          currentId={musicId || undefined}
+          onSelect={t => {
+            if (t) { setMusicId(t.id); setMusicName(t.name); previewTrack(t.url); setPlaying(true); }
+            else { setMusicId(null); setMusicName(""); stopPreview(); setPlaying(false); }
+            setMusicPickerOpen(false);
+          }}
+          onClose={() => setMusicPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }

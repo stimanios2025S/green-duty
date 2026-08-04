@@ -1,13 +1,14 @@
 "use client";
 import { useState, useRef, useCallback } from "react";
-import { X, FileText, PlayCircle, ImagePlus, Loader2, CheckCircle2, MapPin, ChevronLeft, Music2, Play, Pause } from "lucide-react";
+import { X, FileText, PlayCircle, ImagePlus, Loader2, CheckCircle2, MapPin, ChevronLeft, Music2 } from "lucide-react";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
 import { InstaAvatar } from "./InstaAvatar";
 import { MediaEditor } from "./MediaEditor";
 import { LocationPicker } from "./LocationPicker";
+import { MusicPicker } from "./MusicPicker";
 import { SAMPLE_VIDEOS } from "@/lib/instagro-data";
-import { MUSIC_TRACKS, previewTrack, stopPreview } from "@/lib/instagro-music";
+import { stopPreview } from "@/lib/instagro-music";
 
 const SUGGESTED_HASHTAGS = ["sustainable", "organic", "farming", "eco", "trees", "soil", "harvest", "greenhouse", "reforestation", "agritech"];
 
@@ -83,8 +84,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
   const [done, setDone] = useState(false);
   const [hashtagOpen, setHashtagOpen] = useState(false);
   const [showMusic, setShowMusic] = useState(false);
-  const [selectedMusicId, setSelectedMusicId] = useState<string | null>(null);
-  const [musicName, setMusicName] = useState("");
+  const [selectedMusic, setSelectedMusic] = useState<{ id: string; name: string; artist: string; url: string } | null>(null);
   const [likesHidden, setLikesHidden] = useState(false);
   const [commentsDisabled, setCommentsDisabled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -114,7 +114,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
     setLocation(""); setError(""); setDone(false);
     setTitle(""); setContent(""); setTags(""); setEmoji("🌾"); setGradient(GRADIENTS[0]); setVideoIdx(0);
     setHashtagOpen(false); setShowMusic(false);
-    setSelectedMusicId(null); setMusicName(""); stopPreview();
+    setSelectedMusic(null); stopPreview();
     setLikesHidden(false); setCommentsDisabled(false);
   };
 
@@ -153,7 +153,9 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
       location: location.trim() || undefined,
       likesHidden,
       commentsDisabled,
-      musicId: selectedMusicId,
+      musicId: selectedMusic ? selectedMusic.id : null,
+      musicUrl: selectedMusic ? selectedMusic.url : null,
+      musicName: selectedMusic ? selectedMusic.name : null,
       tags: hashtags.length ? hashtags : undefined,
     };
     const result = tab === "article"
@@ -306,37 +308,18 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
                   </button>
                 </div>
 
-                {/* Music (reuse Web Audio tracks) */}
+                {/* Music — browse the whole world (IG-style picker) */}
                 <div className="mb-3">
                   <button
-                    onClick={() => setShowMusic(!showMusic)}
+                    onClick={() => setShowMusic(true)}
                     className="flex w-full items-center gap-2 rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-secondary hover:border-gd-accent-500/40 transition-colors"
                   >
                     <Music2 className="h-4 w-4 text-gd-text-muted" />
-                    <span className="flex-1 text-left">{musicName || "Add music"}</span>
-                    {musicName && <span className="text-xs text-gd-accent-400">✓</span>}
+                    <span className="flex-1 text-left truncate">
+                      {selectedMusic ? `${selectedMusic.name} — ${selectedMusic.artist}` : "Add music"}
+                    </span>
+                    {selectedMusic && <span className="text-xs text-gd-accent-400">✓</span>}
                   </button>
-                  {showMusic && (
-                    <div className="mt-1 space-y-1.5 rounded-xl border border-gd-border bg-gd-card p-2">
-                      {MUSIC_TRACKS.map(t => (
-                        <button
-                          key={t.id}
-                          onClick={() => {
-                            if (selectedMusicId === t.id) { setSelectedMusicId(null); setMusicName(""); stopPreview(); }
-                            else { setSelectedMusicId(t.id); setMusicName(t.name); previewTrack(t.id); }
-                          }}
-                          className={`flex w-full items-center gap-2.5 rounded-lg border p-2 text-left transition-all ${selectedMusicId === t.id ? "border-gd-accent-500/50 bg-gd-accent-500/5" : "border-transparent hover:bg-gd-elevated"}`}
-                        >
-                          <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${t.gradient} text-base`}>{t.emoji}</div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-gd-text-primary">{t.name}</p>
-                            <p className="truncate text-xs text-gd-text-muted">{t.artist}</p>
-                          </div>
-                          {selectedMusicId === t.id ? <Pause className="h-4 w-4 text-gd-accent-400" /> : <Play className="h-4 w-4 text-gd-text-muted" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 {/* Advanced: hide likes / disable comments */}
@@ -473,6 +456,14 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
           value={location}
           onSelect={setLocation}
           onClose={() => setShowLocation(false)}
+        />
+      )}
+
+      {showMusic && (
+        <MusicPicker
+          currentId={selectedMusic?.id}
+          onSelect={t => setSelectedMusic(t)}
+          onClose={() => setShowMusic(false)}
         />
       )}
     </>

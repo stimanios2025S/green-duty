@@ -16,8 +16,9 @@ interface InstaStoreValue {
     coverEmoji?: string; coverGradient?: string;
     videoUrl?: string; mediaUrl?: string; duration?: string; caption?: string; location?: string;
     likesHidden?: boolean; commentsDisabled?: boolean; musicId?: string | null;
+    musicUrl?: string | null; musicName?: string | null;
   }) => Promise<{ ok: boolean; error?: string }>;
-  createStory: (input: { emoji?: string; gradient?: string; caption?: string; mediaUrl?: string; musicId?: string | null; texts?: any[] }) => Promise<boolean>;
+  createStory: (input: { emoji?: string; gradient?: string; caption?: string; mediaUrl?: string; musicId?: string | null; musicName?: string | null; texts?: any[] }) => Promise<boolean>;
   toggleLike: (postId: string) => Promise<void>;
   toggleSave: (postId: string) => void;
   addComment: (postId: string, text: string) => Promise<void>;

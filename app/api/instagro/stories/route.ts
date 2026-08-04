@@ -4,7 +4,7 @@ import { genId } from "@/lib/instagro-api";
 
 export async function POST(req: Request) {
   try {
-    const { userId, emoji, gradient, caption, mediaUrl, musicId, texts } = await req.json();
+    const { userId, emoji, gradient, caption, mediaUrl, musicId, musicUrl, musicName, texts } = await req.json();
     if (!userId) return NextResponse.json({ error: "Missing user." }, { status: 400 });
     const d = await getDb();
     const user = await d.prepare("SELECT id FROM users WHERE id = ?").get(userId);
@@ -12,12 +12,12 @@ export async function POST(req: Request) {
 
     const id = genId("s");
     await d.prepare(`
-      INSERT INTO stories (id, user_id, emoji, gradient, caption, media_url, music_id, texts, created_at)
-      VALUES (?,?,?,?,?,?,?,?,?)
+      INSERT INTO stories (id, user_id, emoji, gradient, caption, media_url, music_id, music_url, music_name, texts, created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)
     `).run(
       id, userId,
       emoji || "🌿", gradient || "from-amber-400 to-orange-600",
-      caption || null, mediaUrl || null, musicId || null,
+      caption || null, mediaUrl || null, musicId || null, musicUrl || null, musicName || null,
       Array.isArray(texts) && texts.length ? JSON.stringify(texts) : null,
       new Date().toISOString()
     );

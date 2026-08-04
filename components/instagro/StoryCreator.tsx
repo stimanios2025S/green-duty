@@ -57,7 +57,7 @@ export function StoryCreator({ onClose }: Props) {
   const [mode, setMode] = useState<Mode>("gallery");
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
-  const [editing, setEditing] = useState<{ mediaUrl: string; texts: any[]; musicId: string | null } | null>(null);
+  const [editing, setEditing] = useState<{ mediaUrl: string; texts: any[]; musicId: string | null; musicName?: string | null } | null>(null);
   const [caption, setCaption] = useState("");
   const [error, setError] = useState("");
   const [publishing, setPublishing] = useState(false);
@@ -205,7 +205,7 @@ export function StoryCreator({ onClose }: Props) {
     setStep("edit");
   };
 
-  const handleEditNext = useCallback((result: { mediaUrl: string; texts: any[]; musicId: string | null }) => {
+  const handleEditNext = useCallback((result: { mediaUrl: string; texts: any[]; musicId: string | null; musicName?: string | null }) => {
     setEditing(result);
     setStep("share");
   }, []);
@@ -225,6 +225,7 @@ export function StoryCreator({ onClose }: Props) {
     const ok = await createStory({
       mediaUrl: editing.mediaUrl,
       musicId: editing.musicId,
+      musicName: editing.musicName,
       texts: editing.texts.length ? editing.texts : undefined,
       caption: caption.trim() || undefined,
       gradient: "from-amber-400 to-orange-600",

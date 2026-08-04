@@ -44,6 +44,8 @@ export interface ApiPost {
   likesHidden?: boolean;
   commentsDisabled?: boolean;
   musicId?: string | null;
+  musicUrl?: string | null;
+  musicName?: string | null;
   comments: ApiComment[];
   createdAt: string;
 }
@@ -56,6 +58,8 @@ export interface ApiStory {
   caption?: string;
   mediaUrl?: string;
   musicId?: string | null;
+  musicUrl?: string | null;
+  musicName?: string | null;
   texts?: { id: string; text: string; x: number; y: number; size: number; color: string }[];
   viewed: boolean;
   createdAt: string;
@@ -136,6 +140,8 @@ export async function serializePost(row: any, viewerId?: string): Promise<ApiPos
     likesHidden: !!row.likes_hidden,
     commentsDisabled: !!row.comments_disabled,
     musicId: row.music_id || null,
+    musicUrl: row.music_url || null,
+    musicName: row.music_name || null,
     comments,
     createdAt: row.created_at,
   };
@@ -155,6 +161,8 @@ export async function serializeStory(row: any, viewerId?: string): Promise<ApiSt
     caption: row.caption || undefined,
     mediaUrl: row.media_url || undefined,
     musicId: row.music_id || null,
+    musicUrl: row.music_url || null,
+    musicName: row.music_name || null,
     texts,
     viewed: !!viewed,
     createdAt: row.created_at,
