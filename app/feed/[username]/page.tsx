@@ -16,7 +16,7 @@ export default function ProfilePage() {
   const params = useParams<{ username: string }>();
   const router = useRouter();
   const { user: authUser } = useAuth();
-  const { toggleFollow } = useInsta();
+  const { toggleFollow, refresh: refreshFeed } = useInsta();
 
   const username = (params.username || "").toLowerCase();
   const [profile, setProfile] = useState<{ user: ApiUser; posts: ApiPost[]; isFollowing: boolean } | null>(null);
@@ -218,12 +218,14 @@ export default function ProfilePage() {
           isOpen={editingProfile}
           onClose={() => setEditingProfile(false)}
           onSaved={() => {
-            // re-fetch profile after save
+            // Re-fetch this profile AND refresh the whole InstaGro feed so the
+            // new avatar/name syncs everywhere (posts, stories, suggestions).
             setLoading(true);
             const q = authUser?.id ? `?viewerId=${encodeURIComponent(authUser.id)}` : "";
             fetch(`/api/instagro/users/${encodeURIComponent(username)}${q}`)
               .then(r => (r.ok ? r.json() : null))
               .then(data => { if (data) { setProfile(data); setFollowing(data.isFollowing); } setLoading(false); });
+            refreshFeed();
           }}
         />
       )}

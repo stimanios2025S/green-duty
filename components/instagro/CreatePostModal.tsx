@@ -259,7 +259,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
               </div>
               <div className="flex w-full flex-col p-4 sm:w-1/2">
                 <div className="mb-4 flex items-center gap-3">
-                  <InstaAvatar user={{ username: myUsername, name: user?.name || "You", emoji: user?.name?.charAt(0) || "🌿", gradient: "from-amber-400 to-orange-600" }} size={36} />
+                  <InstaAvatar user={{ username: myUsername, name: user?.name || "You", emoji: user?.name?.charAt(0) || "🌿", gradient: "from-amber-400 to-orange-600", avatarUrl: user?.avatarUrl && user.avatarUrl !== "/logo.png" ? user.avatarUrl : undefined }} size={36} />
                   <span className="text-sm font-semibold text-gd-text-primary">{myUsername}</span>
                 </div>
                 {/* Caption + hashtag suggestions */}

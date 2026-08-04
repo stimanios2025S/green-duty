@@ -20,7 +20,7 @@ export function RightPanel() {
     <div className="sticky top-6 hidden w-[319px] flex-col gap-5 lg:flex">
       {/* Current user */}
       <div className="flex items-center gap-3">
-        <InstaAvatar user={{ username: myUsername, name: user?.name || "You", emoji: user?.name?.charAt(0) || "🌿", gradient: "from-amber-400 to-orange-600" }} size={56} />
+        <InstaAvatar user={{ username: myUsername, name: user?.name || "You", emoji: user?.name?.charAt(0) || "🌿", gradient: "from-amber-400 to-orange-600", avatarUrl: user?.avatarUrl && user.avatarUrl !== "/logo.png" ? user.avatarUrl : undefined }} size={56} />
         <div className="min-w-0 flex-1">
           <Link href={`/feed/${myUsername}`} className="block truncate text-sm font-semibold text-gd-text-primary hover:opacity-80">
             {myUsername}
