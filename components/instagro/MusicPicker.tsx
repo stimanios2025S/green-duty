@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Search, X, Play, Pause, Music2, Loader2 } from "lucide-react";
+import { Search, X, Play, Pause, Music2, Loader2, Check } from "lucide-react";
 import { MUSIC_CATEGORIES, previewTrack, stopPreview, MusicTrack } from "@/lib/instagro-music";
 
 interface Props {
@@ -14,9 +14,10 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
   const [genre, setGenre] = useState("all");
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [loading, setLoading] = useState(true);
-  const [source, setSource] = useState<"local" | "jamendo">("local");
+  const [source, setSource] = useState<"local" | "jamendo" | "deezer">("local");
   const [previewing, setPreviewing] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(currentId || null);
+  const [selectedTrack, setSelectedTrack] = useState<MusicTrack | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -34,9 +35,12 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
         setLoading(false);
       }
     }, 350);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); stopPreview(); };
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, genre]);
+
+  // Stop audio when the picker unmounts
+  useEffect(() => () => stopPreview(), []);
 
   const togglePreview = (id: string) => {
     if (previewing === id) { stopPreview(); setPreviewing(null); return; }
@@ -45,33 +49,52 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
     if (t) { previewTrack(t.url); setPreviewing(id); }
   };
 
+  /** Instagram behavior: tapping a song marks it ✓ and keeps you browsing */
   const choose = (t: MusicTrack) => {
-    stopPreview();
     setSelected(t.id);
+    setSelectedTrack(t);
     onSelect({ id: t.id, name: t.name, artist: t.artist, url: t.url });
+  };
+
+  /** Done closes the picker with the chosen song */
+  const done = () => {
+    stopPreview();
     onClose();
   };
 
   const clear = () => {
     stopPreview();
     setSelected(null);
+    setSelectedTrack(null);
     onSelect(null);
     onClose();
   };
 
   return (
     <>
+      {/* Backdrop — clicking OUTSIDE the card closes it */}
       <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-0 z-[65] flex items-center justify-center p-4">
-        <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-gd-border-soft bg-gd-card shadow-2xl shadow-black/50">
+      {/* Wrapper + card STOP propagation so inside-clicks NEVER close the modal */}
+      <div className="fixed inset-0 z-[65] flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+        <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-gd-border-soft bg-gd-card shadow-2xl shadow-black/50" onClick={e => e.stopPropagation()}>
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gd-border px-5 py-3">
             <h3 className="flex items-center gap-2 text-base font-semibold text-gd-text-primary">
               <Music2 className="h-5 w-5 text-gd-accent-400" /> Browse music
             </h3>
-            <button onClick={onClose} className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-primary transition-colors">
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {selected && (
+                <button
+                  onClick={done}
+                  className="rounded-lg bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-1.5 text-sm font-semibold text-gd-text-inverse hover:brightness-110 transition-all"
+                >
+                  Done
+                </button>
+              )}
+              <button onClick={onClose} className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-primary transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Search */}
@@ -105,7 +128,7 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
           {/* Source badge */}
           {!loading && (
             <p className="px-5 pt-2.5 text-[11px] text-gd-text-muted">
-              {source === "jamendo" ? "🌍 Searching the world's music library (Jamendo)" : "🎵 Showing built-in tracks — add a Jamendo key for the full world library"}
+              {source === "deezer" ? "🌍 Searching the whole world's music" : source === "jamendo" ? "🌍 World music library (Jamendo)" : "🎵 Built-in tracks"}
             </p>
           )}
 
@@ -124,8 +147,12 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
                     key={t.id}
                     className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-all ${isSelected ? "border-gd-accent-500/50 bg-gd-accent-500/5" : "border-transparent hover:bg-gd-elevated"}`}
                   >
-                    {/* Play preview */}
-                    <button onClick={() => togglePreview(t.id)} className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gd-elevated text-gd-text-secondary hover:text-gd-text-primary transition-colors">
+                    {/* Play preview — stays in the picker, never closes it */}
+                    <button
+                      type="button"
+                      onClick={() => togglePreview(t.id)}
+                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gd-elevated text-gd-text-secondary hover:text-gd-text-primary transition-colors"
+                    >
                       {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                     </button>
                     {/* Album cover */}
@@ -136,18 +163,19 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
                         t.emoji
                       )}
                     </div>
-                    {/* Info */}
-                    <div className="min-w-0 flex-1" onClick={() => togglePreview(t.id)}>
+                    {/* Info — click to preview */}
+                    <div className="min-w-0 flex-1 cursor-pointer" onClick={() => togglePreview(t.id)}>
                       <p className="truncate text-sm font-medium text-gd-text-primary">{t.name}</p>
                       <p className="truncate text-xs text-gd-text-muted">{t.artist}{t.album ? " · " + t.album : ""} · {t.duration}</p>
                     </div>
                     {t.genre && <span className="hidden text-[10px] text-gd-text-muted sm:block">{t.genre}</span>}
-                    {/* Choose */}
+                    {/* Choose — selects with ✓, stays open */}
                     <button
+                      type="button"
                       onClick={() => choose(t)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${isSelected ? "text-gd-success" : "bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse hover:brightness-110"}`}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${isSelected ? "flex items-center gap-1 text-gd-success" : "bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse hover:brightness-110"}`}
                     >
-                      {isSelected ? "✓ Added" : "Use"}
+                      {isSelected ? <><Check className="h-3.5 w-3.5" /> Added</> : "Use"}
                     </button>
                   </div>
                 );
@@ -157,9 +185,29 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
 
           {/* Footer */}
           <div className="border-t border-gd-border p-3">
-            <button onClick={clear} className="w-full rounded-xl border border-gd-border py-2.5 text-sm font-medium text-gd-text-secondary hover:bg-gd-elevated transition-colors">
-              Remove music
-            </button>
+            {selectedTrack ? (
+              <div className="mb-2 flex items-center gap-2 rounded-xl border border-gd-accent-500/30 bg-gd-accent-500/5 px-3 py-2">
+                <Music2 className="h-4 w-4 flex-shrink-0 text-gd-accent-400" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-gd-text-primary">{selectedTrack.name}</p>
+                  <p className="truncate text-xs text-gd-text-muted">{selectedTrack.artist}</p>
+                </div>
+              </div>
+            ) : (
+              <p className="mb-2 text-center text-[11px] text-gd-text-muted">Tap a song to add it, then press Done</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={done}
+                disabled={!selected}
+                className="flex-1 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-2.5 text-sm font-semibold text-gd-text-inverse hover:brightness-110 transition-all disabled:opacity-40"
+              >
+                Done
+              </button>
+              <button onClick={clear} className="rounded-xl border border-gd-border px-4 py-2.5 text-sm font-medium text-gd-text-secondary hover:bg-gd-elevated transition-colors">
+                Remove
+              </button>
+            </div>
           </div>
         </div>
       </div>
