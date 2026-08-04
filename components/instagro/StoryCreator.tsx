@@ -1,11 +1,12 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Camera, Image as ImageIcon, ChevronLeft, Check, Star, UserPlus2, Loader2 } from "lucide-react";
+import { X, Camera, Image as ImageIcon, ChevronLeft, Check, Star, UserPlus2, Loader2, Music2 } from "lucide-react";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
 import { InstaAvatar } from "./InstaAvatar";
 import { MediaEditor } from "./MediaEditor";
-import { stopPreview } from "@/lib/instagro-music";
+import { MusicPicker } from "./MusicPicker";
+import { previewTrack, stopPreview } from "@/lib/instagro-music";
 
 interface Props {
   onClose: () => void;
@@ -62,6 +63,7 @@ export function StoryCreator({ onClose }: Props) {
   const [error, setError] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [sentTo, setSentTo] = useState<Set<string>>(new Set());
+  const [showMusicPicker, setShowMusicPicker] = useState(false);
 
   // camera
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -396,6 +398,20 @@ export function StoryCreator({ onClose }: Props) {
                 <textarea value={caption} onChange={e => setCaption(e.target.value)} rows={2} placeholder="Add a caption..." className="mt-1 w-full resize-none rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
               </div>
 
+              {/* Music — browse the whole world, right in the share step */}
+              <div className="mb-4">
+                <button
+                  onClick={() => setShowMusicPicker(true)}
+                  className="flex w-full items-center gap-2 rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-secondary hover:border-gd-accent-500/40 transition-colors"
+                >
+                  <Music2 className="h-4 w-4 text-gd-text-muted" />
+                  <span className="flex-1 truncate text-left">
+                    {editing.musicName ? `${editing.musicName}` : "Add music"}
+                  </span>
+                  {editing.musicName && <span className="text-xs text-gd-accent-400">✓</span>}
+                </button>
+              </div>
+
               {/* Send to */}
               <p className="mb-2 text-xs font-medium text-gd-text-secondary">Send to</p>
               <div className="mb-4 max-h-36 space-y-1 overflow-y-auto">
@@ -428,6 +444,24 @@ export function StoryCreator({ onClose }: Props) {
           </div>
         )}
       </div>
+
+      {/* World-music picker (share step) */}
+      {showMusicPicker && (
+        <MusicPicker
+          currentId={editing?.musicId || undefined}
+          onSelect={t => {
+            if (t) {
+              setEditing(e => e ? { ...e, musicId: t.id, musicUrl: t.url, musicName: t.name } : e);
+              previewTrack(t.url);
+            } else {
+              setEditing(e => e ? { ...e, musicId: null, musicUrl: null, musicName: null } : e);
+              stopPreview();
+            }
+            setShowMusicPicker(false);
+          }}
+          onClose={() => setShowMusicPicker(false)}
+        />
+      )}
     </div>
   );
 }
