@@ -36,7 +36,7 @@ export async function GET(req: Request) {
       if (q) url.searchParams.set("search", q);
       if (genre && genre !== "all") url.searchParams.set("tags", genre);
 
-      const res = await fetch(url.toString(), { next: { revalidate: 300 } });
+      const res = await fetch(url.toString(), { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         if (data.headers?.status === "success" && data.results?.length) {
