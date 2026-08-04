@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing email or code." }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     const user = await db.prepare("SELECT * FROM users WHERE email = ?").get(email.trim().toLowerCase()) as any;
 
     if (!user) {

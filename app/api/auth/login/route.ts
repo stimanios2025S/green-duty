@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please enter your email and password." }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     const user = await db.prepare("SELECT * FROM users WHERE email = ?").get(email.trim().toLowerCase()) as any;
 
     if (!user) {

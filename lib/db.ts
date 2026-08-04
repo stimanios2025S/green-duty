@@ -71,13 +71,8 @@ function splitStatements(sql: string): string[] {
     .filter(s => s.length > 0);
 }
 
-/** Turso / libSQL adapter (async) */
-function createTursoDb(url: string, authToken: string): Db {
-  const client = createClient({ url, authToken });
-  // libSQL `execute()` allows ONE statement only — use batch for schema
-  client.batch(splitStatements(SCHEMA)).catch(err => {
-    console.error("[db] Turso schema init failed:", err);
-  });
+/** Turso / libSQL adapter (async) — schema must be awaited by getDb() */
+function createTursoDb(client: ReturnType<typeof createClient>): Db {
   return {
     prepare(sql: string): StatementSync {
       return {
@@ -130,13 +125,20 @@ function createLocalDb(): Db {
   };
 }
 
-export function getDb(): Db {
+export async function getDb(): Promise<Db> {
   if (db) return db;
   const tursoUrl = process.env.TURSO_DATABASE_URL;
   const tursoToken = process.env.TURSO_AUTH_TOKEN;
   if (tursoUrl && tursoToken) {
     console.log("[db] Using Turso (hosted)");
-    db = createTursoDb(tursoUrl, tursoToken);
+    const client = createClient({ url: tursoUrl, authToken: tursoToken });
+    // Await schema init — eliminates the race where the first query hits a missing table
+    try {
+      await client.batch(splitStatements(SCHEMA));
+    } catch (err) {
+      console.error("[db] Turso schema init failed:", err);
+    }
+    db = createTursoDb(client);
   } else {
     console.log("[db] Using local SQLite file");
     db = createLocalDb();

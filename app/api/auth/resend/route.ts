@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing email." }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     const normalizedEmail = email.trim().toLowerCase();
     const user = await db.prepare("SELECT * FROM users WHERE email = ?").get(normalizedEmail) as any;
 

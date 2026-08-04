@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please provide your ID document number." }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     const normalizedEmail = email.trim().toLowerCase();
 
     // ── Duplicate check ──
