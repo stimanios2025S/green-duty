@@ -39,6 +39,7 @@ export async function GET(req: Request) {
       const res = await fetch(url.toString(), { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (data.headers?.status === "success" && Array.isArray(data.results)) {
+        console.error("[music] Jamendo ok, count:", (data.results || []).length, "status:", res.status);
         const tracks = (data.results || []).map((t: any, i: number) => ({
           id: "j_" + t.id,
           name: t.name,
