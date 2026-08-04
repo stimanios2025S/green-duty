@@ -14,7 +14,7 @@ export const ALL_TABS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
   { href: "/eco-map", label: "Eco Map", icon: MapPin },
-  { href: "/feed", label: "Knowledge Feed", icon: BookOpen },
+  { href: "/feed", label: "InstaGro", icon: BookOpen },
   { href: "/tree-tracker", label: "Tree Tracker", icon: Trees },
   { href: "/b2b", label: "B2B Services", icon: Briefcase },
 ];
@@ -31,7 +31,7 @@ export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
     { href: "/", label: "Home", icon: Leaf },
     { href: "/dashboard", label: "My Portal", icon: LayoutDashboard },
     { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
-    { href: "/feed", label: "Knowledge Feed", icon: BookOpen },
+    { href: "/feed", label: "InstaGro", icon: BookOpen },
     { href: "/eco-map", label: "Eco Map", icon: MapPin },
     { href: "/tree-tracker", label: "Tree Tracker", icon: Trees },
   ],
