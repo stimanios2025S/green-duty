@@ -14,7 +14,7 @@ interface InstaStoreValue {
     title?: string; excerpt?: string; content?: string; tags?: string[];
     coverEmoji?: string; coverGradient?: string;
     videoUrl?: string; mediaUrl?: string; duration?: string; caption?: string; location?: string;
-  }) => Promise<boolean>;
+  }) => Promise<{ ok: boolean; error?: string }>;
   createStory: (input: { emoji?: string; gradient?: string; caption?: string; mediaUrl?: string; musicId?: string | null; texts?: any[] }) => Promise<boolean>;
   toggleLike: (postId: string) => Promise<void>;
   addComment: (postId: string, text: string) => Promise<void>;
@@ -50,16 +50,22 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const createPost = useCallback(async (input: any) => {
-    if (!user) return false;
-    const res = await fetch("/api/instagro/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id, ...input }),
-    });
-    if (!res.ok) return false;
-    await refresh();
-    return true;
+  const createPost = useCallback(async (input: any): Promise<{ ok: boolean; error?: string }> => {
+    if (!user) return { ok: false, error: "You need to sign in first." };
+    try {
+      const res = await fetch("/api/instagro/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, ...input }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data.error || "Server rejected the post." };
+      await refresh();
+      return { ok: true };
+    } catch (e) {
+      console.error("[instagro] createPost failed", e);
+      return { ok: false, error: "Network error — check your connection." };
+    }
   }, [user, refresh]);
 
   const createStory = useCallback(async (input: any) => {

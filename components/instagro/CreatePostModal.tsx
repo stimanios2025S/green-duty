@@ -135,7 +135,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
     }
     if (!user) { setError("Please sign in to share. Create an account first."); return; }
     setPublishing(true);
-    const ok = tab === "article"
+    const result = tab === "article"
       ? await createPost({
           type: "article",
           title: title.trim(),
@@ -162,7 +162,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
         });
 
     setPublishing(false);
-    if (!ok) { setError("Failed to publish. Check your connection or sign-in."); return; }
+    if (!result.ok) { setError(result.error || "Failed to publish. Check your connection or sign-in."); return; }
     setDone(true);
     setTimeout(() => { reset(); onClose(); }, 1400);
   };

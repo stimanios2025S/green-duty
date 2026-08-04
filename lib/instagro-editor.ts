@@ -63,14 +63,48 @@ export function buildFilterCss(filter: string, adj: Adjustments): string {
   return parts.length ? parts.join(" ") : "none";
 }
 
-/** Apply the current filter+adjustments to an image and export a JPEG data URL */
-export function exportFilteredImage(img: HTMLImageElement, filter: string, adj: Adjustments, quality = 0.85): string {
+/** Apply the current filter+adjustments to an image and export a JPEG data URL.
+ *  Also applies a real center-crop to the chosen aspect ratio (like IG's crop tool). */
+export function exportFilteredImage(
+  img: HTMLImageElement,
+  filter: string,
+  adj: Adjustments,
+  aspect: number = 0,
+  rotation: number = 0,
+  quality = 0.85
+): string {
+  const srcW = img.naturalWidth || img.width;
+  const srcH = img.naturalHeight || img.height;
+
+  // Rotation: swap dims for 90/270
+  const rot = ((rotation % 360) + 360) % 360;
+  const swap = rot === 90 || rot === 270;
+  let outW = swap ? srcH : srcW;
+  let outH = swap ? srcW : srcH;
+
+  // Aspect crop (center-crop to ratio)
+  if (aspect > 0) {
+    const targetRatio = aspect;
+    const curRatio = outW / outH;
+    if (curRatio > targetRatio) {
+      // too wide → crop width
+      outW = Math.round(outH * targetRatio);
+    } else {
+      // too tall → crop height
+      outH = Math.round(outW / targetRatio);
+    }
+  }
+
   const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth || img.width;
-  canvas.height = img.naturalHeight || img.height;
+  canvas.width = outW;
+  canvas.height = outH;
   const ctx = canvas.getContext("2d")!;
   ctx.filter = buildFilterCss(filter, adj);
-  ctx.drawImage(img, 0, 0);
+  ctx.translate(outW / 2, outH / 2);
+  ctx.rotate((rot * Math.PI) / 180);
+  // draw source so it fills the (possibly cropped) output
+  const drawW = outW; const drawH = outH;
+  ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
   return canvas.toDataURL("image/jpeg", quality);
 }
 

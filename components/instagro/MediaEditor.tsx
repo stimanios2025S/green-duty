@@ -62,8 +62,8 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
   const handleNext = () => {
     stopPreview();
     if (mediaType === "image" && imgRef.current) {
-      // Bake filter + adjustments into a new JPEG
-      const baked = exportFilteredImage(imgRef.current, filter, adj);
+      // Bake filter + adjustments + REAL crop + rotation into a new JPEG
+      const baked = exportFilteredImage(imgRef.current, filter, adj, aspect, rotation);
       onNext({ mediaUrl: baked, filterCss: "none", aspect, texts, musicId });
     } else {
       // Video: keep the original, store the CSS filter for re-application

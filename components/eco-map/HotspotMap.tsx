@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { cn, severityColor, statusLabel } from "@/lib/utils";
 import { MapPin, AlertTriangle, CircleCheck, Circle, X, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useAuth } from "@/lib/auth-context";
 import type { SeverityLevel } from "@/types";
 
 interface ApiHotspot {
@@ -27,6 +28,26 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
   const [filter, setFilter] = useState<SeverityLevel | "all">("all");
   const [hotspots, setHotspots] = useState<ApiHotspot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [joined, setJoined] = useState(false);
+  const { user } = useAuth();
+
+  const joinCleanup = async () => {
+    if (!user || !selected) { alert("Please sign in to join a cleanup."); return; }
+    try {
+      await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          title: "Cleanup joined 🧹",
+          message: `You joined the cleanup for "${selected.title}". Details coming soon!`,
+          type: "event",
+        }),
+      });
+      setJoined(true);
+      setTimeout(() => setJoined(false), 2000);
+    } catch {}
+  };
 
   useEffect(() => {
     fetch("/api/hotspots")
@@ -161,7 +182,13 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
               </div>
               <div className="flex items-center justify-between border-t border-gd-border pt-3">
                 <span className="text-xs text-gd-text-muted">{new Date(selected.created_at).toLocaleDateString()} · {selected.upvotes} upvotes</span>
-                <button className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2 text-xs font-semibold text-gd-text-inverse hover:brightness-110 transition-all">Join Cleanup</button>
+                <button
+                  onClick={joinCleanup}
+                  disabled={joined}
+                  className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2 text-xs font-semibold text-gd-text-inverse hover:brightness-110 transition-all disabled:opacity-60"
+                >
+                  {joined ? "Joined ✓" : "Join Cleanup"}
+                </button>
               </div>
             </div>
           </div>

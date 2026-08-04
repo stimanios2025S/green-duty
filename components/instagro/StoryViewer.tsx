@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { X, ChevronLeft, ChevronRight, MoreHorizontal, Send, Music2 } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, MoreHorizontal, Send, Music2, Check } from "lucide-react";
 import { InstaAvatar } from "./InstaAvatar";
 import { useInsta } from "@/lib/instagro-store";
+import { useAuth } from "@/lib/auth-context";
 import { MUSIC_TRACKS, getAudioCtx } from "@/lib/instagro-music";
 
 interface Props {
@@ -14,10 +15,32 @@ const AUTO_ADVANCE_MS = 6000;
 
 export function StoryViewer({ startIndex, onClose }: Props) {
   const { stories } = useInsta();
+  const { user } = useAuth();
   const [idx, setIdx] = useState(startIndex);
+  const [replyText, setReplyText] = useState("");
+  const [sent, setSent] = useState(false);
   const musicHandleRef = useRef<{ stop: () => void } | null>(null);
 
   const story = stories[idx];
+
+  const sendReply = async () => {
+    if (!replyText.trim() || !story || sent) return;
+    // Post a notification to the story author (real, persisted)
+    try {
+      await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: story.user.id,
+          title: "New story reply",
+          message: `${user?.name || "Someone"}: "${replyText.trim().slice(0, 80)}"`,
+          type: "system",
+        }),
+      });
+      setSent(true);
+      setTimeout(() => { setSent(false); setReplyText(""); }, 1500);
+    } catch {}
+  };
 
   const stopMusic = () => {
     if (musicHandleRef.current) { musicHandleRef.current.stop(); musicHandleRef.current = null; }
@@ -145,9 +168,15 @@ export function StoryViewer({ startIndex, onClose }: Props) {
 
       {/* Reply */}
       <div className="absolute bottom-6 left-1/2 flex w-[min(420px,90vw)] -translate-x-1/2 items-center gap-2">
-        <input placeholder="Send message" className="flex-1 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white placeholder-white/60 outline-none backdrop-blur-sm focus:border-white/40" />
-        <button className="rounded-full bg-white/10 p-2.5 text-white hover:bg-white/20 transition-colors">
-          <Send className="h-4 w-4" />
+        <input
+          value={replyText}
+          onChange={e => setReplyText(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") sendReply(); }}
+          placeholder="Send message"
+          className="flex-1 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white placeholder-white/60 outline-none backdrop-blur-sm focus:border-white/40"
+        />
+        <button onClick={sendReply} disabled={sent} className="rounded-full bg-white/10 p-2.5 text-white hover:bg-white/20 transition-colors disabled:opacity-60">
+          {sent ? <Check className="h-4 w-4" /> : <Send className="h-4 w-4" />}
         </button>
       </div>
 
