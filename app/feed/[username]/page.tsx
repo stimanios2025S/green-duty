@@ -1,40 +1,54 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BadgeCheck, Grid3x3, PlaySquare, BookOpen, Heart, MessageCircle, ArrowLeft, X } from "lucide-react";
+import { BadgeCheck, Grid3x3, PlaySquare, BookOpen, Heart, MessageCircle, ArrowLeft, X, Loader2 } from "lucide-react";
 import { InstaAvatar } from "@/components/instagro/InstaAvatar";
 import { PostCard } from "@/components/instagro/PostCard";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
-import { instaUsers, formatCount, InstaPost } from "@/lib/instagro-data";
+import { ApiUser, ApiPost } from "@/lib/instagro-api";
 
 type Tab = "posts" | "videos" | "articles";
 
 export default function ProfilePage() {
   const params = useParams<{ username: string }>();
   const router = useRouter();
-  const { posts } = useInsta();
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
+  const { toggleFollow } = useInsta();
 
-  const username = params.username || "";
-  const isMe = username === user?.name?.toLowerCase().replace(/\s+/g, ".");
-
-  // Find user: either the logged-in user or a known InstaGro user
-  const knownUser = Object.values(instaUsers).find(u => u.username === username);
-  const profileUser = isMe
-    ? {
-        ...instaUsers.alex,
-        username,
-        name: user?.name || "You",
-        emoji: user?.name?.charAt(0) || "🌿",
-      }
-    : knownUser;
-
+  const username = (params.username || "").toLowerCase();
+  const [profile, setProfile] = useState<{ user: ApiUser; posts: ApiPost[]; isFollowing: boolean } | null>(null);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("posts");
-  const [selected, setSelected] = useState<InstaPost | null>(null);
+  const [selected, setSelected] = useState<ApiPost | null>(null);
+  const [following, setFollowing] = useState(false);
 
-  if (!profileUser) {
+  useEffect(() => {
+    let alive = true;
+    const q = authUser?.id ? `?viewerId=${encodeURIComponent(authUser.id)}` : "";
+    fetch(`/api/instagro/users/${encodeURIComponent(username)}${q}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (!alive) return;
+        if (data) { setProfile(data); setFollowing(data.isFollowing); }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+    return () => { alive = false; };
+  }, [username, authUser?.id]);
+
+  const handleFollow = async () => {
+    if (!profile) return;
+    setFollowing(f => !f);
+    await toggleFollow(profile.user.id);
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-gd-text-muted" /></div>;
+  }
+
+  if (!profile) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <p className="text-4xl">🤷‍♂️</p>
@@ -47,48 +61,59 @@ export default function ProfilePage() {
     );
   }
 
-  const userPosts = posts.filter(p => p.user.username === profileUser.username);
-  const filtered = userPosts.filter(p =>
+  const { user, posts } = profile;
+  const isMe = authUser?.id === user.id;
+  const filtered = posts.filter(p =>
     tab === "posts" ? true : tab === "videos" ? p.type === "video" : p.type === "article"
   );
 
   return (
     <div className="mx-auto max-w-[935px] px-4 py-6">
-      {/* Back */}
       <Link href="/feed" className="mb-4 inline-flex items-center gap-1.5 text-sm text-gd-text-muted hover:text-gd-text-primary transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to feed
       </Link>
 
       {/* Profile header */}
       <header className="mb-8 flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:gap-16">
-        <InstaAvatar user={profileUser} size={150} className="text-6xl" />
+        <InstaAvatar user={user} size={150} className="text-6xl" />
 
         <div className="flex-1 text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-            <h1 className="text-xl font-semibold text-gd-text-primary">{profileUser.username}</h1>
-            {profileUser.verified && <BadgeCheck className="h-5 w-5 text-gd-info" />}
-            <button className="rounded-lg border border-gd-border bg-gd-elevated px-4 py-1.5 text-sm font-semibold text-gd-text-primary hover:bg-gd-overlay transition-colors">
-              {isMe ? "Edit profile" : "Follow"}
-            </button>
-            {!isMe && (
+            <h1 className="text-xl font-semibold text-gd-text-primary">{user.username}</h1>
+            {user.verified && <BadgeCheck className="h-5 w-5 text-gd-info" />}
+            {isMe ? (
               <button className="rounded-lg border border-gd-border bg-gd-elevated px-4 py-1.5 text-sm font-semibold text-gd-text-primary hover:bg-gd-overlay transition-colors">
-                Message
+                Edit profile
               </button>
+            ) : (
+              <>
+                <button
+                  onClick={handleFollow}
+                  className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-all ${
+                    following
+                      ? "border border-gd-border bg-gd-elevated text-gd-text-primary hover:bg-gd-overlay"
+                      : "bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse shadow-lg shadow-gd-accent-500/20 hover:brightness-110"
+                  }`}
+                >
+                  {following ? "Following" : "Follow"}
+                </button>
+                <button className="rounded-lg border border-gd-border bg-gd-elevated px-4 py-1.5 text-sm font-semibold text-gd-text-primary hover:bg-gd-overlay transition-colors">
+                  Message
+                </button>
+              </>
             )}
           </div>
 
-          {/* Stats */}
           <div className="mt-4 flex items-center justify-center gap-8 sm:justify-start">
-            <span className="text-sm text-gd-text-secondary"><b className="font-semibold text-gd-text-primary">{userPosts.length}</b> posts</span>
-            <span className="text-sm text-gd-text-secondary"><b className="font-semibold text-gd-text-primary">{formatCount(profileUser.followers)}</b> followers</span>
-            <span className="text-sm text-gd-text-secondary"><b className="font-semibold text-gd-text-primary">{formatCount(profileUser.following)}</b> following</span>
+            <span className="text-sm text-gd-text-secondary"><b className="font-semibold text-gd-text-primary">{posts.length}</b> posts</span>
+            <span className="text-sm text-gd-text-secondary"><b className="font-semibold text-gd-text-primary">{user.followers.toLocaleString()}</b> followers</span>
+            <span className="text-sm text-gd-text-secondary"><b className="font-semibold text-gd-text-primary">{user.following.toLocaleString()}</b> following</span>
           </div>
 
-          {/* Bio */}
           <div className="mt-4">
-            <p className="text-sm font-semibold text-gd-text-primary">{profileUser.name}</p>
-            <p className="text-sm text-gd-text-secondary">{profileUser.role}</p>
-            <p className="mt-1 text-sm text-gd-text-secondary">{profileUser.bio}</p>
+            <p className="text-sm font-semibold text-gd-text-primary">{user.name}</p>
+            <p className="text-sm capitalize text-gd-text-secondary">{user.role}</p>
+            <p className="mt-1 text-sm text-gd-text-secondary">{user.bio}</p>
           </div>
         </div>
       </header>
@@ -124,11 +149,10 @@ export default function ProfilePage() {
                   <PlaySquare className="h-10 w-10 text-white/70" />
                 </div>
               ) : (
-                <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${p.coverGradient}`}>
-                  <span className="text-4xl drop-shadow">{p.coverEmoji}</span>
+                <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${p.coverGradient || "from-amber-400 to-orange-700"}`}>
+                  <span className="text-4xl drop-shadow">{p.coverEmoji || "🌾"}</span>
                 </div>
               )}
-              {/* Hover overlay */}
               <div className="absolute inset-0 flex items-center justify-center gap-5 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
                 <span className="flex items-center gap-1.5 text-sm font-semibold text-white"><Heart className="h-4 w-4 fill-white" /> {p.likes.toLocaleString()}</span>
                 <span className="flex items-center gap-1.5 text-sm font-semibold text-white"><MessageCircle className="h-4 w-4 fill-white" /> {p.comments.length}</span>

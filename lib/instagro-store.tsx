@@ -1,59 +1,130 @@
 "use client";
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { initialPosts, initialStories, InstaPost, InstaStory, InstaUser } from "./instagro-data";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { useAuth } from "./auth-context";
+import { ApiPost, ApiStory, ApiUser } from "./instagro-api";
 
 interface InstaStoreValue {
-  posts: InstaPost[];
-  stories: InstaStory[];
-  addPost: (p: InstaPost) => void;
-  addStory: (s: InstaStory) => void;
-  toggleLike: (id: string) => void;
-  toggleSave: (id: string) => void;
-  addComment: (id: string, user: InstaUser, text: string) => void;
-  markStoryViewed: (id: string) => void;
+  posts: ApiPost[];
+  stories: ApiStory[];
+  suggestions: ApiUser[];
+  loading: boolean;
+  refresh: () => Promise<void>;
+  createPost: (input: {
+    type: "article" | "video";
+    title?: string; excerpt?: string; content?: string; tags?: string[];
+    coverEmoji?: string; coverGradient?: string;
+    videoUrl?: string; duration?: string; caption?: string;
+  }) => Promise<boolean>;
+  createStory: (emoji: string, gradient: string, caption?: string) => Promise<boolean>;
+  toggleLike: (postId: string) => Promise<void>;
+  addComment: (postId: string, text: string) => Promise<void>;
+  toggleFollow: (userId: string) => Promise<void>;
+  markStoryViewed: (storyId: string) => Promise<void>;
 }
 
 const InstaContext = createContext<InstaStoreValue | null>(null);
 
 export function InstaGroProvider({ children }: { children: ReactNode }) {
-  const [posts, setPosts] = useState<InstaPost[]>(initialPosts);
-  const [stories, setStories] = useState<InstaStory[]>(initialStories);
+  const { user } = useAuth();
+  const [posts, setPosts] = useState<ApiPost[]>([]);
+  const [stories, setStories] = useState<ApiStory[]>([]);
+  const [suggestions, setSuggestions] = useState<ApiUser[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const addPost = useCallback((p: InstaPost) => {
-    setPosts(prev => [p, ...prev]);
-  }, []);
+  const refresh = useCallback(async () => {
+    try {
+      const q = user?.id ? `?viewerId=${encodeURIComponent(user.id)}` : "";
+      const res = await fetch(`/api/instagro/feed${q}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(data.posts || []);
+        setStories(data.stories || []);
+        setSuggestions(data.suggestions || []);
+      }
+    } catch (e) {
+      console.error("[instagro] refresh failed", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
-  const addStory = useCallback((s: InstaStory) => {
-    setStories(prev => [s, ...prev]);
-  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
 
-  const toggleLike = useCallback((id: string) => {
-    setPosts(prev => prev.map(p => {
-      if (p.id !== id) return p;
-      return p.liked ? { ...p, likes: p.likes - 1, liked: false } : { ...p, likes: p.likes + 1, liked: true };
-    }));
-  }, []);
+  const createPost = useCallback(async (input: any) => {
+    if (!user) return false;
+    const res = await fetch("/api/instagro/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.id, ...input }),
+    });
+    if (!res.ok) return false;
+    await refresh();
+    return true;
+  }, [user, refresh]);
 
-  const toggleSave = useCallback((id: string) => {
-    setPosts(prev => prev.map(p => (p.id === id ? { ...p, saved: !p.saved } : p)));
-  }, []);
+  const createStory = useCallback(async (emoji: string, gradient: string, caption?: string) => {
+    if (!user) return false;
+    const res = await fetch("/api/instagro/stories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.id, emoji, gradient, caption }),
+    });
+    if (!res.ok) return false;
+    await refresh();
+    return true;
+  }, [user, refresh]);
 
-  const addComment = useCallback((id: string, user: InstaUser, text: string) => {
-    setPosts(prev => prev.map(p => {
-      if (p.id !== id) return p;
-      return {
-        ...p,
-        comments: [...p.comments, { id: "c_" + Math.random().toString(36).slice(2, 8), user, text }],
-      };
-    }));
-  }, []);
+  const toggleLike = useCallback(async (postId: string) => {
+    if (!user) return;
+    const prev = posts;
+    setPosts(ps => ps.map(p => p.id === postId ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p));
+    try {
+      const res = await fetch("/api/instagro/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId, userId: user.id }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setPosts(prev); // rollback on failure
+    }
+  }, [user, posts]);
 
-  const markStoryViewed = useCallback((id: string) => {
-    setStories(prev => prev.map(s => (s.id === id ? { ...s, viewed: true } : s)));
-  }, []);
+  const addComment = useCallback(async (postId: string, text: string) => {
+    if (!user) return;
+    const res = await fetch("/api/instagro/comment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId, userId: user.id, text }),
+    });
+    if (res.ok) await refresh();
+  }, [user, refresh]);
+
+  const toggleFollow = useCallback(async (targetId: string) => {
+    if (!user) return;
+    setSuggestions(ss => ss.map(s => (s.id === targetId ? { ...s, isFollowing: !s.isFollowing } : s)));
+    try {
+      await fetch("/api/instagro/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ followerId: user.id, followingId: targetId }),
+      });
+    } catch (e) { console.error(e); }
+  }, [user]);
+
+  const markStoryViewed = useCallback(async (storyId: string) => {
+    setStories(ss => ss.map(s => (s.id === storyId ? { ...s, viewed: true } : s)));
+    if (user) {
+      fetch("/api/instagro/stories/view", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storyId, userId: user.id }),
+      }).catch(() => {});
+    }
+  }, [user]);
 
   return (
-    <InstaContext.Provider value={{ posts, stories, addPost, addStory, toggleLike, toggleSave, addComment, markStoryViewed }}>
+    <InstaContext.Provider value={{ posts, stories, suggestions, loading, refresh, createPost, createStory, toggleLike, addComment, toggleFollow, markStoryViewed }}>
       {children}
     </InstaContext.Provider>
   );

@@ -2,8 +2,7 @@
 import { useState, FormEvent } from "react";
 import { X, Image as ImageIcon, PlayCircle, FileText } from "lucide-react";
 import { useInsta } from "@/lib/instagro-store";
-import { useAuth } from "@/lib/auth-context";
-import { SAMPLE_VIDEOS, instaUsers, InstaUser } from "@/lib/instagro-data";
+import { SAMPLE_VIDEOS } from "@/lib/instagro-data";
 
 interface Props {
   isOpen: boolean;
@@ -21,9 +20,7 @@ const GRADIENTS = [
 ];
 
 export function CreatePostModal({ isOpen, onClose }: Props) {
-  const { addPost } = useInsta();
-  const { user } = useAuth();
-
+  const { createPost } = useInsta();
   const [tab, setTab] = useState<"article" | "video">("article");
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
@@ -38,14 +35,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
 
   if (!isOpen) return null;
 
-  const me: InstaUser = {
-    ...instaUsers.alex,
-    username: user?.name?.toLowerCase().replace(/\s+/g, ".") || "you",
-    name: user?.name || "You",
-    emoji: user?.name?.charAt(0) || "🌿",
-  };
-
-  const handlePublish = (e: FormEvent) => {
+  const handlePublish = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     if (tab === "article") {
@@ -56,12 +46,8 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
     }
 
     setPublishing(true);
-    setTimeout(() => {
-      const now = new Date().toISOString();
-      if (tab === "article") {
-        addPost({
-          id: "p_" + Math.random().toString(36).slice(2, 10),
-          user: me,
+    const ok = tab === "article"
+      ? await createPost({
           type: "article",
           title: title.trim(),
           excerpt: excerpt.trim() || content.trim().slice(0, 120) + (content.trim().length > 120 ? "…" : ""),
@@ -70,34 +56,18 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
           coverEmoji: emoji,
           coverGradient: gradient,
           caption: caption.trim() || undefined,
-          likes: 0,
-          comments: [],
-          createdAt: now,
-        });
-      } else {
-        const v = SAMPLE_VIDEOS[videoIdx];
-        addPost({
-          id: "p_" + Math.random().toString(36).slice(2, 10),
-          user: me,
+        })
+      : await createPost({
           type: "video",
-          videoUrl: v.url,
-          duration: v.duration,
-          views: 0,
+          videoUrl: SAMPLE_VIDEOS[videoIdx].url,
+          duration: SAMPLE_VIDEOS[videoIdx].duration,
           caption: caption.trim(),
-          likes: 0,
-          comments: [],
-          createdAt: now,
         });
-      }
-      setPublishing(false);
-      onClose();
-      reset();
-    }, 600);
-  };
 
-  const reset = () => {
-    setTab("article");
-    setTitle(""); setExcerpt(""); setContent(""); setTags("");
+    setPublishing(false);
+    if (!ok) { setError("Failed to publish. Are you signed in?"); return; }
+    onClose();
+    setTab("article"); setTitle(""); setExcerpt(""); setContent(""); setTags("");
     setEmoji("🌾"); setGradient(GRADIENTS[0]); setCaption(""); setVideoIdx(0); setError("");
   };
 
@@ -106,7 +76,6 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="fixed inset-0 z-[55] flex items-center justify-center p-4">
         <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-gd-border-soft bg-gd-card shadow-2xl shadow-black/50">
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-gd-border px-5 py-3">
             <h3 className="text-base font-semibold text-gd-text-primary">Create new post</h3>
             <button onClick={onClose} className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-primary hover:bg-gd-elevated transition-colors">
@@ -114,7 +83,6 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
             </button>
           </div>
 
-          {/* Tabs */}
           <div className="flex border-b border-gd-border">
             {([
               { key: "article", label: "Article", icon: FileText },
@@ -159,7 +127,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
                   <label className="text-xs font-medium text-gd-text-secondary">Cover color</label>
                   <div className="mt-1.5 flex gap-2">
                     {GRADIENTS.map(g => (
-                      <button key={g} type="button" onClick={() => setGradient(g)} className={`h-9 w-12 rounded-lg bg-gradient-to-br transition-all ${g} ${gradient === g ? "ring-2 ring-white/60 ring-offset-2 ring-offset-gd-card" : "opacity-70 hover:opacity-100"}`} />
+                      <button key={g} type="button" onClick={() => setGradient(g)} className={`h-9 w-12 rounded-lg bg-gradient-to-br ${g} transition-all ${gradient === g ? "ring-2 ring-white/60 ring-offset-2 ring-offset-gd-card" : "opacity-70 hover:opacity-100"}`} />
                     ))}
                   </div>
                 </div>
@@ -175,7 +143,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
                   </select>
                 </div>
                 <div className="flex items-center gap-3 rounded-xl border border-dashed border-gd-border-strong p-3 text-xs text-gd-text-muted">
-                  <ImageIcon className="h-4 w-4 flex-shrink-0" /> Demo mode — picks from a library of sample farm videos. Connect storage to upload your own.
+                  <ImageIcon className="h-4 w-4 flex-shrink-0" /> Demo mode — picks from a sample library. Connect storage to upload your own.
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gd-text-secondary">Caption</label>

@@ -6,11 +6,7 @@ import { createClient } from "@libsql/client";
 /**
  * Dual-mode database (async interface):
  * - Production (Vercel): Turso/libSQL via TURSO_DATABASE_URL + TURSO_AUTH_TOKEN.
- *   Serverless filesystems are read-only/ephemeral, so a hosted DB is required.
- * - Local dev: falls back to a SQLite file at ./data/greenduty.db (auto-created).
- *
- * Both backends expose the same minimal async interface used by the routes:
- *   await db.prepare(sql).run(args…) | .get(args…) | .all(args…)
+ * - Local dev: SQLite file at ./data/greenduty.db (auto-created).
  */
 
 export interface StatementSync {
@@ -61,6 +57,123 @@ const SCHEMA = `
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+  CREATE TABLE IF NOT EXISTS posts (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    title TEXT,
+    excerpt TEXT,
+    content TEXT,
+    tags TEXT,
+    cover_emoji TEXT,
+    cover_gradient TEXT,
+    video_url TEXT,
+    duration TEXT,
+    views INTEGER NOT NULL DEFAULT 0,
+    caption TEXT,
+    location TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id);
+
+  CREATE TABLE IF NOT EXISTS post_likes (
+    post_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    PRIMARY KEY (post_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS comments (
+    id TEXT PRIMARY KEY,
+    post_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
+
+  CREATE TABLE IF NOT EXISTS follows (
+    follower_id TEXT NOT NULL,
+    following_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (follower_id, following_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS stories (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    emoji TEXT,
+    gradient TEXT,
+    caption TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS story_views (
+    story_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    PRIMARY KEY (story_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS orders (
+    id TEXT PRIMARY KEY,
+    buyer_id TEXT NOT NULL,
+    product_id TEXT NOT NULL,
+    product_name TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    total_price REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS hotspot_reports (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    pollution_type TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    address TEXT,
+    lat REAL,
+    lng REAL,
+    reporter_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'reported',
+    upvotes INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS cleanup_signups (
+    event_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    PRIMARY KEY (event_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS tree_donations (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    amount REAL NOT NULL,
+    trees INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS b2b_inquiries (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    company_name TEXT,
+    email TEXT,
+    phone TEXT,
+    service TEXT,
+    message TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT NOT NULL,
+    read INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
 `;
 
 /** Split a multi-statement SQL string into individual statements */
@@ -132,7 +245,6 @@ export async function getDb(): Promise<Db> {
   if (tursoUrl && tursoToken) {
     console.log("[db] Using Turso (hosted)");
     const client = createClient({ url: tursoUrl, authToken: tursoToken });
-    // Await schema init — eliminates the race where the first query hits a missing table
     try {
       await client.batch(splitStatements(SCHEMA));
     } catch (err) {
@@ -144,4 +256,16 @@ export async function getDb(): Promise<Db> {
     db = createLocalDb();
   }
   return db;
+}
+
+export async function findUserById(id: string): Promise<DbUser | null> {
+  const d = await getDb();
+  const row = await d.prepare("SELECT * FROM users WHERE id = ?").get(id);
+  return (row as unknown as DbUser) || null;
+}
+
+export async function findUserByEmail(email: string): Promise<DbUser | null> {
+  const d = await getDb();
+  const row = await d.prepare("SELECT * FROM users WHERE email = ?").get(email.trim().toLowerCase());
+  return (row as unknown as DbUser) || null;
 }

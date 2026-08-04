@@ -1,30 +1,19 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
 import { InstaAvatar } from "./InstaAvatar";
-import { suggestions } from "@/lib/instagro-data";
+import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
 
 export function RightPanel() {
+  const { suggestions, toggleFollow } = useInsta();
   const { user } = useAuth();
-  const [following, setFollowing] = useState<Set<string>>(new Set());
-
-  const toggleFollow = (id: string) => {
-    setFollowing(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   const myUsername = user?.name?.toLowerCase().replace(/\s+/g, ".") || "you";
 
   return (
     <div className="sticky top-6 hidden w-[319px] flex-col gap-5 lg:flex">
       {/* Current user */}
       <div className="flex items-center gap-3">
-        <InstaAvatar user={{ id: "me", username: myUsername, name: user?.name || "You", role: "", bio: "", emoji: user?.name?.charAt(0) || "🌿", gradient: "from-amber-400 to-orange-600", followers: 0, following: 0 }} size={56} />
+        <InstaAvatar user={{ username: myUsername, name: user?.name || "You", emoji: user?.name?.charAt(0) || "🌿", gradient: "from-amber-400 to-orange-600" }} size={56} />
         <div className="min-w-0 flex-1">
           <Link href={`/feed/${myUsername}`} className="block truncate text-sm font-semibold text-gd-text-primary hover:opacity-80">
             {myUsername}
@@ -40,10 +29,13 @@ export function RightPanel() {
           <span className="text-sm font-semibold text-gd-text-muted">Suggested for you</span>
           <button className="text-xs font-semibold text-gd-text-primary hover:opacity-80">See All</button>
         </div>
-        <div className="space-y-3">
-          {suggestions.slice(0, 5).map(s => {
-            const isFollowing = following.has(s.id);
-            return (
+        {suggestions.length === 0 ? (
+          <p className="text-xs text-gd-text-muted">
+            {user ? "Follow people to build your feed." : "Sign in to see suggestions."}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {suggestions.slice(0, 5).map(s => (
               <div key={s.id} className="flex items-center gap-3">
                 <Link href={`/feed/${s.username}`}>
                   <InstaAvatar user={s} size={40} />
@@ -56,14 +48,14 @@ export function RightPanel() {
                 </div>
                 <button
                   onClick={() => toggleFollow(s.id)}
-                  className={`text-xs font-semibold transition-colors ${isFollowing ? "text-gd-text-muted hover:text-gd-text-secondary" : "text-gd-accent-400 hover:text-gd-accent-300"}`}
+                  className={`text-xs font-semibold transition-colors ${s.isFollowing ? "text-gd-text-muted hover:text-gd-text-secondary" : "text-gd-accent-400 hover:text-gd-accent-300"}`}
                 >
-                  {isFollowing ? "Following" : "Follow"}
+                  {s.isFollowing ? "Following" : "Follow"}
                 </button>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Footer */}

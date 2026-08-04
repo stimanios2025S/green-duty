@@ -1,9 +1,8 @@
 "use client";
 import { cn } from "@/lib/utils";
-import { InstaUser } from "@/lib/instagro-data";
 
 interface Props {
-  user: InstaUser;
+  user: { username?: string; name?: string; emoji?: string; gradient?: string };
   size?: number; // px
   ring?: boolean; // story gradient ring
   className?: string;
@@ -11,6 +10,7 @@ interface Props {
 
 /** Instagram-style avatar: gradient circle + emoji. Optional story ring. */
 export function InstaAvatar({ user, size = 40, ring = false, className }: Props) {
+  const emoji = user.emoji || user.name?.charAt(0) || "🌿";
   return (
     <div
       className={cn("flex-shrink-0 rounded-full", ring && "bg-gradient-to-tr from-amber-400 via-orange-500 to-emerald-500 p-[2.5px]")}
@@ -18,11 +18,11 @@ export function InstaAvatar({ user, size = 40, ring = false, className }: Props)
     >
       <div className="flex h-full w-full items-center justify-center rounded-full bg-gd-deepest p-[2px]">
         <div
-          className={cn("flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br text-white", user.gradient, className)}
+          className={cn("flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br", user.gradient || "from-amber-400 to-orange-600", className)}
           style={{ fontSize: size * 0.42 }}
-          title={user.username}
+          title={user.username || user.name}
         >
-          {user.emoji}
+          {emoji}
         </div>
       </div>
     </div>
