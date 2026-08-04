@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     const normalizedEmail = email.trim().toLowerCase();
 
     // ── Duplicate check ──
-    const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
+    const existing = await db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
     if (existing) {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
     }
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     const code = generateCode();
     const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO users
         (id, name, email, password, account_type, business_name, business_address,
          id_type, id_number, points, verified, verification_code, verification_expires, created_at)

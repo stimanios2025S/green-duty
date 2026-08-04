@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
     const db = getDb();
     const normalizedEmail = email.trim().toLowerCase();
-    const user = db.prepare("SELECT * FROM users WHERE email = ?").get(normalizedEmail) as any;
+    const user = await db.prepare("SELECT * FROM users WHERE email = ?").get(normalizedEmail) as any;
 
     if (!user) {
       return NextResponse.json({ error: "Account not found. Please sign up first." }, { status: 404 });
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     // Generate a fresh code + new 10-minute expiry
     const code = generateCode();
     const expires = Date.now() + 10 * 60 * 1000;
-    db.prepare("UPDATE users SET verification_code = ?, verification_expires = ? WHERE id = ?").run(code, expires, user.id);
+    await db.prepare("UPDATE users SET verification_code = ?, verification_expires = ? WHERE id = ?").run(code, expires, user.id);
 
     const { mode } = await sendVerificationEmail(normalizedEmail, code);
 
