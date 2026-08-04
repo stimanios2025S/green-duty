@@ -39,17 +39,25 @@ export async function GET(req: Request) {
       const res = await fetch(url.toString(), { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (data.headers?.status === "success" && Array.isArray(data.results)) {
-        console.error("[music] Jamendo ok, count:", (data.results || []).length, "status:", res.status);
-        const tracks = (data.results || []).map((t: any, i: number) => ({
-          id: "j_" + t.id,
-          name: t.name,
-          artist: t.artist_name,
-          duration: fmt(t.duration),
-          emoji: EMOJIS[i % EMOJIS.length],
-          gradient: GRADIENTS[i % GRADIENTS.length],
-          url: t.audio,
-          genre: t.musicinfo?.tags?.join(", ") || "various",
-        }));
+        const tracks = (data.results || []).map((t: any, i: number) => {
+          // Jamendo tags can be an array OR a single string — handle both
+          const rawTags = t.musicinfo?.tags;
+          const genre = Array.isArray(rawTags)
+            ? rawTags.join(", ")
+            : typeof rawTags === "string" && rawTags
+            ? rawTags
+            : "various";
+          return {
+            id: "j_" + t.id,
+            name: t.name,
+            artist: t.artist_name,
+            duration: fmt(t.duration),
+            emoji: EMOJIS[i % EMOJIS.length],
+            gradient: GRADIENTS[i % GRADIENTS.length],
+            url: t.audio,
+            genre,
+          };
+        });
         return NextResponse.json({ tracks, source: "jamendo", count: tracks.length });
       }
       console.error("[music] Jamendo response:", JSON.stringify(data).slice(0, 300));
