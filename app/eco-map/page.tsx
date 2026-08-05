@@ -11,12 +11,26 @@ import { Plus } from "lucide-react";
 export default function EcoMapPage() {
   const [showReport, setShowReport] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [reportCoords, setReportCoords] = useState<{ lat: number; lng: number } | null>(null);
   const titleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (titleRef.current) {
       anime({ targets: titleRef.current, opacity: [0, 1], translateY: [20, 0], duration: 600, easing: "easeOutCubic" });
     }
+  }, []);
+
+  // Listen for map clicks → open the report modal pre-filled with the clicked spot
+  useEffect(() => {
+    const onReportAt = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.lat && detail?.lng) {
+        setReportCoords({ lat: detail.lat, lng: detail.lng });
+        setShowReport(true);
+      }
+    };
+    window.addEventListener("gd:report-at", onReportAt);
+    return () => window.removeEventListener("gd:report-at", onReportAt);
   }, []);
 
   return (
@@ -41,7 +55,13 @@ export default function EcoMapPage() {
         <SponsorPanel />
         <LeaderboardPanel />
       </div>
-      <ReportModal isOpen={showReport} onClose={() => setShowReport(false)} onSubmitted={() => setRefreshKey(k => k + 1)} />
+      <ReportModal
+        isOpen={showReport}
+        onClose={() => setShowReport(false)}
+        onSubmitted={() => { setRefreshKey(k => k + 1); setReportCoords(null); }}
+        initialLat={reportCoords?.lat ?? null}
+        initialLng={reportCoords?.lng ?? null}
+      />
     </div>
   );
 }

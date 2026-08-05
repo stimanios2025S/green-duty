@@ -1,15 +1,25 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, MapPin, Camera, Loader2, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
-interface ReportModalProps { isOpen: boolean; onClose: () => void; onSubmitted?: () => void; }
-export function ReportModal({ isOpen, onClose, onSubmitted }: ReportModalProps) {
+interface ReportModalProps { isOpen: boolean; onClose: () => void; onSubmitted?: () => void; initialLat?: number | null; initialLng?: number | null; }
+export function ReportModal({ isOpen, onClose, onSubmitted, initialLat, initialLng }: ReportModalProps) {
   const { user } = useAuth();
   const [form, setForm] = useState({ title: "", description: "", pollutionType: "plastics", severity: "moderate" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [lat, setLat] = useState<number | null>(initialLat || null);
+  const [lng, setLng] = useState<number | null>(initialLng || null);
+
+  // Keep in sync if the parent passes new coords (map click)
+  useEffect(() => {
+    if (initialLat != null && initialLng != null) {
+      setLat(initialLat);
+      setLng(initialLng);
+    }
+  }, [initialLat, initialLng]);
 
   if (!isOpen) return null;
 
@@ -28,9 +38,9 @@ export function ReportModal({ isOpen, onClose, onSubmitted }: ReportModalProps) 
           description: form.description.trim(),
           pollutionType: form.pollutionType,
           severity: form.severity,
-          address: "New York, NY",
-          lat: 40.7128,
-          lng: -74.006,
+          address: lat && lng ? `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}` : "Unknown location",
+          lat: lat,
+          lng: lng,
           reporterId: user.id,
         }),
       });
@@ -39,6 +49,7 @@ export function ReportModal({ isOpen, onClose, onSubmitted }: ReportModalProps) 
       setTimeout(() => {
         setDone(false);
         setForm({ title: "", description: "", pollutionType: "plastics", severity: "moderate" });
+        setLat(null); setLng(null);
         onClose();
         onSubmitted?.();
       }, 1800);
@@ -115,7 +126,10 @@ export function ReportModal({ isOpen, onClose, onSubmitted }: ReportModalProps) 
                   <span className="text-xs text-gd-text-muted">Optional</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gd-text-muted">
-                  <MapPin className="h-3 w-3" /> Auto-location: New York, NY (40.7128, -74.006)
+                  <MapPin className="h-3 w-3" />
+                  {lat && lng
+                    ? `Location: ${lat.toFixed(5)}, ${lng.toFixed(5)} (clicked on map)`
+                    : "Click the map to set an exact location, or it defaults to your area"}
                 </div>
               </div>
 
