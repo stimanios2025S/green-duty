@@ -15,7 +15,24 @@ interface Props {
   incoming: boolean;
 }
 
-const RTC_CONFIG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+/**
+ * Robust ICE config for CROSS-NETWORK calls:
+ *  - Multiple STUN servers (Google, Cloudflare, Open Relay) for common NAT
+ *  - Free TURN relay (Open Relay Project) as a fallback so calls still
+ *    connect when both sides are behind symmetric NAT / strict firewalls
+ *  - The config is fetched from /api/rtc-config, which uses production
+ *    TURN_* env vars when set (for reliable cross-network calling)
+ */
+let RTC_CONFIG: RTCConfiguration = { iceServers: [], iceCandidatePoolSize: 10 };
+
+async function loadRtcConfig() {
+  try {
+    const res = await fetch("/api/rtc-config");
+    const data = await res.json();
+    if (data.iceServers?.length) RTC_CONFIG = { iceServers: data.iceServers, iceCandidatePoolSize: 10 };
+  } catch {}
+}
+loadRtcConfig();
 
 export function CallOverlay({ conversationId, peer, callType, role, callId, onEnd, incoming }: Props) {
   const { user } = useAuth();
@@ -41,9 +58,9 @@ export function CallOverlay({ conversationId, peer, callType, role, callId, onEn
     }).catch(() => {});
   }, [callId, user?.id]);
 
-  // Poll remote candidates
+  // Poll remote candidates (from ringing → active so pre-answer trickle works)
   useEffect(() => {
-    if (status !== "active" && status !== "connecting") return;
+    if (status !== "active" && status !== "connecting" && status !== "ringing") return;
     const poll = async () => {
       try {
         const res = await fetch(`/api/chat/calls/candidates?callId=${callId}&userId=${user?.id}`);
@@ -160,6 +177,18 @@ export function CallOverlay({ conversationId, peer, callType, role, callId, onEn
     const t = setInterval(() => setSeconds(s => s + 1), 1000);
     return () => clearInterval(t);
   }, [status]);
+
+  // Connection timeout: if not active in 45s, end with a clear message
+  useEffect(() => {
+    if (status !== "ringing" && status !== "connecting") return;
+    const t = setTimeout(() => {
+      if (!acceptedRef.current && status === "ringing" && role === "caller") {
+        setError("No answer. The call has ended.");
+        endCall();
+      }
+    }, 45000);
+    return () => clearTimeout(t);
+  }, [status, role, endCall]);
 
   const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
   const ss = String(seconds % 60).padStart(2, "0");
