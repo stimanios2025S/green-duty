@@ -81,6 +81,24 @@ export async function POST(req: Request) {
     const { streak, streakTrees } = await recomputeStreak(conversationId);
     await applyStreakTrees(senderId, conversationId, streakTrees);
 
+    // Push notification to the other party (powers the bell + unread badge)
+    const sender = await d.prepare("SELECT name FROM users WHERE id = ?").get(senderId) as any;
+    const senderName = (sender as any)?.name || "Someone";
+    const preview = mediaType === "image" ? "📷 sent a photo" : mediaType === "video" ? "🎬 sent a video" : mediaType === "audio" ? "🎤 sent a voice note" : mediaType === "location" ? "📍 shared a location" : (text?.trim() || "").slice(0, 80);
+    if (conv.type === "direct") {
+      const otherId = conv.user_a === senderId ? conv.user_b : conv.user_b === senderId ? conv.user_a : conv.user_b;
+      if (otherId) {
+        await d.prepare("INSERT INTO notifications (id, user_id, title, message, type, read, created_at) VALUES (?,?,?,?,?,0,?)")
+          .run("n_" + Math.random().toString(36).slice(2, 10), otherId, `💬 ${senderName}`, preview, "message", new Date().toISOString());
+      }
+    } else {
+      const members = await d.prepare("SELECT user_id FROM conversation_members WHERE conversation_id = ? AND user_id != ?").all(conversationId, senderId) as any[];
+      for (const m of members) {
+        await d.prepare("INSERT INTO notifications (id, user_id, title, message, type, read, created_at) VALUES (?,?,?,?,?,0,?)")
+          .run("n_" + Math.random().toString(36).slice(2, 10), m.user_id, `💬 ${senderName} (${conv.name})`, preview, "message", new Date().toISOString());
+      }
+    }
+
     return NextResponse.json({ ok: true, id, streak });
   } catch (err) {
     console.error("[chat/messages POST]", err);

@@ -2,9 +2,10 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MessageCircle, Send, ArrowLeft, Loader2, MoreHorizontal, Plus, ImageIcon, Video, Mic, MapPin, Check, X, Users, Flame, Smile, Pause, Play } from "lucide-react";
+import { MessageCircle, Send, ArrowLeft, Loader2, MoreHorizontal, Plus, ImageIcon, Video, Mic, MapPin, Check, X, Users, Flame, Smile, Pause, Play, Phone, PhoneOff, Bell } from "lucide-react";
 import { InstaAvatar } from "@/components/instagro/InstaAvatar";
 import { LocationPicker } from "@/components/instagro/LocationPicker";
+import { CallOverlay } from "@/components/instagro/CallOverlay";
 import { useAuth } from "@/lib/auth-context";
 import { useInsta } from "@/lib/instagro-store";
 import { ApiUser } from "@/lib/instagro-api";
@@ -66,6 +67,13 @@ export default function MessagesPage() {
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Typing + calls
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const typingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastMsgCountRef = useRef(0);
+  const [activeCall, setActiveCall] = useState<{ id: string; type: "audio" | "video"; role: "caller" | "callee" } | null>(null);
+  const [incomingCall, setIncomingCall] = useState<{ call: any; peer: ApiUser } | null>(null);
+
   useEffect(() => { activeRef.current = active; }, [active]);
 
   const loadConversations = useCallback(async () => {
@@ -97,12 +105,65 @@ export default function MessagesPage() {
       try {
         const res = await fetch(`/api/chat/messages?conversationId=${encodeURIComponent(active.id)}&userId=${encodeURIComponent(user.id)}`);
         const d = await res.json().catch(() => ({}));
-        if (d.messages) setMessages(d.messages);
+        if (d.messages) {
+          // Browser notification + sound when a NEW incoming message arrives
+          const was = lastMsgCountRef.current;
+          const now = d.messages.length;
+          const hasNew = now > was && now > 0 && d.messages[now - 1]?.senderId !== user.id && !document.hasFocus();
+          if (hasNew) {
+            const m = d.messages[now - 1];
+            try {
+              if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+                new Notification("💬 " + (active.otherUser?.name || "New message"), { body: m.text || "New message", icon: "/logo.png" });
+              }
+            } catch {}
+            try { const a = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFb2hkaWJycGxycHh6eHh4d3h4eHh5eHl5eXp6e3t8fX1+f3+AgYGCg4OEhIWFhYaGh4eIiImJioqKi4uMjIyNjY2Ojo+PkJCQkZGRkpKSk5OTlJSUlZWVlpaWl5eXmJiYmZmZmpqam5ubnJycnZ2dnp6en5+foKCgoaGhoqKio6OjpKSkpaWlpqamp6enqKioqampqqqqq6urrKysra2trq6ur6+vsLCwsbGxsrKys7OztLS0tbW1tra2t7e3uLi4ubm5urq6u7u7vLy8vb29vr6+v7+/wMDAwcHBwsLCw8PDxMTExcXFxsbGx8fHyMjIycnJysrKy8vLzMzMzc3Nzs7Oz8/P0NDQ0dHR0tLS09PT1NTU1dXV1tbW19fX2NjY2dnZ2tra29vb3Nzc3d3d3t7e39/f4ODg4eHh4uLi4+Pj5OTk5eXl5ubm5+fn6Ojo6enp6urq6+vr7Ozs7e3t7u7u7+/v8PDw8fHx8vLy8/Pz9PT09fX19vb29/f3+Pj4+fn5+vr6+/v7/Pz8/f39/v7+/w=="); a.volume = 0.4; a.play().catch(() => {}); } catch {}
+          }
+          lastMsgCountRef.current = now;
+          setMessages(d.messages);
+        }
       } catch {}
     };
+    poll();
     const t = setInterval(poll, 3000);
     return () => clearInterval(t);
   }, [active, user]);
+
+  // Typing indicator: poll who's typing in the active thread
+  useEffect(() => {
+    if (!active || !user) return;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/chat/typing?conversationId=${encodeURIComponent(active.id)}&userId=${encodeURIComponent(user.id)}`);
+        const d = await res.json().catch(() => ({}));
+        setTypingUsers(d.typing || []);
+      } catch {}
+    };
+    poll();
+    const t = setInterval(poll, 2500);
+    return () => clearInterval(t);
+  }, [active, user]);
+
+  // Incoming call polling (ring UI)
+  useEffect(() => {
+    if (!user || activeCall) return;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/chat/calls?userId=${encodeURIComponent(user.id)}`);
+        const d = await res.json().catch(() => ({}));
+        const ringing = (d.calls || []).find((c: any) => c.status === "ringing" && c.callee_id === user.id);
+        if (ringing && !incomingCall) {
+          // find the caller's user
+          const caller = suggestions.find(s => s.id === ringing.caller_id) || active?.otherUser;
+          if (caller) setIncomingCall({ call: ringing, peer: caller });
+        }
+      } catch {}
+    };
+    poll();
+    const t = setInterval(poll, 2000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, activeCall, incomingCall]);
 
   const openConversation = async (conv: Conversation) => {
     setActive(conv);
@@ -257,6 +318,35 @@ export default function MessagesPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversations, searchParams, user]);
+
+  // Broadcast typing (throttled)
+  const broadcastTyping = (isTyping: boolean) => {
+    if (!active || !user) return;
+    fetch("/api/chat/typing", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId: active.id, userId: user.id, isTyping }),
+    }).catch(() => {});
+  };
+  const onDraftChange = (v: string) => {
+    setDraft(v);
+    if (v.trim() && active && user) {
+      if (!typingRef.current) {
+        broadcastTyping(true);
+        typingRef.current = setTimeout(() => { broadcastTyping(false); typingRef.current = null; }, 3000);
+      }
+    }
+  };
+
+  // Start a call
+  const startCall = async (type: "audio" | "video") => {
+    if (!active || !user || active.type !== "direct" || !active.otherUser) return;
+    const res = await fetch("/api/chat/calls", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId: active.id, callerId: user.id, calleeId: active.otherUser.id, type }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (d.callId) setActiveCall({ id: d.callId, type, role: "caller" });
+  };
 
   const renderMessage = (m: ChatMessage) => {
     const replied = m.replyTo ? messages.find(x => x.id === m.replyTo) : null;
@@ -414,10 +504,27 @@ export default function MessagesPage() {
                   <Link href={active.type === "direct" ? `/feed/${active.otherUser?.username}` : "#"} className="block truncate text-sm font-semibold text-gd-text-primary hover:opacity-80">
                     {active.type === "direct" ? active.otherUser?.username : active.name}
                   </Link>
-                  <p className="flex items-center gap-1 text-xs text-gd-text-muted">
-                    {active.streak > 0 ? <><span>{active.streakEmoji}</span> <span className="text-gd-accent-400">{streakLabel(active.streak)}</span></> : "Active now"}
+                  <p className="flex items-center gap-1 text-xs">
+                    {typingUsers.length > 0 ? (
+                      <span className="text-gd-olive-400">typing<span className="animate-pulse">…</span></span>
+                    ) : active.streak > 0 ? (
+                      <><span>{active.streakEmoji}</span> <span className="text-gd-accent-400">{streakLabel(active.streak)}</span></>
+                    ) : (
+                      <span className="text-gd-text-muted">Active now</span>
+                    )}
                   </p>
                 </div>
+                {/* Call buttons */}
+                {active.type === "direct" && (
+                  <>
+                    <button onClick={() => startCall("audio")} className="rounded-lg p-2 text-gd-text-secondary hover:bg-gd-elevated hover:text-gd-text-primary" title="Voice call">
+                      <Phone className="h-5 w-5" />
+                    </button>
+                    <button onClick={() => startCall("video")} className="rounded-lg p-2 text-gd-text-secondary hover:bg-gd-elevated hover:text-gd-text-primary" title="Video call">
+                      <Video className="h-5 w-5" />
+                    </button>
+                  </>
+                )}
                 {/* Vanish toggle */}
                 <button onClick={toggleVanish} className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all ${active.vanish ? "border-gd-danger/30 bg-gd-danger/10 text-gd-danger" : "border-gd-border text-gd-text-secondary hover:border-gd-border-strong"}`} title="Vanish mode (Snapchat-style)">
                   ⏳ {active.vanish ? "Vanish ON" : "Vanish"}
@@ -471,8 +578,8 @@ export default function MessagesPage() {
                   ) : (
                     <input
                       value={draft}
-                      onChange={e => setDraft(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter") send(); }}
+                      onChange={e => onDraftChange(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") { send(); broadcastTyping(false); } }}
                       placeholder={active.vanish ? "Message (will vanish)..." : "Message..."}
                       className="flex-1 rounded-full border border-gd-border bg-gd-elevated px-4 py-2 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40"
                     />
@@ -539,6 +646,68 @@ export default function MessagesPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Active call (caller or answered callee) */}
+      {activeCall && active?.otherUser && (
+        <CallOverlay
+          conversationId={active.id}
+          peer={active.otherUser}
+          callType={activeCall.type}
+          role={activeCall.role}
+          callId={activeCall.id}
+          incoming={false}
+          onEnd={() => setActiveCall(null)}
+        />
+      )}
+
+      {/* Incoming call ring */}
+      {incomingCall && !activeCall && (
+        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/90 p-6">
+          <div className="flex flex-col items-center gap-6 text-center">
+            <InstaAvatar user={incomingCall.peer} size={120} />
+            <div>
+              <p className="text-xl font-bold text-white">{incomingCall.peer.name}</p>
+              <p className="mt-1 text-sm text-white/60">Incoming {incomingCall.call.type} call...</p>
+            </div>
+            <div className="flex items-center gap-6">
+              <button
+                onClick={async () => {
+                  try {
+                    await fetch("/api/chat/calls", {
+                      method: "PATCH", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ callId: incomingCall.call.id, action: "decline", userId: user?.id }),
+                    });
+                  } catch {}
+                  setIncomingCall(null);
+                }}
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 transition-all"
+              >
+                <PhoneOff className="h-7 w-7" />
+              </button>
+              <button
+                onClick={() => {
+                  setActiveCall({ id: incomingCall.call.id, type: incomingCall.call.type, role: "callee" });
+                  setIncomingCall(null);
+                }}
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500 text-white hover:bg-green-600 transition-all"
+              >
+                <Phone className="h-7 w-7" />
+              </button>
+            </div>
+            <p className="text-xs text-white/40">Answer with the green button</p>
+          </div>
+        </div>
+      )}
+
+      {/* Request notification permission once (for message alerts) */}
+      {user && typeof Notification !== "undefined" && Notification.permission === "default" && (
+        <button
+          onClick={() => Notification.requestPermission()}
+          className="fixed bottom-20 left-1/2 z-[60] -translate-x-1/2 rounded-full border border-gd-accent-500/30 bg-gd-card px-4 py-2 text-xs font-medium text-gd-accent-400 shadow-xl"
+        >
+          <Bell className="mr-1 inline h-3.5 w-3.5" /> Enable message notifications
+        </button>
       )}
     </div>
   );

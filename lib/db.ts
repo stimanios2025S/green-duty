@@ -226,6 +226,35 @@ const SCHEMA = `
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+
+  CREATE TABLE IF NOT EXISTS calls (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    caller_id TEXT NOT NULL,
+    callee_id TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'audio',
+    status TEXT NOT NULL DEFAULT 'ringing',
+    sdp_offer TEXT,
+    sdp_answer TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_calls_callee ON calls(callee_id, status);
+
+  CREATE TABLE IF NOT EXISTS call_candidates (
+    call_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    candidate TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_call_candidates ON call_candidates(call_id, user_id);
+
+  CREATE TABLE IF NOT EXISTS typing_status (
+    conversation_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    typing_at TEXT NOT NULL,
+    PRIMARY KEY (conversation_id, user_id)
+  );
 `;
 
 /** Split a multi-statement SQL string into individual statements */
