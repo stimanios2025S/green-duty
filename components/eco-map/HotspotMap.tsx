@@ -93,6 +93,56 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
     }
   };
 
+  const [joined, setJoined] = useState(false);
+
+  // Create a REAL cleanup event from this hotspot + join it (real, persisted)
+  const joinCleanup = async () => {
+    if (!user || !selected) { alert("Please sign in to join a cleanup."); return; }
+    try {
+      let eventId: string | null = null;
+      const listRes = await fetch("/api/cleanup?userId=" + encodeURIComponent(user.id));
+      const listData = await listRes.json().catch(() => ({ events: [] }));
+      const existing = (listData.events || []).find((e: any) => e.hotspotId === selected.id);
+      if (existing) {
+        eventId = existing.id;
+      } else {
+        const res = await fetch("/api/cleanup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            hotspotId: selected.id,
+            title: `🧹 ${selected.title}`,
+            description: `Community cleanup for: ${selected.description}`,
+            lat: selected.lat,
+            lng: selected.lng,
+            date: new Date(Date.now() + 7 * 86400000).toISOString(),
+            maxVolunteers: 25,
+            rewardPoints: 150,
+            organizerId: user.id,
+          }),
+        });
+        const d = await res.json().catch(() => ({}));
+        eventId = d.id || null;
+      }
+      if (eventId) {
+        await fetch("/api/cleanup/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ eventId, userId: user.id, join: true }),
+        });
+      }
+      await fetch("/api/chat/group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creatorId: user.id, name: `🧹 ${selected.title.slice(0, 30)}`, memberIds: [] }),
+      });
+      setJoined(true);
+      setTimeout(() => setJoined(false), 2000);
+      setSelected(null);
+      window.dispatchEvent(new CustomEvent("gd:cleanup-updated"));
+    } catch {}
+  };
+
   // Click-handler component
   function MapClick() {
     useMapEvents({
@@ -257,19 +307,28 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
                 <span className="rounded-full bg-gd-elevated px-3 py-1 text-xs font-medium text-gd-text-secondary border border-gd-border">{selected.pollution_type.replace(/_/g, " ")}</span>
                 <span className="rounded-full bg-gd-info/10 px-3 py-1 text-xs font-medium text-gd-info border border-gd-info/20">{statusLabel(selected.status)}</span>
               </div>
-              <div className="flex items-center justify-between border-t border-gd-border pt-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gd-border pt-3">
                 <span className="text-xs text-gd-text-muted">{new Date(selected.created_at).toLocaleDateString()} · {selected.upvotes} upvotes</span>
-                <button
-                  onClick={() => {
-                    if (selected.lat && selected.lng && mapRef.current) {
-                      mapRef.current.flyTo([selected.lat, selected.lng], 15, { duration: 1 });
-                      setSelected(null);
-                    }
-                  }}
-                  className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2 text-xs font-semibold text-gd-text-inverse hover:brightness-110 transition-all"
-                >
-                  View on map
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (selected.lat && selected.lng && mapRef.current) {
+                        mapRef.current.flyTo([selected.lat, selected.lng], 15, { duration: 1 });
+                        setSelected(null);
+                      }
+                    }}
+                    className="rounded-xl border border-gd-border px-4 py-2 text-xs font-semibold text-gd-text-secondary hover:bg-gd-elevated transition-all"
+                  >
+                    View on map
+                  </button>
+                  <button
+                    onClick={joinCleanup}
+                    disabled={joined}
+                    className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2 text-xs font-semibold text-gd-text-inverse hover:brightness-110 transition-all disabled:opacity-70"
+                  >
+                    {joined ? "Joined ✓" : "Join Cleanup"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

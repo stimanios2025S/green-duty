@@ -5,6 +5,7 @@ import { HotspotMap } from "@/components/eco-map/HotspotMap";
 import { ReportModal } from "@/components/eco-map/ReportModal";
 import { SponsorPanel } from "@/components/eco-map/SponsorPanel";
 import { LeaderboardPanel } from "@/components/eco-map/LeaderboardPanel";
+import { CleanupEventsPanel } from "@/components/eco-map/CleanupEventsPanel";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
 import { Plus } from "lucide-react";
 
@@ -51,10 +52,11 @@ export default function EcoMapPage() {
       </AnimeWrapper>
 
       <HotspotMap refreshKey={refreshKey} />
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <SponsorPanel />
         <LeaderboardPanel />
       </div>
+      <CleanupEventsPanel refreshKey={refreshKey} />
       <ReportModal
         isOpen={showReport}
         onClose={() => setShowReport(false)}

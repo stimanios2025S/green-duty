@@ -156,6 +156,20 @@ const SCHEMA = `
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS cleanup_events (
+    id TEXT PRIMARY KEY,
+    hotspot_id TEXT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    lat REAL,
+    lng REAL,
+    date TEXT NOT NULL,
+    max_volunteers INTEGER NOT NULL DEFAULT 25,
+    reward_points INTEGER NOT NULL DEFAULT 100,
+    organizer_id TEXT,
+    created_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS cleanup_signups (
     event_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
