@@ -7,6 +7,7 @@ import { cn, severityColor, statusLabel } from "@/lib/utils";
 import { MapPin, AlertTriangle, Loader2, Navigation, Plus, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useAuth } from "@/lib/auth-context";
+import { CleanupJoinModal } from "@/components/eco-map/CleanupJoinModal";
 import type { SeverityLevel } from "@/types";
 
 interface ApiHotspot {
@@ -93,9 +94,10 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
     }
   };
 
-  const [joined, setJoined] = useState(false);
+  const [joinEvent, setJoinEvent] = useState<{ id: string; title: string } | null>(null);
 
-  // Create a REAL cleanup event from this hotspot + join it (real, persisted)
+  // Create a REAL cleanup event from this hotspot, then open the
+  // professional participation form (name + contacts → organizer emailed)
   const joinCleanup = async () => {
     if (!user || !selected) { alert("Please sign in to join a cleanup."); return; }
     try {
@@ -125,21 +127,15 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
         eventId = d.id || null;
       }
       if (eventId) {
-        await fetch("/api/cleanup/join", {
+        await fetch("/api/chat/group", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ eventId, userId: user.id, join: true }),
+          body: JSON.stringify({ creatorId: user.id, name: `🧹 ${selected.title.slice(0, 30)}`, memberIds: [] }),
         });
+        setSelected(null);
+        setJoinEvent({ id: eventId, title: `🧹 ${selected.title}` });
+        window.dispatchEvent(new CustomEvent("gd:cleanup-updated"));
       }
-      await fetch("/api/chat/group", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ creatorId: user.id, name: `🧹 ${selected.title.slice(0, 30)}`, memberIds: [] }),
-      });
-      setJoined(true);
-      setTimeout(() => setJoined(false), 2000);
-      setSelected(null);
-      window.dispatchEvent(new CustomEvent("gd:cleanup-updated"));
     } catch {}
   };
 
@@ -323,10 +319,9 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
                   </button>
                   <button
                     onClick={joinCleanup}
-                    disabled={joined}
-                    className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2 text-xs font-semibold text-gd-text-inverse hover:brightness-110 transition-all disabled:opacity-70"
+                    className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2 text-xs font-semibold text-gd-text-inverse hover:brightness-110 transition-all"
                   >
-                    {joined ? "Joined ✓" : "Join Cleanup"}
+                    Join Cleanup
                   </button>
                 </div>
               </div>
@@ -334,6 +329,14 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
           </div>
         </>
       )}
+
+      {/* Participation form — name + contacts, organizer notified by email */}
+      <CleanupJoinModal
+        isOpen={!!joinEvent}
+        onClose={() => setJoinEvent(null)}
+        onJoined={() => setJoinEvent(null)}
+        event={joinEvent}
+      />
     </div>
   );
 }

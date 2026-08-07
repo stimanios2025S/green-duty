@@ -153,6 +153,7 @@ const SCHEMA = `
     reporter_id TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'reported',
     upvotes INTEGER NOT NULL DEFAULT 0,
+    media_url TEXT,
     created_at TEXT NOT NULL
   );
 
@@ -173,6 +174,12 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS cleanup_signups (
     event_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
+    first_name TEXT,
+    last_name TEXT,
+    phone TEXT,
+    email TEXT,
+    message TEXT,
+    joined_at TEXT,
     PRIMARY KEY (event_id, user_id)
   );
 
@@ -363,6 +370,13 @@ async function migrate(db: Db): Promise<void> {
     ["posts.music_url", "ALTER TABLE posts ADD COLUMN music_url TEXT"],
     ["posts.music_name", "ALTER TABLE posts ADD COLUMN music_name TEXT"],
     ["users.avatar_media", "ALTER TABLE users ADD COLUMN avatar_media TEXT"],
+    ["hotspot_reports.media_url", "ALTER TABLE hotspot_reports ADD COLUMN media_url TEXT"],
+    ["cleanup_signups.first_name", "ALTER TABLE cleanup_signups ADD COLUMN first_name TEXT"],
+    ["cleanup_signups.last_name", "ALTER TABLE cleanup_signups ADD COLUMN last_name TEXT"],
+    ["cleanup_signups.phone", "ALTER TABLE cleanup_signups ADD COLUMN phone TEXT"],
+    ["cleanup_signups.email", "ALTER TABLE cleanup_signups ADD COLUMN email TEXT"],
+    ["cleanup_signups.message", "ALTER TABLE cleanup_signups ADD COLUMN message TEXT"],
+    ["cleanup_signups.joined_at", "ALTER TABLE cleanup_signups ADD COLUMN joined_at TEXT"],
   ];
   for (const [name, sql] of migrations) {
     try {

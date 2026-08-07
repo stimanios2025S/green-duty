@@ -3,13 +3,17 @@ import { getDb } from "@/lib/db";
 import { genId } from "@/lib/instagro-api";
 
 // GET /api/orders?buyerId=... → list a buyer's orders
+// GET /api/orders?all=1 → list all orders (platform-wide view: driver fleet, business ops)
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const buyerId = searchParams.get("buyerId");
-    if (!buyerId) return NextResponse.json({ error: "Missing buyerId" }, { status: 400 });
+    const all = searchParams.get("all") === "1";
+    if (!all && !buyerId) return NextResponse.json({ error: "Missing buyerId" }, { status: 400 });
     const d = await getDb();
-    const rows = await d.prepare("SELECT * FROM orders WHERE buyer_id = ? ORDER BY created_at DESC").all(buyerId);
+    const rows = all
+      ? await d.prepare("SELECT * FROM orders ORDER BY created_at DESC LIMIT 50").all()
+      : await d.prepare("SELECT * FROM orders WHERE buyer_id = ? ORDER BY created_at DESC").all(buyerId);
     return NextResponse.json({ orders: rows });
   } catch (err) {
     console.error("[orders]", err);

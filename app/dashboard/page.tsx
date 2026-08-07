@@ -7,10 +7,18 @@ import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
 import {
-  Trees, MapPin, Users, ShieldCheck, Sprout, Droplets, CalendarCheck,
-  Building2, Package, ShoppingCart, Truck, Store, Wallet, BadgeCheck, TrendingUp, Briefcase
+  Trees, MapPin, Users, ShieldCheck, Sprout, CalendarCheck,
+  Building2, Package, ShoppingCart, Truck, Store, Wallet, BadgeCheck, TrendingUp, Briefcase, Leaf
 } from "lucide-react";
-import { products } from "@/lib/mock-data";
+
+/* ── Live platform stats hook (real DB aggregates from /api/stats) ── */
+function useLiveStats() {
+  const [stats, setStats] = useState<any>(null);
+  useEffect(() => {
+    fetch("/api/stats").then(r => r.ok ? r.json() : null).then(d => d && setStats(d)).catch(() => {});
+  }, []);
+  return stats;
+}
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
@@ -33,6 +41,10 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <span className="rounded-full border border-gd-accent-500/20 bg-gd-accent-500/10 px-3 py-1 text-xs font-medium text-gd-accent-400">
               {ROLE_LABEL[type]} Portal
+            </span>
+            <span className="flex items-center gap-1.5 rounded-full border border-gd-success/20 bg-gd-success/5 px-3 py-1 text-xs font-medium text-gd-success">
+              <span className="h-1.5 w-1.5 rounded-full bg-gd-success animate-pulse shadow-[0_0_6px_rgba(34,197,94,0.8)]" />
+              Live data
             </span>
           </div>
           <h1 className="mt-3 text-2xl font-bold text-gd-text-primary tracking-tight">
@@ -78,31 +90,32 @@ function SectionHead({ icon, title, sub }: { icon: React.ReactNode; title: strin
 
 /* ── Guest / Citizen portal ── */
 function GuestPortal() {
-  const [stats, setStats] = useState<any>(null);
+  const stats = useLiveStats();
   const [hotspots, setHotspots] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch("/api/stats").then(r => r.ok ? r.json() : null).then(d => d && setStats(d)).catch(() => {});
     fetch("/api/hotspots").then(r => r.ok ? r.json() : null).then(d => d && setHotspots(d.hotspots || [])).catch(() => {});
   }, []);
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard label="Trees Planted" value={(stats?.trees || 0).toLocaleString()} icon={<Trees className="h-5 w-5" />} />
         <StatCard label="Hotspots Reported" value={(stats?.hotspots || 0).toLocaleString()} icon={<MapPin className="h-5 w-5" />} />
-        <StatCard label="Community Members" value={(stats?.users || 0).toLocaleString()} icon={<Users className="h-5 w-5" />} />
-        <StatCard label="InstaGro Posts" value={(stats?.posts || 0).toLocaleString()} icon={<ShieldCheck className="h-5 w-5" />} />
+        <StatCard label="Cleanups Organized" value={(stats?.cleanups || 0).toLocaleString()} icon={<CalendarCheck className="h-5 w-5" />} />
+        <StatCard label="Volunteers Joined" value={(stats?.volunteers || 0).toLocaleString()} icon={<Users className="h-5 w-5" />} />
+        <StatCard label="Community Members" value={(stats?.users || 0).toLocaleString()} icon={<ShieldCheck className="h-5 w-5" />} />
+        <StatCard label="InstaGro Posts" value={(stats?.posts || 0).toLocaleString()} icon={<Leaf className="h-5 w-5" />} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <SectionHead icon={<Sprout className="h-4 w-4" />} title="Community Impact" />
+          <SectionHead icon={<Sprout className="h-4 w-4" />} title="Community Impact" sub="Live from the database — updates with every action" />
           <div className="space-y-5">
             {[
               { label: "Trees Planted", value: (stats?.trees || 0).toLocaleString(), unit: "trees", color: "bg-gd-olive-500", pct: Math.min(100, ((stats?.trees || 0) / 20000) * 100) },
-              { label: "Articles Shared", value: (stats?.articles || 0).toLocaleString(), unit: "posts", color: "bg-gd-accent-500", pct: Math.min(100, (stats?.articles || 0) * 5) },
-              { label: "Videos Published", value: (stats?.videos || 0).toLocaleString(), unit: "videos", color: "bg-blue-500", pct: Math.min(100, (stats?.videos || 0) * 5) },
+              { label: "Cleanup Volunteers", value: (stats?.volunteers || 0).toLocaleString(), unit: "volunteers", color: "bg-gd-info", pct: Math.min(100, ((stats?.volunteers || 0) / 1000) * 100) },
+              { label: "Hotspots Resolved", value: (stats?.hotspotsResolved || 0).toLocaleString(), unit: "resolved", color: "bg-gd-success", pct: Math.min(100, (stats?.hotspotsResolved || 0) * 20) },
               { label: "Total Likes", value: (stats?.likes || 0).toLocaleString(), unit: "likes", color: "bg-gd-ember-500", pct: Math.min(100, (stats?.likes || 0) / 5) },
             ].map((item, i) => (
               <div key={i}>
@@ -139,21 +152,26 @@ function GuestPortal() {
   );
 }
 
-/* ── Business portal ── */
+/* ── Business portal (100% real stats) ── */
 function BusinessPortal() {
   const { user } = useAuth();
   const biz = user?.businessProfile;
-  const [stats, setStats] = useState<any>(null);
-  useEffect(() => {
-    fetch("/api/stats").then(r => r.ok ? r.json() : null).then(d => d && setStats(d)).catch(() => {});
-  }, []);
+  const stats = useLiveStats();
+
+  const revenue = stats?.revenue || 0;
+  const orders = stats?.orders || 0;
+  const trees = stats?.trees || 0;
+  const inquiries = stats?.inquiries || 0;
+  const members = stats?.users || 0;
+  const verified = stats?.verifiedUsers || 0;
+
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Company Revenue" value="$48.2K" icon={<Wallet className="h-5 w-5" />} trend={{ value: 18, isPositive: true }} />
-        <StatCard label="Active Projects" value="7" icon={<Briefcase className="h-5 w-5" />} trend={{ value: 3, isPositive: true }} />
-        <StatCard label="CSR Trees Planted" value={(stats?.trees || 0).toLocaleString()} icon={<Trees className="h-5 w-5" />} />
-        <StatCard label="B2B Inquiries" value={(stats?.inquiries || 0).toLocaleString()} icon={<Sprout className="h-5 w-5" />} />
+        <StatCard label="Verified Commerce" value={`$${revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} icon={<Wallet className="h-5 w-5" />} />
+        <StatCard label="Marketplace Orders" value={orders.toLocaleString()} icon={<ShoppingCart className="h-5 w-5" />} />
+        <StatCard label="CSR Trees Planted" value={trees.toLocaleString()} icon={<Trees className="h-5 w-5" />} />
+        <StatCard label="B2B Inquiries" value={inquiries.toLocaleString()} icon={<Briefcase className="h-5 w-5" />} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -171,9 +189,9 @@ function BusinessPortal() {
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             {[
-              { label: "B2B Projects", value: "7 active" },
-              { label: "Team Members", value: "12" },
-              { label: "Marketplace Orders", value: "86" },
+              { label: "Community Members", value: members.toLocaleString() },
+              { label: "Verified Accounts", value: verified.toLocaleString() },
+              { label: "Marketplace Orders", value: orders.toLocaleString() },
             ].map((s, i) => (
               <div key={i} className="rounded-xl border border-gd-border bg-gd-elevated/50 p-4 text-center">
                 <p className="text-lg font-bold text-gd-text-primary">{s.value}</p>
@@ -184,23 +202,27 @@ function BusinessPortal() {
         </Card>
 
         <Card>
-          <SectionHead icon={<TrendingUp className="h-4 w-4" />} title="B2B Pipeline" />
+          <SectionHead icon={<TrendingUp className="h-4 w-4" />} title="Real Impact Pipeline" sub="Live progress toward community goals" />
           <div className="space-y-3">
             {[
-              { name: "IoT Greenhouse", stage: "In progress", pct: 68 },
-              { name: "Farm Dashboard", stage: "Proposal", pct: 30 },
-              { name: "Irrigation Automation", stage: "Contract", pct: 85 },
-            ].map((p, i) => (
-              <div key={i} className="rounded-xl border border-gd-border bg-gd-elevated/50 p-3.5">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-gd-text-primary">{p.name}</span>
-                  <span className="text-xs text-gd-accent-400">{p.stage}</span>
+              { name: "Verified Commerce", value: revenue, goal: 50000, suffix: "$" },
+              { name: "Trees Planted", value: trees, goal: 20000, suffix: "" },
+              { name: "B2B Inquiries", value: inquiries, goal: 100, suffix: "" },
+              { name: "Verified Members", value: verified, goal: 1000, suffix: "" },
+            ].map((p, i) => {
+              const pct = Math.min(100, (p.value / p.goal) * 100);
+              return (
+                <div key={i} className="rounded-xl border border-gd-border bg-gd-elevated/50 p-3.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium text-gd-text-primary">{p.name}</span>
+                    <span className="text-xs text-gd-accent-400">{p.suffix}{Math.round(p.value).toLocaleString()} / {p.suffix}{p.goal.toLocaleString()}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 w-full rounded-full bg-gd-overlay">
+                    <div className="h-full rounded-full bg-gradient-to-r from-gd-accent-500 to-gd-olive-500 transition-all duration-700" style={{ width: pct + '%' }} />
+                  </div>
                 </div>
-                <div className="mt-2 h-1.5 w-full rounded-full bg-gd-overlay">
-                  <div className="h-full rounded-full bg-gradient-to-r from-gd-accent-500 to-gd-olive-500" style={{ width: p.pct + '%' }} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       </div>
@@ -208,28 +230,36 @@ function BusinessPortal() {
   );
 }
 
-/* ── Seller portal ── */
+/* ── Seller portal (real stats) ── */
 function SellerPortal() {
-  const myProducts = products.filter(p => p.sellerVerified).length;
+  const stats = useLiveStats();
+  const revenue = stats?.revenue || 0;
+  const orders = stats?.orders || 0;
+  const delivered = stats?.deliveredOrders || 0;
+  const open = stats?.openOrders || 0;
+  const trees = stats?.trees || 0;
+  const deliveredPct = orders > 0 ? Math.round((delivered / orders) * 100) : 0;
+
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Active Listings" value={myProducts} icon={<Package className="h-5 w-5" />} trend={{ value: 6, isPositive: true }} />
-        <StatCard label="Orders This Month" value="34" icon={<ShoppingCart className="h-5 w-5" />} trend={{ value: 14, isPositive: true }} />
-        <StatCard label="Revenue" value="$12.8K" icon={<Wallet className="h-5 w-5" />} trend={{ value: 9, isPositive: true }} />
-        <StatCard label="Rating" value="4.8" icon={<BadgeCheck className="h-5 w-5" />} />
+        <StatCard label="Marketplace Revenue" value={`$${revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} icon={<Wallet className="h-5 w-5" />} />
+        <StatCard label="Orders Placed" value={orders.toLocaleString()} icon={<ShoppingCart className="h-5 w-5" />} trend={{ value: deliveredPct, isPositive: true }} />
+        <StatCard label="Open Orders" value={open.toLocaleString()} icon={<Package className="h-5 w-5" />} />
+        <StatCard label="Delivered" value={delivered.toLocaleString()} icon={<BadgeCheck className="h-5 w-5" />} />
       </div>
       <Card>
-        <SectionHead icon={<Store className="h-4 w-4" />} title="Store Performance" />
+        <SectionHead icon={<Store className="h-4 w-4" />} title="Store Performance" sub="Live fulfillment metrics across the platform" />
         <div className="grid gap-4 sm:grid-cols-3">
           {[
-            { label: "Seeds & Fertilizers", value: "45%" },
-            { label: "Irrigation & Sensors", value: "35%" },
-            { label: "Other", value: "20%" },
+            { label: "Delivered Rate", value: deliveredPct + "%", sub: `${delivered} of ${orders} orders delivered` },
+            { label: "Fulfillment Queue", value: open.toLocaleString(), sub: `${open} orders awaiting delivery` },
+            { label: "CSR Trees", value: trees.toLocaleString(), sub: "planted by the community" },
           ].map((s, i) => (
             <div key={i} className="rounded-xl border border-gd-border bg-gd-elevated/50 p-4 text-center">
               <p className="text-xl font-bold text-gd-accent-400">{s.value}</p>
               <p className="text-xs text-gd-text-muted mt-0.5">{s.label}</p>
+              <p className="text-[10px] text-gd-text-muted mt-1">{s.sub}</p>
             </div>
           ))}
         </div>
@@ -238,33 +268,53 @@ function SellerPortal() {
   );
 }
 
-/* ── Driver portal ── */
+/* ── Driver portal (real delivery queue from the DB) ── */
 function DriverPortal() {
+  const stats = useLiveStats();
+  const [queue, setQueue] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/orders?all=1")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => d && setQueue((d.orders || []).filter((o: any) => ["pending", "confirmed", "shipped"].includes(o.status))))
+      .catch(() => {});
+  }, []);
+
+  const revenue = stats?.revenue || 0;
+  const delivered = stats?.deliveredOrders || 0;
+  const open = stats?.openOrders || 0;
+
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Active Deliveries" value="3" icon={<Truck className="h-5 w-5" />} />
-        <StatCard label="Completed" value="128" icon={<BadgeCheck className="h-5 w-5" />} trend={{ value: 11, isPositive: true }} />
-        <StatCard label="This Week" value="$540" icon={<Wallet className="h-5 w-5" />} trend={{ value: 7, isPositive: true }} />
-        <StatCard label="Rating" value="4.9" icon={<ShieldCheck className="h-5 w-5" />} />
+        <StatCard label="Active Deliveries" value={open.toLocaleString()} icon={<Truck className="h-5 w-5" />} />
+        <StatCard label="Completed" value={delivered.toLocaleString()} icon={<BadgeCheck className="h-5 w-5" />} />
+        <StatCard label="Platform Volume" value={`$${revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} icon={<Wallet className="h-5 w-5" />} />
+        <StatCard label="CSR Trees" value={(stats?.trees || 0).toLocaleString()} icon={<Trees className="h-5 w-5" />} />
       </div>
       <Card>
-        <SectionHead icon={<Truck className="h-4 w-4" />} title="Delivery Queue" />
-        <div className="space-y-2">
-          {[
-            { id: "#1042", dest: "Santos Organic Farm", eta: "30 min", status: "Pickup" },
-            { id: "#1043", dest: "GreenField Acres", eta: "55 min", status: "En route" },
-            { id: "#1044", dest: "Valley View Farm", eta: "1h 20m", status: "Pending" },
-          ].map((d, i) => (
-            <div key={i} className="flex items-center justify-between rounded-xl border border-gd-border bg-gd-elevated/50 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-gd-text-primary">Order {d.id}</p>
-                <p className="text-xs text-gd-text-muted mt-0.5">{d.dest} · ETA {d.eta}</p>
+        <SectionHead icon={<Truck className="h-4 w-4" />} title="Delivery Queue" sub="Real orders currently in the fulfillment pipeline" />
+        {queue.length === 0 ? (
+          <p className="py-8 text-center text-sm text-gd-text-muted">No active deliveries right now. Orders appear here in real time.</p>
+        ) : (
+          <div className="space-y-2">
+            {queue.map(o => (
+              <div key={o.id} className="flex items-center justify-between rounded-xl border border-gd-border bg-gd-elevated/50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gd-text-primary">Order {o.id.slice(-6).toUpperCase()}</p>
+                  <p className="text-xs text-gd-text-muted mt-0.5">{o.product_name} ×{o.quantity} · ${Number(o.total_price).toFixed(2)} · {new Date(o.created_at).toLocaleDateString()}</p>
+                </div>
+                <span className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${
+                  o.status === "shipped"
+                    ? "border-gd-info/20 bg-gd-info/10 text-gd-info"
+                    : o.status === "confirmed"
+                    ? "border-gd-success/20 bg-gd-success/10 text-gd-success"
+                    : "border-gd-accent-500/20 bg-gd-accent-500/10 text-gd-accent-400"
+                }`}>{o.status}</span>
               </div>
-              <span className="rounded-full border border-gd-accent-500/20 bg-gd-accent-500/10 px-3 py-1 text-xs font-medium text-gd-accent-400">{d.status}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Card>
     </>
   );

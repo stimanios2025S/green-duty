@@ -8,11 +8,11 @@ import { b2bServices } from "@/lib/mock-data";
 import { Check, Send, Thermometer, Droplets as WaterDroplets, Sun, Wind, Loader2, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
-const greenhouseSensors = [
-  { icon: Thermometer, label: "Temp", value: "24.5°C", color: "text-gd-ember-400" },
-  { icon: WaterDroplets, label: "Humidity", value: "68%", color: "text-blue-400" },
-  { icon: Sun, label: "Light", value: "45,000 lux", color: "text-gd-accent-400" },
-  { icon: Wind, label: "CO₂", value: "420 ppm", color: "text-gd-olive-400" },
+const sensorMeta = [
+  { icon: Thermometer, label: "Temp", unit: "°C", color: "text-gd-ember-400", fmt: (v: number) => v.toFixed(1) },
+  { icon: WaterDroplets, label: "Humidity", unit: "%", color: "text-blue-400", fmt: (v: number) => Math.round(v).toString() },
+  { icon: Sun, label: "Light", unit: " lux", color: "text-gd-accent-400", fmt: (v: number) => Math.round(v).toLocaleString() },
+  { icon: Wind, label: "CO₂", unit: " ppm", color: "text-gd-olive-400", fmt: (v: number) => Math.round(v).toString() },
 ];
 
 export default function B2BPage() {
@@ -22,6 +22,21 @@ export default function B2BPage() {
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
+  // Live greenhouse readings (simulated real-time telemetry stream)
+  const [sensors, setSensors] = useState([
+    { v: 24.5 }, { v: 68 }, { v: 45000 }, { v: 420 },
+  ]);
+  useEffect(() => {
+    const t = setInterval(() => {
+      setSensors(s => s.map((s2, i) => {
+        const base = [24.5, 68, 45000, 420][i];
+        const drift = i === 0 ? 0.4 : i === 1 ? 1.5 : i === 2 ? 1200 : 6;
+        const v = Math.max(0, base + (Math.random() - 0.5) * drift);
+        return { v };
+      }));
+    }, 3500);
+    return () => clearInterval(t);
+  }, []);
   useEffect(() => { if (titleRef.current) anime({ targets: titleRef.current, opacity: [0, 1], translateY: [20, 0], duration: 600, easing: "easeOutCubic" }); }, []);
 
   const sendInquiry = async () => {
@@ -103,10 +118,10 @@ export default function B2BPage() {
           <h2 className="text-2xl font-bold text-gd-text-primary mb-1">Live Greenhouse Demo</h2>
           <p className="text-sm text-gd-text-muted mb-6">Real-time sensor data from a connected smart greenhouse</p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {greenhouseSensors.map((s, i) => (
+            {sensorMeta.map((s, i) => (
               <div key={i} className="rounded-xl bg-gd-accent-500/3 border border-gd-accent-500/8 p-4 text-center backdrop-blur-sm">
                 <s.icon className={`mx-auto h-6 w-6 ${s.color}`} />
-                <p className="mt-2 text-lg font-bold text-gd-text-primary">{s.value}</p>
+                <p className="mt-2 text-lg font-bold text-gd-text-primary tabular-nums">{s.fmt(sensors[i]?.v ?? 0)}{s.unit}</p>
                 <p className="text-xs text-gd-text-muted mt-0.5">{s.label}</p>
               </div>
             ))}

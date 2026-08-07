@@ -127,3 +127,92 @@ html {
     linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
   background-size: 48px 48px;
 }
+
+/* ── High-tech / agro-tech landing animations ── */
+
+/* Panning blueprint grid (hero floor) */
+@keyframes grid-pan {
+  0%   { background-position: 0 0; }
+  100% { background-position: 48px 48px; }
+}
+.bg-grid-pan {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: grid-pan 6s linear infinite;
+}
+
+/* Floating particles (hero) */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50%      { transform: translateY(-26px) translateX(8px); }
+}
+.float-slow   { animation: float-y 9s ease-in-out infinite; }
+.float-slower { animation: float-y 14s ease-in-out infinite; }
+
+/* Expanding radar / pulse rings */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.pulse-ring { animation: pulse-ring 2.6s cubic-bezier(0.2, 0.6, 0.35, 1) infinite; }
+
+/* Scanning line sweep (holographic cards) */
+@keyframes scan-line {
+  0%   { transform: translateY(-120%); }
+  100% { transform: translateY(320%); }
+}
+.scan-line {
+  animation: scan-line 4.5s linear infinite;
+}
+
+/* Marquee ticker */
+@keyframes marquee-x {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee-x 32s linear infinite;
+}
+.animate-marquee:hover { animation-play-state: paused; }
+
+/* Gradient sheen sweep on text/buttons */
+@keyframes shimmer-x {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(110deg, var(--gd-accent-400) 30%, #fff8d6 50%, var(--gd-accent-400) 70%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer-x 5s linear infinite;
+}
+
+/* Slow rotation (radar sweep) */
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow { animation: spin-slow 14s linear infinite; }
+
+/* Dash-flow along SVG paths (pipelines) */
+@keyframes dash-flow {
+  to { stroke-dashoffset: -48; }
+}
+.dash-flow { animation: dash-flow 2.4s linear infinite; }
+
+/* Soft glow breathing for live dots */
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.glow-breathe { animation: glow-breathe 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-grid-pan, .float-slow, .float-slower, .pulse-ring, .scan-line,
+  .animate-marquee, .shimmer, .animate-spin-slow, .dash-flow, .glow-breathe {
+    animation: none !important;
+  }
+}

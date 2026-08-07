@@ -82,6 +82,8 @@ function Shell({ children }: { children: ReactNode }) {
   // InstaGro pages (feed + all /feed/*) render full-width with the mobile nav —
   // the IG-style pages manage their own top nav.
   const isInstaGro = pathname?.startsWith("/feed");
+  // Landing page renders full-bleed (hero sections span edge-to-edge)
+  const isLanding = pathname === "/";
 
   if (isInstaGro) {
     return (
@@ -100,7 +102,7 @@ function Shell({ children }: { children: ReactNode }) {
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto bg-gd-base p-6 pb-20 md:pb-6">{children}</main>
+        <main className={`flex-1 overflow-y-auto bg-gd-base ${isLanding ? "" : "p-6 pb-20 md:pb-6"}`}>{children}</main>
         <MobileNav />
       </div>
     </div>

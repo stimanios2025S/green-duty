@@ -6,8 +6,9 @@ import { ReportModal } from "@/components/eco-map/ReportModal";
 import { SponsorPanel } from "@/components/eco-map/SponsorPanel";
 import { LeaderboardPanel } from "@/components/eco-map/LeaderboardPanel";
 import { CleanupEventsPanel } from "@/components/eco-map/CleanupEventsPanel";
+import { EcoStatsStrip } from "@/components/eco-map/EcoStatsStrip";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
-import { Plus } from "lucide-react";
+import { Plus, Activity } from "lucide-react";
 
 export default function EcoMapPage() {
   const [showReport, setShowReport] = useState(false);
@@ -50,6 +51,19 @@ export default function EcoMapPage() {
           </button>
         </div>
       </AnimeWrapper>
+
+      {/* Live platform statistics — real numbers from the database */}
+      <AnimeWrapper animate="fadeIn">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-gd-accent-400" />
+          <h2 className="text-sm font-semibold text-gd-text-secondary uppercase tracking-wider">Live Platform Statistics</h2>
+          <span className="ml-1 flex items-center gap-1.5 rounded-full border border-gd-success/20 bg-gd-success/5 px-2 py-0.5 text-[10px] font-medium text-gd-success">
+            <span className="h-1.5 w-1.5 rounded-full bg-gd-success animate-pulse shadow-[0_0_6px_rgba(34,197,94,0.8)]" />
+            LIVE
+          </span>
+        </div>
+      </AnimeWrapper>
+      <EcoStatsStrip refreshKey={refreshKey} />
 
       <HotspotMap refreshKey={refreshKey} />
       <div className="grid gap-6 lg:grid-cols-2">

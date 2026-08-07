@@ -20,7 +20,9 @@ import anime from "animejs";
 const PERCHES = [
   { x: 0.10, y: 0.74 }, // Hero
   { x: 0.84, y: 0.50 }, // B2B Services
-  { x: 0.12, y: 0.60 }, // IoT Simulator
+  { x: 0.12, y: 0.62 }, // Agro-Tech Engine
+  { x: 0.84, y: 0.55 }, // IoT Simulator
+  { x: 0.14, y: 0.60 }, // Community Impact
   { x: 0.50, y: 0.82 }, // Footer
 ];
 
