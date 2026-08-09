@@ -57,10 +57,15 @@ export function Header() {
         <button className="lg:hidden rounded-xl p-2 text-gd-text-muted hover:text-gd-text-secondary hover:bg-gd-elevated transition-colors" onClick={() => setShowMobileMenu(!showMobileMenu)}>
           <Menu className="h-5 w-5" />
         </button>
-        <div className="hidden sm:flex items-center gap-2 rounded-xl border border-gd-border bg-gd-elevated/50 px-3.5 py-2 transition-colors focus-within:border-gd-accent-500/40 focus-within:ring-1 focus-within:ring-gd-accent-500/20">
-          <Search className="h-4 w-4 text-gd-text-muted" />
-          <input type="text" placeholder="Search..." className="w-56 bg-transparent text-sm text-gd-text-primary placeholder-gd-text-muted outline-none" />
-        </div>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("gd:open-search"))}
+          className="hidden sm:flex items-center gap-2 rounded-xl border border-gd-border bg-gd-elevated/50 px-3.5 py-2 text-gd-text-muted transition-colors hover:border-gd-accent-500/40 hover:text-gd-text-secondary focus-within:border-gd-accent-500/40"
+          title="Search people, posts, hashtags"
+        >
+          <Search className="h-4 w-4" />
+          <span className="w-56 text-left text-sm">Search people, posts...</span>
+        </button>
       </div>
 
       <div className="flex items-center gap-3">

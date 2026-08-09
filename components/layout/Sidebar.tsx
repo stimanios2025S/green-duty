@@ -101,13 +101,13 @@ export function Sidebar() {
           <User className="h-5 w-5" />
           {!collapsed && <span>My Profile</span>}
         </Link>
-        <button
-          onClick={() => alert("Settings coming soon — check back shortly!")}
+        <Link
+          href="/settings"
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gd-text-muted hover:text-gd-text-secondary hover:bg-gd-elevated transition-colors"
         >
           <Settings className="h-5 w-5" />
           {!collapsed && <span>Settings</span>}
-        </button>
+        </Link>
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gd-text-muted hover:text-red-400 hover:bg-red-500/5 transition-colors"

@@ -118,7 +118,7 @@ export default function LoginPage() {
         </div>
 
         <p className="relative text-xs text-gd-text-muted">
-          © 2025 GreenDuty Platform · Uniting Agriculture, Technology &amp; Environmental Action
+          © 2026 GreenDuty Platform · Uniting Agriculture, Technology &amp; Environmental Action
         </p>
       </div>
 

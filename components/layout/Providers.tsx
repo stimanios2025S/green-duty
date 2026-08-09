@@ -1,10 +1,11 @@
 "use client";
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Home, Search, PlusSquare, Send, User as UserIcon } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { SearchModal } from "@/components/instagro/SearchModal";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 
 const PUBLIC_PATHS = ["/login", "/auth/register", "/auth/verify"];
@@ -59,6 +60,14 @@ function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const isPublic = PUBLIC_PATHS.some(p => pathname?.startsWith(p));
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Global search — works from the header search box & mobile nav on ANY page
+  useEffect(() => {
+    const onSearch = () => setShowSearch(true);
+    window.addEventListener("gd:open-search", onSearch);
+    return () => window.removeEventListener("gd:open-search", onSearch);
+  }, []);
 
   // Gate: not logged in + not on a public page → login
   useEffect(() => {
@@ -105,6 +114,7 @@ function Shell({ children }: { children: ReactNode }) {
         <main className={`flex-1 overflow-y-auto bg-gd-base ${isLanding ? "" : "p-6 pb-20 md:pb-6"}`}>{children}</main>
         <MobileNav />
       </div>
+      <SearchModal isOpen={showSearch} onClose={() => setShowSearch(false)} />
     </div>
   );
 }

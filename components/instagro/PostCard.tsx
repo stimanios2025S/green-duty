@@ -6,6 +6,7 @@ import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
 import { ApiPost } from "@/lib/instagro-api";
 import { MUSIC_TRACKS, playTrack, stopMusic, MusicHandle } from "@/lib/instagro-music";
+import { cn } from "@/lib/utils";
 
 /** Render caption with #hashtags clickable */
 function renderCaption(text: string) {
@@ -27,6 +28,8 @@ export function PostCard({ post }: { post: ApiPost }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [reported, setReported] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [videoMuted, setVideoMuted] = useState(true);
   const musicHandleRef = useRef<MusicHandle | null>(null);
@@ -104,9 +107,6 @@ export function PostCard({ post }: { post: ApiPost }) {
             <div className="absolute right-0 top-9 z-20 w-44 overflow-hidden rounded-xl border border-gd-border bg-gd-card shadow-xl">
               {isMine ? (
                 <>
-                  <button onClick={() => setMenuOpen(false)} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">
-                    <Link2 className="h-4 w-4" /> Edit post
-                  </button>
                   <button onClick={handleDelete} disabled={deleting} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-gd-elevated transition-colors">
                     <Trash2 className="h-4 w-4" /> {deleting ? "Deleting..." : "Delete post"}
                   </button>
@@ -116,11 +116,25 @@ export function PostCard({ post }: { post: ApiPost }) {
                 </>
               ) : (
                 <>
-                  <button onClick={() => { setMenuOpen(false); alert("Thanks — the post has been reported for review."); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-gd-elevated transition-colors">
-                    <Flag className="h-4 w-4" /> Report post
+                  <button
+                    onClick={() => { setMenuOpen(false); setReported(true); }}
+                    disabled={reported}
+                    className={cn(
+                      "flex w-full items-center gap-2 px-4 py-2.5 text-sm transition-colors",
+                      reported ? "text-gd-success cursor-default" : "text-red-400 hover:bg-gd-elevated"
+                    )}
+                  >
+                    {reported ? <Check className="h-4 w-4" /> : <Flag className="h-4 w-4" />} {reported ? "Reported for review" : "Report post"}
                   </button>
-                  <button onClick={() => { setMenuOpen(false); alert("Thanks for the feedback — we'll show fewer posts like this."); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">
-                    <Flag className="h-4 w-4" /> Not interested
+                  <button
+                    onClick={() => { setMenuOpen(false); setDismissed(true); }}
+                    disabled={dismissed}
+                    className={cn(
+                      "flex w-full items-center gap-2 px-4 py-2.5 text-sm transition-colors",
+                      dismissed ? "text-gd-success cursor-default" : "text-gd-text-secondary hover:bg-gd-elevated"
+                    )}
+                  >
+                    {dismissed ? <Check className="h-4 w-4" /> : <Flag className="h-4 w-4" />} {dismissed ? "Hidden from feed" : "Not interested"}
                   </button>
                   <button onClick={copyLink} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">
                     <Link2 className="h-4 w-4" /> Copy link
