@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 
+interface MessageRow {
+  reactions?: string | null;
+}
+
 // POST /api/chat/reaction → toggle an eco-reaction (🌱🤝💧🔥🌿) on a message
 export async function POST(req: Request) {
   try {
     const { messageId, userId, emoji } = await req.json();
     if (!messageId || !userId || !emoji) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     const d = await getDb();
-    const msg = await d.prepare("SELECT reactions FROM messages WHERE id = ?").get(messageId) as any;
+    const msg = await d.prepare("SELECT reactions FROM messages WHERE id = ?").get(messageId) as MessageRow | undefined;
     if (!msg) return NextResponse.json({ error: "Message not found." }, { status: 404 });
 
     let reactions: Record<string, string[]> = {};

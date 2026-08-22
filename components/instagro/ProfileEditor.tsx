@@ -17,10 +17,10 @@ export function ProfileEditor({ isOpen, onClose, onSaved }: Props) {
 
   const [name, setName] = useState(user?.name || "");
   const [username, setUsername] = useState(myUsername);
-  const [bio, setBio] = useState((user as any)?.bio || "");
-  const [emoji, setEmoji] = useState((user as any)?.emoji || user?.name?.charAt(0) || "🌿");
-  const [gradient, setGradient] = useState((user as any)?.gradient || "from-amber-400 to-orange-600");
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>((user as any)?.avatarUrl);
+  const [bio, setBio] = useState(user?.bio || "");
+  const [emoji, setEmoji] = useState(user?.emoji || user?.name?.charAt(0) || "🌿");
+  const [gradient, setGradient] = useState(user?.gradient || "from-amber-400 to-orange-600");
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(user?.avatarUrl);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
@@ -112,7 +112,7 @@ export function ProfileEditor({ isOpen, onClose, onSaved }: Props) {
                   onChange={e => handleAvatarFile(e.target.files?.[0])}
                 />
                 <button
-                  onClick={() => { setAvatarUrl(undefined); setEmoji((user as any)?.emoji || user?.name?.charAt(0) || "🌿"); }}
+                  onClick={() => { setAvatarUrl(undefined); setEmoji(user?.emoji || user?.name?.charAt(0) || "🌿"); }}
                   className="text-xs font-semibold text-gd-accent-400 hover:text-gd-accent-300 transition-colors"
                 >
                   {avatarUrl ? "Remove photo" : "Add photo"}

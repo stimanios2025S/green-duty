@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Search, X, Loader2, Hash, User as UserIcon, ImageIcon, BadgeCheck } from "lucide-react";
+import { Search, X, Loader2, Hash, ImageIcon, BadgeCheck } from "lucide-react";
 import { InstaAvatar } from "./InstaAvatar";
 import { useAuth } from "@/lib/auth-context";
 import { ApiUser, ApiPost } from "@/lib/instagro-api";
@@ -22,25 +22,43 @@ export function SearchModal({ isOpen, onClose }: Props) {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.trim().length < 2) { setUsers([]); setPosts([]); setHashtags([]); return; }
-    setLoading(true);
-    debounceRef.current = setTimeout(async () => {
+    let active = true;
+    if (query.trim().length < 2) {
+      window.setTimeout(() => {
+        if (!active) return;
+        setUsers([]);
+        setPosts([]);
+        setHashtags([]);
+      }, 0);
+      return () => {
+        active = false;
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+      };
+    }
+    window.setTimeout(() => {
+      if (!active) return;
+      setLoading(true);
+    }, 0);
+    debounceRef.current = window.setTimeout(async () => {
       try {
         const q = user?.id ? `&viewerId=${encodeURIComponent(user.id)}` : "";
-        const res = await fetch(`/api/instagro/search?q=${encodeURIComponent(query.trim())}${q}`);
-        const data = await res.json();
+        const data = await fetch(`/api/instagro/search?q=${encodeURIComponent(query.trim())}${q}`).then(r => r.json()) as { users?: ApiUser[]; posts?: ApiPost[]; hashtags?: { tag: string; count: number }[] };
+        if (!active) return;
         setUsers(data.users || []);
         setPosts(data.posts || []);
         setHashtags(data.hashtags || []);
       } catch {
+        if (!active) return;
         setUsers([]); setPosts([]); setHashtags([]);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }, 350);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+    return () => {
+      active = false;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, user?.id]);
 
   if (!isOpen) return null;
 
@@ -74,7 +92,7 @@ export function SearchModal({ isOpen, onClose }: Props) {
             ) : loading ? (
               <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-gd-text-muted" /></div>
             ) : !hasResults ? (
-              <p className="py-10 text-center text-sm text-gd-text-muted">No results for "{query}"</p>
+              <p className="py-10 text-center text-sm text-gd-text-muted">No results for &quot;{query}&quot;</p>
             ) : (
               <>
                 {/* Users */}

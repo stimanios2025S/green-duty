@@ -2,6 +2,34 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { recomputeStreak, applyStreakTrees } from "@/lib/chat-utils";
 
+interface MessageRow {
+  id: string;
+  sender_id: string;
+  text?: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
+  reply_to?: string | null;
+  reactions?: string | null;
+  vanish?: number | boolean | null;
+  read?: number | boolean | null;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+interface ConversationRow {
+  id: string;
+  user_a: string;
+  user_b: string;
+  type: string;
+  name?: string | null;
+  vanish?: number | boolean | null;
+  [key: string]: unknown;
+}
+
+interface MemberRow {
+  user_id: string;
+}
+
 // GET /api/chat/messages?conversationId=...&userId=... → thread + mark read (+ vanish cleanup)
 export async function GET(req: Request) {
   try {
@@ -13,11 +41,11 @@ export async function GET(req: Request) {
 
     const rows = await d.prepare(
       "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 300"
-    ).all(conversationId);
+    ).all(conversationId) as MessageRow[];
 
     // Vanish mode: delete any vanish messages the other user already read
     const vanishIds: string[] = [];
-    const messages = (rows as any[]).map(m => {
+    const messages = rows.map(m => {
       const isVanish = !!m.vanish;
       if (isVanish && m.read && m.sender_id !== userId) vanishIds.push(m.id);
       let reactions: Record<string, string[]> = {};
@@ -61,7 +89,7 @@ export async function POST(req: Request) {
     if (!text?.trim() && !mediaUrl) return NextResponse.json({ error: "Nothing to send." }, { status: 400 });
     const d = await getDb();
 
-    const conv = await d.prepare("SELECT * FROM conversations WHERE id = ?").get(conversationId) as any;
+    const conv = await d.prepare("SELECT * FROM conversations WHERE id = ?").get(conversationId) as ConversationRow | undefined;
     if (!conv) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 
     const id = "m_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
@@ -82,8 +110,8 @@ export async function POST(req: Request) {
     await applyStreakTrees(senderId, conversationId, streakTrees);
 
     // Push notification to the other party (powers the bell + unread badge)
-    const sender = await d.prepare("SELECT name FROM users WHERE id = ?").get(senderId) as any;
-    const senderName = (sender as any)?.name || "Someone";
+    const sender = await d.prepare("SELECT name FROM users WHERE id = ?").get(senderId) as { name?: string | null } | undefined;
+    const senderName = sender?.name || "Someone";
     const preview = mediaType === "image" ? "📷 sent a photo" : mediaType === "video" ? "🎬 sent a video" : mediaType === "audio" ? "🎤 sent a voice note" : mediaType === "location" ? "📍 shared a location" : (text?.trim() || "").slice(0, 80);
     if (conv.type === "direct") {
       const otherId = conv.user_a === senderId ? conv.user_b : conv.user_b === senderId ? conv.user_a : conv.user_b;
@@ -92,7 +120,7 @@ export async function POST(req: Request) {
           .run("n_" + Math.random().toString(36).slice(2, 10), otherId, `💬 ${senderName}`, preview, "message", new Date().toISOString());
       }
     } else {
-      const members = await d.prepare("SELECT user_id FROM conversation_members WHERE conversation_id = ? AND user_id != ?").all(conversationId, senderId) as any[];
+      const members = await d.prepare("SELECT user_id FROM conversation_members WHERE conversation_id = ? AND user_id != ?").all(conversationId, senderId) as MemberRow[];
       for (const m of members) {
         await d.prepare("INSERT INTO notifications (id, user_id, title, message, type, read, created_at) VALUES (?,?,?,?,?,0,?)")
           .run("n_" + Math.random().toString(36).slice(2, 10), m.user_id, `💬 ${senderName} (${conv.name})`, preview, "message", new Date().toISOString());

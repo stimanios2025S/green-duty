@@ -120,7 +120,7 @@ export function playTrack(idOrUrl: string | null): MusicHandle | null {
 
   // Resolve: either a catalog id (m1..) or a direct URL (from Jamendo search)
   let url = idOrUrl;
-  let isId = /^m\d+$/.test(idOrUrl);
+  const isId = /^m\d+$/.test(idOrUrl);
   if (isId) {
     const track = MUSIC_TRACKS.find(t => t.id === idOrUrl);
     if (!track) return null;

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 
+interface TypingRow {
+  user_id: string;
+}
+
 // POST /api/chat/typing {conversationId, userId, isTyping}
 // Sets (or clears) the typing marker. Expires naturally via the TYPING_TTL.
 export async function POST(req: Request) {
@@ -36,7 +40,7 @@ export async function GET(req: Request) {
     const cutoff = new Date(Date.now() - TYPING_TTL_MS).toISOString();
     const rows = await d.prepare(
       "SELECT user_id FROM typing_status WHERE conversation_id = ? AND user_id != ? AND typing_at > ?"
-    ).all(conversationId, userId, cutoff) as any[];
+    ).all(conversationId, userId, cutoff) as TypingRow[];
     return NextResponse.json({ typing: rows.map(r => r.user_id) });
   } catch (err) {
     console.error("[chat/typing GET]", err);

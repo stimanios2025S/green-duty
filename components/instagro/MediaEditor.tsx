@@ -1,12 +1,12 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Sliders, Crop, Type, Music2, Wand2, RotateCw, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sliders, Crop, Type, Music2, Wand2, RotateCw, Plus, X, type LucideIcon } from "lucide-react";
 import { FILTERS, ASPECTS, Adjustments, DEFAULT_ADJUST, buildFilterCss, exportFilteredImage } from "@/lib/instagro-editor";
 import { previewTrack, stopPreview } from "@/lib/instagro-music";
 import { MusicPicker } from "./MusicPicker";
 import { cn } from "@/lib/utils";
 
-interface TextOverlay {
+export interface TextOverlay {
   id: string;
   text: string;
   x: number; // % position
@@ -42,10 +42,8 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
   const [musicId, setMusicId] = useState<string | null>(initialMusic?.id || null);
   const [musicUrl, setMusicUrl] = useState<string | null>(initialMusic?.url || null);
   const [musicName, setMusicName] = useState(initialMusic?.name || "");
-  const [playing, setPlaying] = useState(false);
   const [musicPickerOpen, setMusicPickerOpen] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
 
   // Cleanup music preview on unmount
   useEffect(() => () => stopPreview(), []);
@@ -58,7 +56,6 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
       setMusicId(null);
       setMusicUrl(null);
       setMusicName("");
-      setPlaying(false);
     }
   };
 
@@ -83,7 +80,7 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
 
   const aspectDisplay = ASPECTS.find(a => a.value === aspect);
 
-  const tabs: { key: Tab; icon: any; label: string }[] = [
+  const tabs: { key: Tab; icon: LucideIcon; label: string }[] = [
     { key: "filters", icon: Wand2, label: "Filters" },
     { key: "adjust", icon: Sliders, label: "Adjust" },
     ...(mediaType === "image" ? [{ key: "crop" as Tab, icon: Crop, label: "Crop" }] : []),

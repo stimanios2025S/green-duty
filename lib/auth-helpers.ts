@@ -1,24 +1,33 @@
 import type { DbUser } from "./db";
 import type { User } from "@/types";
 
+type DbUserWithExtras = DbUser & {
+  avatar_media?: string | null;
+  username?: string | null;
+  bio?: string | null;
+  emoji?: string | null;
+  gradient?: string | null;
+};
+
 /**
  * Serialize a DB row into the public User shape (never exposes password/code).
  */
 export function publicUser(u: DbUser): User {
+  const row = u as DbUserWithExtras;
   const user: User = {
     id: u.id,
     name: u.name,
     email: u.email,
-    avatarUrl: (u as any).avatar_media || "/logo.png",
+    avatarUrl: row.avatar_media || "/logo.png",
     role: u.account_type as User["role"],
     accountType: u.account_type as User["accountType"],
     points: u.points,
     badges: ["New Member"],
     joinedAt: u.created_at,
-    username: (u as any).username || u.name.toLowerCase().replace(/\s+/g, "."),
-    bio: (u as any).bio || "",
-    emoji: (u as any).emoji || "",
-    gradient: (u as any).gradient || "",
+    username: row.username || u.name.toLowerCase().replace(/\s+/g, "."),
+    bio: row.bio || "",
+    emoji: row.emoji || "",
+    gradient: row.gradient || "",
   };
   if (u.business_name) {
     user.businessProfile = {

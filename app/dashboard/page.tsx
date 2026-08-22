@@ -11,11 +11,26 @@ import {
   Building2, Package, ShoppingCart, Truck, Store, Wallet, BadgeCheck, TrendingUp, Briefcase, Leaf
 } from "lucide-react";
 
+interface StatsPayload {
+  trees?: number;
+  hotspots?: number;
+  cleanups?: number;
+  volunteers?: number;
+  users?: number;
+  posts?: number;
+  hotspotsResolved?: number;
+  likes?: number;
+  revenue?: number;
+  orders?: number;
+  inquiries?: number;
+  verifiedUsers?: number;
+}
+
 /* ── Live platform stats hook (real DB aggregates from /api/stats) ── */
 function useLiveStats() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<StatsPayload | null>(null);
   useEffect(() => {
-    fetch("/api/stats").then(r => r.ok ? r.json() : null).then(d => d && setStats(d)).catch(() => {});
+    fetch("/api/stats").then(r => r.ok ? r.json() : null).then(d => d && setStats(d as StatsPayload)).catch(() => {});
   }, []);
   return stats;
 }
@@ -91,7 +106,7 @@ function SectionHead({ icon, title, sub }: { icon: React.ReactNode; title: strin
 /* ── Guest / Citizen portal ── */
 function GuestPortal() {
   const stats = useLiveStats();
-  const [hotspots, setHotspots] = useState<any[]>([]);
+  const [hotspots, setHotspots] = useState<Array<{ id: string; title: string; created_at: string }>>([]);
 
   useEffect(() => {
     fetch("/api/hotspots").then(r => r.ok ? r.json() : null).then(d => d && setHotspots(d.hotspots || [])).catch(() => {});

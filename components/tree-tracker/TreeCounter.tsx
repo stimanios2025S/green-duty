@@ -3,8 +3,14 @@ import { useEffect, useState } from "react";
 import { Trees, Sprout, Droplets } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 
+interface StatsPayload {
+  trees?: number;
+  users?: number;
+  hotspots?: number;
+}
+
 export function TreeCounter() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<StatsPayload | null>(null);
   const total = 20000;
 
   useEffect(() => {

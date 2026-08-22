@@ -8,11 +8,29 @@ import { Card } from "@/components/ui/Card";
  * Community Impact — real, live progress toward public goals.
  * Every number comes from /api/stats (the actual database).
  */
+interface Stats {
+  trees?: number;
+  hotspots?: number;
+  volunteers?: number;
+  verifiedUsers?: number;
+  hotspotsResolved?: number;
+  users?: number;
+}
+
 export function ImpactSection() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
-    fetch("/api/stats").then(r => (r.ok ? r.json() : null)).then(d => d && setStats(d)).catch(() => {});
+    let cancelled = false;
+    fetch("/api/stats")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (!cancelled && d) setStats(d as Stats);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const goals = stats

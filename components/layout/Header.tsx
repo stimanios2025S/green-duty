@@ -28,12 +28,24 @@ export function Header() {
 
   useEffect(() => {
     if (!user?.id || !showNotifications) return;
-    setLoading(true);
-    fetch(`/api/notifications?userId=${encodeURIComponent(user.id)}`)
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d) setNotifications(d.notifications || []); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    let active = true;
+    const pending = window.setTimeout(() => {
+      setLoading(true);
+      fetch(`/api/notifications?userId=${encodeURIComponent(user.id)}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => {
+          if (!active) return;
+          if (d) setNotifications(d.notifications || []);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 0);
+    return () => {
+      active = false;
+      window.clearTimeout(pending);
+    };
   }, [user?.id, showNotifications]);
 
   const unreadCount = notifications.filter(n => !n.read).length;

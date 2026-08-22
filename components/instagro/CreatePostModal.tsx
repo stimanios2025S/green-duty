@@ -90,7 +90,7 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
   // Editor output (media + texts + music) — MUST be kept so music picked in
   // the edit step actually carries through to the caption step and publish.
   const [editResult, setEditResult] = useState<{
-    mediaUrl: string; texts: any[]; musicId: string | null; musicUrl?: string | null; musicName?: string | null;
+    mediaUrl: string; texts: Array<{ id: string; text: string; x: number; y: number; size: number; color: string }>; musicId: string | null; musicUrl?: string | null; musicName?: string | null;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -101,6 +101,24 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
   const [emoji, setEmoji] = useState("🌾");
   const [gradient, setGradient] = useState(GRADIENTS[0]);
   const [videoIdx, setVideoIdx] = useState(0);
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setError("");
+    try {
+      if (file.type.startsWith("image/")) {
+        const url = await fileToImageDataUrl(file);
+        setMediaUrl(url); setMediaType("image"); setStep("edit");
+      } else if (file.type.startsWith("video/")) {
+        const url = await fileToVideoDataUrl(file);
+        setMediaUrl(url); setMediaType("video"); setStep("edit");
+      } else {
+        setError("Unsupported file type. Choose a photo or video.");
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not read that file.");
+    }
+  };
 
   // NOTE: all hooks MUST be above the early return (React rule — no conditional hooks)
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -121,24 +139,6 @@ export function CreatePostModal({ isOpen, onClose }: Props) {
     setHashtagOpen(false); setShowMusic(false);
     setSelectedMusic(null); setEditResult(null); stopPreview();
     setLikesHidden(false); setCommentsDisabled(false);
-  };
-
-  const handleFile = async (file: File | undefined) => {
-    if (!file) return;
-    setError("");
-    try {
-      if (file.type.startsWith("image/")) {
-        const url = await fileToImageDataUrl(file);
-        setMediaUrl(url); setMediaType("image"); setStep("edit");
-      } else if (file.type.startsWith("video/")) {
-        const url = await fileToVideoDataUrl(file);
-        setMediaUrl(url); setMediaType("video"); setStep("edit");
-      } else {
-        setError("Unsupported file type. Choose a photo or video.");
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not read that file.");
-    }
   };
 
   const publish = async () => {

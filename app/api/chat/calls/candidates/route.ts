@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 
+interface CandidateRow {
+  user_id: string;
+  candidate: string;
+}
+
 // GET /api/chat/calls/candidates?callId=&userId= → ICE candidates from the other side
 export async function GET(req: Request) {
   try {
@@ -11,7 +16,7 @@ export async function GET(req: Request) {
     const d = await getDb();
     const rows = await d.prepare(
       "SELECT user_id, candidate FROM call_candidates WHERE call_id = ? AND user_id != ? ORDER BY created_at ASC"
-    ).all(callId, userId) as any[];
+    ).all(callId, userId) as CandidateRow[];
     return NextResponse.json({ candidates: rows.map(r => ({ userId: r.user_id, candidate: JSON.parse(r.candidate as string) })) });
   } catch (err) {
     console.error("[chat/calls/candidates]", err);

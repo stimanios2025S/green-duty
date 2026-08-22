@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Search, X, Play, Pause, Music2, Loader2, Check, ChevronDown, ChevronRight, ListMusic } from "lucide-react";
+import { Search, X, Play, Pause, Music2, Loader2, Check, ChevronDown, ListMusic } from "lucide-react";
 import { MUSIC_CATEGORIES, previewTrack, stopPreview, MusicTrack } from "@/lib/instagro-music";
 
 interface AlbumTrack extends MusicTrack {
@@ -59,21 +59,29 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    setLoading(true);
-    debounceRef.current = setTimeout(async () => {
+    let active = true;
+    window.setTimeout(() => {
+      if (!active) return;
+      setLoading(true);
+    }, 0);
+    debounceRef.current = window.setTimeout(async () => {
       try {
         const res = await fetch(`/api/music?q=${encodeURIComponent(query)}&genre=${encodeURIComponent(genre)}`);
-        const data = await res.json();
+        const data = await res.json() as { tracks?: MusicTrack[]; source?: "local" | "jamendo" | "deezer" };
+        if (!active) return;
         setTracks(data.tracks || []);
         setSource(data.source || "local");
       } catch {
+        if (!active) return;
         setTracks([]);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }, 350);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      active = false;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [query, genre]);
 
   // Stop audio when the picker unmounts
@@ -174,7 +182,7 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
             {loading ? (
               <div className="flex items-center justify-center py-14"><Loader2 className="h-6 w-6 animate-spin text-gd-text-muted" /></div>
             ) : tracks.length === 0 ? (
-              <p className="py-14 text-center text-sm text-gd-text-muted">No tracks found for "{query}".</p>
+              <p className="py-14 text-center text-sm text-gd-text-muted">No tracks found for &quot;{query}&quot;.</p>
             ) : (
               tracks.map(t => {
                 const isPlaying = previewing === t.id;

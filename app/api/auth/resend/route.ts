@@ -3,6 +3,13 @@ import { getDb } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/email";
 import { generateCode } from "@/lib/auth-helpers";
 
+interface AuthUserRow {
+  id: string;
+  verified: number | boolean;
+  email: string;
+  [key: string]: unknown;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -13,7 +20,7 @@ export async function POST(req: Request) {
 
     const db = await getDb();
     const normalizedEmail = email.trim().toLowerCase();
-    const user = await db.prepare("SELECT * FROM users WHERE email = ?").get(normalizedEmail) as any;
+    const user = await db.prepare("SELECT * FROM users WHERE email = ?").get(normalizedEmail) as AuthUserRow | undefined;
 
     if (!user) {
       return NextResponse.json({ error: "Account not found. Please sign up first." }, { status: 404 });

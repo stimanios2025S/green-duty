@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { X, ChevronLeft, ChevronRight, MoreHorizontal, Send, Music2, Check, Trash2, Flag, Link2, CheckCircle2 } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, MoreHorizontal, Send, Music2, Check, Trash2, Flag, Link2 } from "lucide-react";
 import { InstaAvatar } from "./InstaAvatar";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
-import { MUSIC_TRACKS, playTrack, stopMusic, unlockAudio } from "@/lib/instagro-music";
+import { playTrack, unlockAudio } from "@/lib/instagro-music";
 
 interface Props {
   startIndex: number;
@@ -94,9 +94,10 @@ export function StoryViewer({ startIndex, onClose }: Props) {
     const isVideo = !!story.mediaUrl && (story.mediaUrl.startsWith("data:video") || story.mediaUrl.includes("commondatastorage"));
     const durationMs = isVideo ? MAX_STORY_MS : AUTO_ADVANCE_MS;
     const start = Date.now();
-    setProgress(0);
     let raf = 0;
+    let cancelled = false;
     const tick = () => {
+      if (cancelled) return;
       const elapsed = Date.now() - start;
       const pct = Math.min(100, (elapsed / durationMs) * 100);
       setProgress(pct);
@@ -104,7 +105,10 @@ export function StoryViewer({ startIndex, onClose }: Props) {
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
   }, [idx, story, goNext]);
 
   // Music per story (real MP3 — play by URL if saved, else by catalog id)

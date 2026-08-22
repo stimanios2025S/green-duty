@@ -38,6 +38,17 @@ interface ChatMessage {
   createdAt: string;
 }
 
+interface IncomingCallData {
+  call: {
+    id: string;
+    type: "audio" | "video";
+    status: string;
+    caller_id?: string;
+    callee_id?: string;
+  };
+  peer: ApiUser;
+}
+
 const ECO_REACTIONS = ["🌱", "🤝", "💧", "🔥", "🌿", "❤️"];
 const MAX_SNAP_MB = 2.5;
 
@@ -55,7 +66,7 @@ export default function MessagesPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<Conversation | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mediaTypeRef = useRef<"image" | "video">("image");
+  const [mediaType, setMediaType] = useState<"image" | "video">("image");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [replyTarget, setReplyTarget] = useState<ChatMessage | null>(null);
   const [recording, setRecording] = useState(false);
@@ -72,7 +83,7 @@ export default function MessagesPage() {
   const typingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMsgCountRef = useRef(0);
   const [activeCall, setActiveCall] = useState<{ id: string; type: "audio" | "video"; role: "caller" | "callee" } | null>(null);
-  const [incomingCall, setIncomingCall] = useState<{ call: any; peer: ApiUser } | null>(null);
+  const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(null);
 
   useEffect(() => { activeRef.current = active; }, [active]);
 
@@ -98,12 +109,14 @@ export default function MessagesPage() {
     return () => clearInterval(t);
   }, [user, router, loadConversations]);
 
+  const activeConversation = active ?? (searchParams.get("conv") ? conversations.find(c => c.id === searchParams.get("conv")) ?? null : null);
+
   // Live-poll the active thread
   useEffect(() => {
-    if (!active || !user) return;
+    if (!activeConversation || !user) return;
     const poll = async () => {
       try {
-        const res = await fetch(`/api/chat/messages?conversationId=${encodeURIComponent(active.id)}&userId=${encodeURIComponent(user.id)}`);
+        const res = await fetch(`/api/chat/messages?conversationId=${encodeURIComponent(activeConversation.id)}&userId=${encodeURIComponent(user.id)}`);
         const d = await res.json().catch(() => ({}));
         if (d.messages) {
           // Browser notification + sound when a NEW incoming message arrives
@@ -114,7 +127,7 @@ export default function MessagesPage() {
             const m = d.messages[now - 1];
             try {
               if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-                new Notification("💬 " + (active.otherUser?.name || "New message"), { body: m.text || "New message", icon: "/logo.png" });
+                new Notification("💬 " + (activeConversation.otherUser?.name || "New message"), { body: m.text || "New message", icon: "/logo.png" });
               }
             } catch {}
             try { const a = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFb2hkaWJycGxycHh6eHh4d3h4eHh5eHl5eXp6e3t8fX1+f3+AgYGCg4OEhIWFhYaGh4eIiImJioqKi4uMjIyNjY2Ojo+PkJCQkZGRkpKSk5OTlJSUlZWVlpaWl5eXmJiYmZmZmpqam5ubnJycnZ2dnp6en5+foKCgoaGhoqKio6OjpKSkpaWlpqamp6enqKioqampqqqqq6urrKysra2trq6ur6+vsLCwsbGxsrKys7OztLS0tbW1tra2t7e3uLi4ubm5urq6u7u7vLy8vb29vr6+v7+/wMDAwcHBwsLCw8PDxMTExcXFxsbGx8fHyMjIycnJysrKy8vLzMzMzc3Nzs7Oz8/P0NDQ0dHR0tLS09PT1NTU1dXV1tbW19fX2NjY2dnZ2tra29vb3Nzc3d3d3t7e39/f4ODg4eHh4uLi4+Pj5OTk5eXl5ubm5+fn6Ojo6enp6urq6+vr7Ozs7e3t7u7u7+/v8PDw8fHx8vLy8/Pz9PT09fX19vb29/f3+Pj4+fn5+vr6+/v7/Pz8/f39/v7+/w=="); a.volume = 0.4; a.play().catch(() => {}); } catch {}
@@ -131,10 +144,10 @@ export default function MessagesPage() {
 
   // Typing indicator: poll who's typing in the active thread
   useEffect(() => {
-    if (!active || !user) return;
+    if (!activeConversation || !user) return;
     const poll = async () => {
       try {
-        const res = await fetch(`/api/chat/typing?conversationId=${encodeURIComponent(active.id)}&userId=${encodeURIComponent(user.id)}`);
+        const res = await fetch(`/api/chat/typing?conversationId=${encodeURIComponent(activeConversation.id)}&userId=${encodeURIComponent(user.id)}`);
         const d = await res.json().catch(() => ({}));
         setTypingUsers(d.typing || []);
       } catch {}
@@ -151,10 +164,10 @@ export default function MessagesPage() {
       try {
         const res = await fetch(`/api/chat/calls?userId=${encodeURIComponent(user.id)}`);
         const d = await res.json().catch(() => ({}));
-        const ringing = (d.calls || []).find((c: any) => c.status === "ringing" && c.callee_id === user.id);
+        const ringing = (d.calls || []).find((c: IncomingCallData["call"]) => c.status === "ringing" && c.callee_id === user.id);
         if (ringing && !incomingCall) {
           // find the caller's user
-          const caller = suggestions.find(s => s.id === ringing.caller_id) || active?.otherUser;
+          const caller = suggestions.find(s => s.id === ringing.caller_id) || activeConversation?.otherUser;
           if (caller) setIncomingCall({ call: ringing, peer: caller });
         }
       } catch {}
@@ -193,14 +206,14 @@ export default function MessagesPage() {
   const send = async (opts?: { mediaUrl?: string; mediaType?: string; text?: string }) => {
     const isLocation = opts?.mediaType === "location";
     if (!draft.trim() && !opts?.mediaUrl && !isLocation) return;
-    if (!active || !user) return;
+    if (!activeConversation || !user) return;
     const bodyText = opts?.text || draft.trim() || (isLocation ? "📍 Location" : undefined);
     setSending(true);
     try {
       await fetch("/api/chat/messages", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          conversationId: active.id, senderId: user.id,
+          conversationId: activeConversation.id, senderId: user.id,
           text: bodyText,
           mediaUrl: isLocation ? null : opts?.mediaUrl, mediaType: isLocation ? "location" : opts?.mediaType,
           replyTo: replyTarget?.id,
@@ -211,7 +224,7 @@ export default function MessagesPage() {
         text: bodyText || "",
         mediaUrl: isLocation ? null : opts?.mediaUrl || null,
         mediaType: isLocation ? "location" : opts?.mediaType || null,
-        replyTo: replyTarget?.id || null, reactions: {}, vanish: active.vanish,
+        replyTo: replyTarget?.id || null, reactions: {}, vanish: activeConversation.vanish,
         fromMe: true, createdAt: new Date().toISOString(),
       }]);
       setDraft(""); setReplyTarget(null);
@@ -283,14 +296,14 @@ export default function MessagesPage() {
 
   // Vanish toggle
   const toggleVanish = async () => {
-    if (!active || !user) return;
-    const on = !active.vanish;
+    if (!activeConversation || !user) return;
+    const on = !activeConversation.vanish;
     await fetch("/api/chat/vanish", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId: active.id, userId: user.id, on }),
+      body: JSON.stringify({ conversationId: activeConversation.id, userId: user.id, on }),
     });
     setActive(a => a ? { ...a, vanish: on } : a);
-    setConversations(cs => cs.map(c => c.id === active.id ? { ...c, vanish: on } : c));
+    setConversations(cs => cs.map(c => c.id === activeConversation.id ? { ...c, vanish: on } : c));
   };
 
   // Group creation
@@ -306,30 +319,19 @@ export default function MessagesPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, active]);
-
-  // Auto-open from ?conv=
-  useEffect(() => {
-    if (!user) return;
-    const convParam = searchParams.get("conv");
-    if (convParam && conversations.length > 0) {
-      const c = conversations.find(x => x.id === convParam);
-      if (c) openConversation(c);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversations, searchParams, user]);
+  }, [messages, activeConversation]);
 
   // Broadcast typing (throttled)
   const broadcastTyping = (isTyping: boolean) => {
-    if (!active || !user) return;
+    if (!activeConversation || !user) return;
     fetch("/api/chat/typing", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId: active.id, userId: user.id, isTyping }),
+      body: JSON.stringify({ conversationId: activeConversation.id, userId: user.id, isTyping }),
     }).catch(() => {});
   };
   const onDraftChange = (v: string) => {
     setDraft(v);
-    if (v.trim() && active && user) {
+    if (v.trim() && activeConversation && user) {
       if (!typingRef.current) {
         broadcastTyping(true);
         typingRef.current = setTimeout(() => { broadcastTyping(false); typingRef.current = null; }, 3000);
@@ -339,10 +341,10 @@ export default function MessagesPage() {
 
   // Start a call
   const startCall = async (type: "audio" | "video") => {
-    if (!active || !user || active.type !== "direct" || !active.otherUser) return;
+    if (!activeConversation || !user || activeConversation.type !== "direct" || !activeConversation.otherUser) return;
     const res = await fetch("/api/chat/calls", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId: active.id, callerId: user.id, calleeId: active.otherUser.id, type }),
+      body: JSON.stringify({ conversationId: activeConversation.id, callerId: user.id, calleeId: activeConversation.otherUser.id, type }),
     });
     const d = await res.json().catch(() => ({}));
     if (d.callId) setActiveCall({ id: d.callId, type, role: "caller" });
@@ -350,7 +352,6 @@ export default function MessagesPage() {
 
   const renderMessage = (m: ChatMessage) => {
     const replied = m.replyTo ? messages.find(x => x.id === m.replyTo) : null;
-    const myReaction = user ? Object.entries(m.reactions).find(([, us]) => us.includes(user.id))?.[0] : undefined;
     return (
       <div key={m.id} className={`flex ${m.fromMe ? "justify-end" : "justify-start"} group`}>
         <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${m.fromMe ? "rounded-br-md bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse" : "rounded-bl-md bg-gd-elevated text-gd-text-primary"}`}>
@@ -446,7 +447,7 @@ export default function MessagesPage() {
               </div>
             ) : (
               conversations.map(c => (
-                <button key={c.id} onClick={() => openConversation(c)} className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${active?.id === c.id ? "bg-gd-elevated" : "hover:bg-gd-elevated/50"}`}>
+                <button key={c.id} onClick={() => openConversation(c)} className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${activeConversation?.id === c.id ? "bg-gd-elevated" : "hover:bg-gd-elevated/50"}`}>
                   <div className="relative">
                     {c.type === "group" ? (
                       <div className="flex h-[52px] w-[52px] flex-col items-center justify-center rounded-full bg-gd-accent-500/15 text-gd-accent-400">
@@ -477,8 +478,8 @@ export default function MessagesPage() {
         </div>
 
         {/* ── Thread ── */}
-        <div className={`flex-1 flex-col ${active ? "flex" : "hidden md:flex"}`}>
-          {!active ? (
+        <div className={`flex-1 flex-col ${activeConversation ? "flex" : "hidden md:flex"}`}>
+          {!activeConversation ? (
             <div className="flex flex-1 flex-col items-center justify-center text-center">
               <div className="flex h-20 w-20 items-center justify-center rounded-full border border-gd-border-strong bg-gd-elevated">
                 <MessageCircle className="h-8 w-8 text-gd-text-muted" />
@@ -493,29 +494,29 @@ export default function MessagesPage() {
                 <button onClick={() => setActive(null)} className="rounded-lg p-1.5 text-gd-text-secondary hover:bg-gd-elevated md:hidden">
                   <ArrowLeft className="h-5 w-5" />
                 </button>
-                {active.type === "direct" ? (
-                  <Link href={`/feed/${active.otherUser?.username}`}>
-                    <InstaAvatar user={active.otherUser!} size={40} />
+                {activeConversation.type === "direct" ? (
+                  <Link href={`/feed/${activeConversation.otherUser?.username}`}>
+                    <InstaAvatar user={activeConversation.otherUser!} size={40} />
                   </Link>
                 ) : (
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gd-accent-500/15 text-gd-accent-400"><Users className="h-5 w-5" /></div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <Link href={active.type === "direct" ? `/feed/${active.otherUser?.username}` : "#"} className="block truncate text-sm font-semibold text-gd-text-primary hover:opacity-80">
-                    {active.type === "direct" ? active.otherUser?.username : active.name}
+                  <Link href={activeConversation.type === "direct" ? `/feed/${activeConversation.otherUser?.username}` : "#"} className="block truncate text-sm font-semibold text-gd-text-primary hover:opacity-80">
+                    {activeConversation.type === "direct" ? activeConversation.otherUser?.username : activeConversation.name}
                   </Link>
                   <p className="flex items-center gap-1 text-xs">
                     {typingUsers.length > 0 ? (
                       <span className="text-gd-olive-400">typing<span className="animate-pulse">…</span></span>
                     ) : active.streak > 0 ? (
-                      <><span>{active.streakEmoji}</span> <span className="text-gd-accent-400">{streakLabel(active.streak)}</span></>
+                      <><span>{activeConversation.streakEmoji}</span> <span className="text-gd-accent-400">{streakLabel(activeConversation.streak)}</span></>
                     ) : (
                       <span className="text-gd-text-muted">Active now</span>
                     )}
                   </p>
                 </div>
                 {/* Call buttons */}
-                {active.type === "direct" && (
+                {activeConversation.type === "direct" && (
                   <>
                     <button onClick={() => startCall("audio")} className="rounded-lg p-2 text-gd-text-secondary hover:bg-gd-elevated hover:text-gd-text-primary" title="Voice call">
                       <Phone className="h-5 w-5" />
@@ -526,8 +527,8 @@ export default function MessagesPage() {
                   </>
                 )}
                 {/* Vanish toggle */}
-                <button onClick={toggleVanish} className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all ${active.vanish ? "border-gd-danger/30 bg-gd-danger/10 text-gd-danger" : "border-gd-border text-gd-text-secondary hover:border-gd-border-strong"}`} title="Vanish mode (Snapchat-style)">
-                  ⏳ {active.vanish ? "Vanish ON" : "Vanish"}
+                <button onClick={toggleVanish} className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all ${activeConversation.vanish ? "border-gd-danger/30 bg-gd-danger/10 text-gd-danger" : "border-gd-border text-gd-text-secondary hover:border-gd-border-strong"}`} title="Vanish mode (Snapchat-style)">
+                  ⏳ {activeConversation.vanish ? "Vanish ON" : "Vanish"}
                 </button>
                 <button className="rounded-lg p-1.5 text-gd-text-secondary hover:bg-gd-elevated"><MoreHorizontal className="h-5 w-5" /></button>
               </div>
@@ -552,10 +553,10 @@ export default function MessagesPage() {
               <div className="border-t border-gd-border px-4 py-3">
                 <div className="flex items-center gap-1.5">
                   {/* Snap media */}
-                  <button onClick={() => { mediaTypeRef.current = "image"; fileInputRef.current?.click(); }} className="rounded-full p-2 text-gd-text-muted hover:bg-gd-elevated hover:text-gd-text-primary" title="Send photo">
+                  <button onClick={() => { setMediaType("image"); fileInputRef.current?.click(); }} className="rounded-full p-2 text-gd-text-muted hover:bg-gd-elevated hover:text-gd-text-primary" title="Send photo">
                     <ImageIcon className="h-5 w-5" />
                   </button>
-                  <button onClick={() => { mediaTypeRef.current = "video"; fileInputRef.current?.click(); }} className="rounded-full p-2 text-gd-text-muted hover:bg-gd-elevated hover:text-gd-text-primary" title="Send video">
+                  <button onClick={() => { setMediaType("video"); fileInputRef.current?.click(); }} className="rounded-full p-2 text-gd-text-muted hover:bg-gd-elevated hover:text-gd-text-primary" title="Send video">
                     <Video className="h-5 w-5" />
                   </button>
                   <button onClick={recording ? stopRecording : startRecording} className={`rounded-full p-2 transition-colors ${recording ? "bg-gd-danger/15 text-gd-danger" : "text-gd-text-muted hover:bg-gd-elevated hover:text-gd-text-primary"}`} title="Voice note">
@@ -568,7 +569,7 @@ export default function MessagesPage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept={mediaTypeRef.current === "image" ? "image/*" : "video/*"}
+                    accept={mediaType === "image" ? "image/*" : "video/*"}
                     className="hidden"
                     onChange={e => handleSnapFile(e.target.files?.[0])}
                   />
@@ -580,7 +581,7 @@ export default function MessagesPage() {
                       value={draft}
                       onChange={e => onDraftChange(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") { send(); broadcastTyping(false); } }}
-                      placeholder={active.vanish ? "Message (will vanish)..." : "Message..."}
+                      placeholder={activeConversation.vanish ? "Message (will vanish)..." : "Message..."}
                       className="flex-1 rounded-full border border-gd-border bg-gd-elevated px-4 py-2 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40"
                     />
                   )}
@@ -649,10 +650,10 @@ export default function MessagesPage() {
       )}
 
       {/* Active call (caller or answered callee) */}
-      {activeCall && active?.otherUser && (
+      {activeCall && activeConversation?.otherUser && (
         <CallOverlay
-          conversationId={active.id}
-          peer={active.otherUser}
+          conversationId={activeConversation.id}
+          peer={activeConversation.otherUser}
           callType={activeCall.type}
           role={activeCall.role}
           callId={activeCall.id}

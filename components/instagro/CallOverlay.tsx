@@ -15,6 +15,16 @@ interface Props {
   incoming: boolean;
 }
 
+interface ChatCallPayload {
+  id: string;
+  status: string;
+  sdp_offer?: string | null;
+  sdp_answer?: string | null;
+  caller_id?: string;
+  callee_id?: string;
+  [key: string]: unknown;
+}
+
 /**
  * Robust ICE config for CROSS-NETWORK calls:
  *  - Multiple STUN servers (Google, Cloudflare, Open Relay) for common NAT
@@ -49,7 +59,19 @@ export function CallOverlay({ conversationId, peer, callType, role, callId, onEn
   const seenCandidatesRef = useRef<Set<string>>(new Set());
   const acceptedRef = useRef(false);
 
-  const api = (path: string, opts: any) => fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const api = (path: string, opts: RequestInit = {}) => {
+    const headers = new Headers(opts.headers ?? {});
+    headers.set("Content-Type", "application/json");
+    return fetch(path, { ...opts, headers });
+  };
+
+  const endCall = useCallback(async () => {
+    try { await api("/api/chat/calls", { method: "PATCH", body: JSON.stringify({ callId, action: "end", userId: user?.id }) }); } catch {}
+    pcRef.current?.close();
+    localStreamRef.current?.getTracks().forEach(t => t.stop());
+    setStatus("ended");
+    onEnd();
+  }, [callId, user, onEnd]);
 
   const sendCandidate = useCallback((candidate: RTCIceCandidate) => {
     api("/api/chat/calls/candidates", {
@@ -98,7 +120,7 @@ export function CallOverlay({ conversationId, peer, callType, role, callId, onEn
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
           setError("Connection lost. The call has ended.");
-          endCall();
+          void endCall();
         }
       };
       return pc;
@@ -106,15 +128,7 @@ export function CallOverlay({ conversationId, peer, callType, role, callId, onEn
       setError("Couldn't access your camera/microphone.");
       return null;
     }
-  }, [callType, sendCandidate]);
-
-  const endCall = useCallback(async () => {
-    try { await api("/api/chat/calls", { method: "PATCH", body: JSON.stringify({ callId, action: "end", userId: user?.id }) }); } catch {}
-    pcRef.current?.close();
-    localStreamRef.current?.getTracks().forEach(t => t.stop());
-    setStatus("ended");
-    onEnd();
-  }, [callId, user?.id, onEnd]);
+  }, [callType, endCall, sendCandidate]);
 
   // Caller flow: setup → create offer → poll for acceptance → answer → active
   useEffect(() => {
@@ -131,8 +145,8 @@ export function CallOverlay({ conversationId, peer, callType, role, callId, onEn
         // poll for the callee's answer
         const pollAnswer = async () => {
           const res = await fetch(`/api/chat/calls?userId=${user?.id}`);
-          const d = await res.json();
-          const call = (d.calls || []).find((c: any) => c.id === callId);
+          const d = await res.json() as { calls?: ChatCallPayload[] };
+          const call = (d.calls || []).find((c: ChatCallPayload) => c.id === callId);
           if (call?.status === "accepted" && call.sdp_answer) {
             if (!acceptedRef.current) {
               acceptedRef.current = true;
@@ -159,8 +173,8 @@ export function CallOverlay({ conversationId, peer, callType, role, callId, onEn
     if (!pc) return;
     try {
       const res = await fetch(`/api/chat/calls?userId=${user?.id}`);
-      const d = await res.json();
-      const call = (d.calls || []).find((c: any) => c.id === callId);
+      const d = await res.json() as { calls?: ChatCallPayload[] };
+      const call = (d.calls || []).find((c: ChatCallPayload) => c.id === callId);
       if (call?.sdp_offer) {
         await pc.setRemoteDescription(JSON.parse(call.sdp_offer));
         const answer = await pc.createAnswer();

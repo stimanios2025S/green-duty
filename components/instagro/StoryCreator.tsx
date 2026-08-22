@@ -1,10 +1,11 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { X, Camera, Image as ImageIcon, ChevronLeft, Check, Star, UserPlus2, Loader2, Music2 } from "lucide-react";
 import { useInsta } from "@/lib/instagro-store";
 import { useAuth } from "@/lib/auth-context";
 import { InstaAvatar } from "./InstaAvatar";
-import { MediaEditor } from "./MediaEditor";
+import { MediaEditor, type TextOverlay } from "./MediaEditor";
 import { MusicPicker } from "./MusicPicker";
 import { previewTrack, stopPreview } from "@/lib/instagro-music";
 
@@ -58,7 +59,7 @@ export function StoryCreator({ onClose }: Props) {
   const [mode, setMode] = useState<Mode>("gallery");
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
-  const [editing, setEditing] = useState<{ mediaUrl: string; texts: any[]; musicId: string | null; musicUrl?: string | null; musicName?: string | null } | null>(null);
+  const [editing, setEditing] = useState<{ mediaUrl: string; texts: TextOverlay[]; musicId: string | null; musicUrl?: string | null; musicName?: string | null } | null>(null);
   const [caption, setCaption] = useState("");
   const [error, setError] = useState("");
   const [publishing, setPublishing] = useState(false);
@@ -108,7 +109,7 @@ export function StoryCreator({ onClose }: Props) {
 
   /** Permission-gated in-app device photo browser (Chrome/Edge File System Access API) */
   const browseDevicePhotos = async () => {
-    const w = window as any;
+    const w = window as Window & { showDirectoryPicker?: (options: { mode: "read" }) => Promise<{ values: () => AsyncIterable<{ kind: string; name: string; getFile: () => Promise<File> }> }> };
     if (w.showDirectoryPicker) {
       try {
         const dir = await w.showDirectoryPicker({ mode: "read" });
@@ -130,8 +131,8 @@ export function StoryCreator({ onClose }: Props) {
           return;
         }
         setError("No photos found in that folder.");
-      } catch (e: any) {
-        if (e?.name === "AbortError") return; // user cancelled the permission
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === "AbortError") return; // user cancelled the permission
         setError("Couldn't access that folder. Try 'Select from device' instead.");
       }
       return;
@@ -221,7 +222,7 @@ export function StoryCreator({ onClose }: Props) {
     setStep("edit");
   };
 
-  const handleEditNext = useCallback((result: { mediaUrl: string; texts: any[]; musicId: string | null; musicUrl?: string | null; musicName?: string | null }) => {
+  const handleEditNext = useCallback((result: { mediaUrl: string; texts: TextOverlay[]; musicId: string | null; musicUrl?: string | null; musicName?: string | null }) => {
     setEditing(result);
     setStep("share");
   }, []);
@@ -234,7 +235,7 @@ export function StoryCreator({ onClose }: Props) {
     });
   };
 
-  const publishStory = async (target: "story" | "close" | "send") => {
+  const publishStory = async (_target: "story" | "close" | "send") => {
     if (!editing) return;
     setPublishing(true);
     setError("");
@@ -339,7 +340,7 @@ export function StoryCreator({ onClose }: Props) {
                     <div className="mb-5 grid grid-cols-4 gap-2">
                       {devicePhotos.map((p, i) => (
                         <button key={i} onClick={() => pickDevicePhoto(p.url)} className="aspect-square overflow-hidden rounded-lg border border-gd-border hover:border-gd-accent-500/50 transition-colors">
-                          <img src={p.url} alt="device photo" className="h-full w-full object-cover" />
+                          <Image src={p.url} alt="device photo" width={200} height={200} className="h-full w-full object-cover" unoptimized />
                         </button>
                       ))}
                     </div>
@@ -361,7 +362,7 @@ export function StoryCreator({ onClose }: Props) {
                     Open file picker
                   </button>
                   <p className="text-center text-[11px] text-gd-text-muted">
-                    On Chrome/Edge, "Select from device" asks permission to browse your photos inside the app.
+                    On Chrome/Edge, Select from device asks permission to browse your photos inside the app.
                   </p>
                 </div>
               </div>

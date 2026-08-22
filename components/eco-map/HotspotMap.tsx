@@ -25,6 +25,11 @@ interface ApiHotspot {
   created_at: string;
 }
 
+interface ExistingCleanupEvent {
+  id: string;
+  hotspotId: string;
+}
+
 // Custom dark-styled markers (Leaflet needs explicit icons)
 const severityColors: Record<string, string> = {
   low: "#22C55E", moderate: "#EAB308", severe: "#F97316", critical: "#EF4444",
@@ -103,8 +108,8 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
     try {
       let eventId: string | null = null;
       const listRes = await fetch("/api/cleanup?userId=" + encodeURIComponent(user.id));
-      const listData = await listRes.json().catch(() => ({ events: [] }));
-      const existing = (listData.events || []).find((e: any) => e.hotspotId === selected.id);
+      const listData = await listRes.json().catch(() => ({ events: [] as ExistingCleanupEvent[] }));
+      const existing = (listData.events || []).find((event: ExistingCleanupEvent) => event.hotspotId === selected.id);
       if (existing) {
         eventId = existing.id;
       } else {
@@ -139,23 +144,6 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
     } catch {}
   };
 
-  // Click-handler component
-  function MapClick() {
-    useMapEvents({
-      click(e) {
-        // Open the report modal pre-filled with the clicked coordinates
-        window.dispatchEvent(new CustomEvent("gd:report-at", { detail: { lat: e.latlng.lat, lng: e.latlng.lng } }));
-      },
-    });
-    return null;
-  }
-
-  function MapController() {
-    const map = useMap();
-    useEffect(() => { mapRef.current = map; }, [map]);
-    return null;
-  }
-
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* ── REAL INTERACTIVE MAP ── */}
@@ -168,7 +156,7 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
             className="h-full w-full z-0"
             style={{ background: "#0b0b0f" }}
           >
-            <MapController />
+            <MapController setMapRef={mapRef} />
             <MapClick />
             {/* Real OpenStreetMap tiles */}
             <TileLayer
@@ -279,18 +267,25 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
         </div>
       </div>
 
-      {/* ── Detail modal ── */}
-      {selected && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={() => setSelected(null)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-            <div className="w-full max-w-lg rounded-2xl bg-gd-card border border-gd-border-soft p-6 shadow-2xl shadow-black/40" onClick={e => e.stopPropagation()}>
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gd-text-primary">{selected.title}</h3>
-                  <p className="text-sm text-gd-text-muted mt-0.5">{selected.address || "Unknown location"}</p>
-                  {selected.lat && selected.lng && (
-                    <p className="text-xs text-gd-text-muted mt-0.5">📍 {selected.lat.toFixed(5)}, {selected.lng.toFixed(5)}</p>
+      {joinEvent && <CleanupJoinModal eventId={joinEvent.id} title={joinEvent.title} onClose={() => setJoinEvent(null)} />}
+    </div>
+  );
+}
+
+function MapClick() {
+  useMapEvents({
+    click(e) {
+      window.dispatchEvent(new CustomEvent("gd:report-at", { detail: { lat: e.latlng.lat, lng: e.latlng.lng } }));
+    },
+  });
+  return null;
+}
+
+function MapController({ setMapRef }: { setMapRef: React.MutableRefObject<L.Map | null> }) {
+  const map = useMap();
+  useEffect(() => { setMapRef.current = map; }, [map, setMapRef]);
+  return null;
+}
                   )}
                 </div>
                 <button onClick={() => setSelected(null)} className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-secondary hover:bg-gd-elevated transition-colors">

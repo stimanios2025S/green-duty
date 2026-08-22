@@ -3,6 +3,15 @@ import bcrypt from "bcryptjs";
 import { getDb } from "@/lib/db";
 import { publicUser } from "@/lib/auth-helpers";
 
+interface AuthUserRow {
+  id: string;
+  password: string;
+  verified: number | boolean;
+  email: string;
+  name: string;
+  [key: string]: unknown;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -12,7 +21,7 @@ export async function POST(req: Request) {
     }
 
     const db = await getDb();
-    const user = await db.prepare("SELECT * FROM users WHERE email = ?").get(email.trim().toLowerCase()) as any;
+    const user = await db.prepare("SELECT * FROM users WHERE email = ?").get(email.trim().toLowerCase()) as AuthUserRow | undefined;
 
     if (!user) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });

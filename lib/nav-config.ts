@@ -1,12 +1,12 @@
 import {
-  Leaf, LayoutDashboard, ShoppingBag, MapPin, BookOpen, Trees, Briefcase, Package, Truck, Building2
+  Leaf, LayoutDashboard, ShoppingBag, MapPin, BookOpen, Trees, Briefcase, Package, Truck, Building2, type LucideIcon
 } from "lucide-react";
 import type { AccountType } from "@/types";
 
 export interface NavItem {
   href: string;
   label: string;
-  icon: any;
+  icon: LucideIcon;
 }
 
 export const ALL_TABS: NavItem[] = [

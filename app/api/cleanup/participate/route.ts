@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { sendParticipantNotification } from "@/lib/email";
 
+interface CleanupEventRow {
+  id: string;
+  title: string;
+}
+
 // POST /api/cleanup/participate
 // A viewer fills the professional participation form (first + family name,
 // phone / email, optional message) → they are added to the cleanup signups
@@ -19,7 +24,7 @@ export async function POST(req: Request) {
     }
 
     const d = await getDb();
-    const event = await d.prepare("SELECT id, title FROM cleanup_events WHERE id = ?").get(eventId) as any;
+    const event = await d.prepare("SELECT id, title FROM cleanup_events WHERE id = ?").get(eventId) as CleanupEventRow | undefined;
     if (!event) return NextResponse.json({ error: "Cleanup event not found." }, { status: 404 });
 
     if (userId) {

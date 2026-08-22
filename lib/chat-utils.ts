@@ -30,7 +30,7 @@ export async function recomputeStreak(conversationId: string): Promise<{ streak:
   const d = await getDb();
   const rows = await d.prepare(
     "SELECT DISTINCT substr(created_at, 1, 10) as day FROM messages WHERE conversation_id = ? ORDER BY day ASC"
-  ).all(conversationId) as any[];
+  ).all(conversationId) as Array<{ day: string }>;
 
   if (!rows.length) return { streak: 0, streakTrees: 0 };
 
@@ -65,7 +65,7 @@ export async function recomputeStreak(conversationId: string): Promise<{ streak:
 /** Milestone trees earned fresh since the last save (for adding to the counter) */
 export async function applyStreakTrees(userId: string, conversationId: string, streakTrees: number): Promise<void> {
   const d = await getDb();
-  const conv = await d.prepare("SELECT streak_trees FROM conversations WHERE id = ?").get(conversationId) as any;
+  const conv = await d.prepare("SELECT streak_trees FROM conversations WHERE id = ?").get(conversationId) as { streak_trees?: number | null } | undefined;
   const prev = Number(conv?.streak_trees || 0);
   if (streakTrees <= prev) return;
   const added = streakTrees - prev;

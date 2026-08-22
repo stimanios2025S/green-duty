@@ -23,8 +23,8 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
       duration: 1400,
       easing: "easeOutExpo",
       round: 1,
-      update: (a: any) => {
-        const v = Math.round(a.animations[0].currentValue);
+      update: (animation: { animations: Array<{ currentValue: number }> }) => {
+        const v = Math.round(animation.animations[0].currentValue);
         el.textContent = v.toLocaleString();
       },
     });
@@ -35,12 +35,29 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
 
 export function HeroSection() {
   const [stats, setStats] = useState<Stats | null>(null);
-  const [reduced, setReduced] = useState(false);
+  const mediaQuery = typeof window !== "undefined" ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+  const [reduced, setReduced] = useState(() => mediaQuery?.matches ?? false);
   const headlineRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    fetch("/api/stats").then(r => (r.ok ? r.json() : null)).then(d => d && setStats(d)).catch(() => {});
+    if (!mediaQuery) return;
+    const handleChange = () => setReduced(mediaQuery.matches);
+    handleChange();
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [mediaQuery]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/stats")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (!cancelled && d) setStats(d as Stats);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Staggered word reveal for the headline

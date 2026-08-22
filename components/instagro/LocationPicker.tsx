@@ -25,20 +25,44 @@ export function LocationPicker({ value, onSelect, onClose }: Props) {
   // Debounced real search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.trim().length < 2) { setResults([]); return; }
-    setSearching(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/geocode?q=${encodeURIComponent(query.trim())}`);
-        const data = await res.json();
-        setResults(data.results || []);
-      } catch {
+    let active = true;
+    const normalized = query.trim();
+
+    if (normalized.length < 2) {
+      const fallback = window.setTimeout(() => {
+        if (!active) return;
         setResults([]);
-      } finally {
         setSearching(false);
-      }
+      }, 0);
+      return () => {
+        active = false;
+        clearTimeout(fallback);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+      };
+    }
+
+    debounceRef.current = window.setTimeout(() => {
+      if (!active) return;
+      setSearching(true);
+      void (async () => {
+        try {
+          const res = await fetch(`/api/geocode?q=${encodeURIComponent(normalized)}`);
+          const data = await res.json() as { results?: GeoResult[] };
+          if (!active) return;
+          setResults(data.results || []);
+        } catch {
+          if (!active) return;
+          setResults([]);
+        } finally {
+          if (active) setSearching(false);
+        }
+      })();
     }, 400);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+
+    return () => {
+      active = false;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [query]);
 
   const useMyLocation = () => {
@@ -146,7 +170,7 @@ export function LocationPicker({ value, onSelect, onClose }: Props) {
             )}
 
             {query.trim().length >= 2 && !searching && results.length === 0 && (
-              <p className="px-3 py-4 text-center text-sm text-gd-text-muted">No places found for "{query}".</p>
+              <p className="px-3 py-4 text-center text-sm text-gd-text-muted">No places found for &quot;{query}&quot;.</p>
             )}
           </div>
         </div>

@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 
+interface CallRow {
+  id: string;
+  caller_id: string;
+  callee_id: string;
+  status: string;
+  sdp_offer?: string | null;
+  sdp_answer?: string | null;
+  [key: string]: unknown;
+}
+
 // POST /api/chat/calls {conversationId, callerId, calleeId, type} → start a ringing call
 export async function POST(req: Request) {
   try {
@@ -45,7 +55,7 @@ export async function PATCH(req: Request) {
     const { callId, action, userId, sdpOffer, sdpAnswer } = await req.json();
     if (!callId || !action) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     const d = await getDb();
-    const call = await d.prepare("SELECT * FROM calls WHERE id = ?").get(callId) as any;
+    const call = await d.prepare("SELECT * FROM calls WHERE id = ?").get(callId) as CallRow | undefined;
     if (!call) return NextResponse.json({ error: "Call not found." }, { status: 404 });
     const now = new Date().toISOString();
 

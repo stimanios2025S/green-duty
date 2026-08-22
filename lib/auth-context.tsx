@@ -38,34 +38,29 @@ async function postJson(url: string, body: unknown) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  let json: any = {};
-  try { json = await res.json(); } catch {}
+  let json: Record<string, unknown> = {};
+  try { json = await res.json() as Record<string, unknown>; } catch {}
   return { res, json };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
-  const [verifyMode, setVerifyMode] = useState<"email" | "console" | "failed" | null>(null);
-  const [fallbackCode, setFallbackCode] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
+  const [user, setUser] = useState<User | null>(() => {
     try {
       const raw = localStorage.getItem("gd_user");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && parsed.id) setUser(parsed);
-      }
-      // Pending verification now lives in localStorage so a refresh/new tab
-      // doesn't lose it (was the cause of the signup loop).
-      setPendingEmail(localStorage.getItem("gd_pending_email"));
-      const mode = localStorage.getItem("gd_verify_mode") as "email" | "console" | "failed" | null;
-      setVerifyMode(mode);
-      setFallbackCode(localStorage.getItem("gd_fallback_code"));
-    } catch {}
-    setIsLoading(false);
-  }, []);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<User> | null;
+      return parsed?.id ? (parsed as User) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [pendingEmail, setPendingEmail] = useState<string | null>(() => typeof window !== "undefined" ? localStorage.getItem("gd_pending_email") : null);
+  const [verifyMode, setVerifyMode] = useState<"email" | "console" | "failed" | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("gd_verify_mode") as "email" | "console" | "failed" | null;
+  });
+  const [fallbackCode, setFallbackCode] = useState<string | null>(() => typeof window !== "undefined" ? localStorage.getItem("gd_fallback_code") : null);
+  const [isLoading] = useState(false);
 
   const persist = useCallback((u: User | null) => {
     setUser(u);

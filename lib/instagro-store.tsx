@@ -4,21 +4,27 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "./auth-context";
 import { ApiPost, ApiStory, ApiUser } from "./instagro-api";
 
+interface CreatePostInput {
+  type: "article" | "video" | "image";
+  title?: string; excerpt?: string; content?: string; tags?: string[];
+  coverEmoji?: string; coverGradient?: string;
+  videoUrl?: string; mediaUrl?: string; duration?: string; caption?: string; location?: string;
+  likesHidden?: boolean; commentsDisabled?: boolean; musicId?: string | null;
+  musicUrl?: string | null; musicName?: string | null;
+}
+
+interface CreateStoryInput {
+  emoji?: string; gradient?: string; caption?: string; mediaUrl?: string; musicId?: string | null; musicUrl?: string | null; musicName?: string | null; texts?: Array<{ id: string; text: string; x: number; y: number; size: number; color: string }>;
+}
+
 interface InstaStoreValue {
   posts: ApiPost[];
   stories: ApiStory[];
   suggestions: ApiUser[];
   loading: boolean;
   refresh: () => Promise<void>;
-  createPost: (input: {
-    type: "article" | "video" | "image";
-    title?: string; excerpt?: string; content?: string; tags?: string[];
-    coverEmoji?: string; coverGradient?: string;
-    videoUrl?: string; mediaUrl?: string; duration?: string; caption?: string; location?: string;
-    likesHidden?: boolean; commentsDisabled?: boolean; musicId?: string | null;
-    musicUrl?: string | null; musicName?: string | null;
-  }) => Promise<{ ok: boolean; error?: string }>;
-  createStory: (input: { emoji?: string; gradient?: string; caption?: string; mediaUrl?: string; musicId?: string | null; musicUrl?: string | null; musicName?: string | null; texts?: any[] }) => Promise<boolean>;
+  createPost: (input: CreatePostInput) => Promise<{ ok: boolean; error?: string }>;
+  createStory: (input: CreateStoryInput) => Promise<boolean>;
   toggleLike: (postId: string) => Promise<void>;
   toggleSave: (postId: string) => void;
   addComment: (postId: string, text: string) => Promise<void>;
@@ -50,7 +56,7 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
       const q = user?.id ? `?viewerId=${encodeURIComponent(user.id)}` : "";
       const res = await fetch(`/api/instagro/feed${q}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as { posts?: ApiPost[]; stories?: ApiStory[]; suggestions?: ApiUser[] };
         setPosts(data.posts || []);
         setStories(data.stories || []);
         setSuggestions(data.suggestions || []);
@@ -60,11 +66,16 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void refresh();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [refresh]);
 
-  const createPost = useCallback(async (input: any): Promise<{ ok: boolean; error?: string }> => {
+  const createPost = useCallback(async (input: CreatePostInput): Promise<{ ok: boolean; error?: string }> => {
     if (!user) return { ok: false, error: "You need to sign in first." };
     try {
       const res = await fetch("/api/instagro/posts", {
@@ -85,7 +96,7 @@ export function InstaGroProvider({ children }: { children: ReactNode }) {
     }
   }, [user, refresh, handleAuthError]);
 
-  const createStory = useCallback(async (input: any) => {
+  const createStory = useCallback(async (input: CreateStoryInput) => {
     if (!user) return false;
     const res = await fetch("/api/instagro/stories", {
       method: "POST",

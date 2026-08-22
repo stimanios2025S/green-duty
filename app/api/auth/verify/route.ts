@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { publicUser } from "@/lib/auth-helpers";
 
+interface AuthUserRow {
+  id: string;
+  verified: number | boolean;
+  verification_expires?: number | null;
+  verification_code?: string | null;
+  email: string;
+  [key: string]: unknown;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -11,7 +20,7 @@ export async function POST(req: Request) {
     }
 
     const db = await getDb();
-    const user = await db.prepare("SELECT * FROM users WHERE email = ?").get(email.trim().toLowerCase()) as any;
+    const user = await db.prepare("SELECT * FROM users WHERE email = ?").get(email.trim().toLowerCase()) as AuthUserRow | undefined;
 
     if (!user) {
       return NextResponse.json({ error: "Account not found. Please sign up first." }, { status: 404 });
@@ -28,7 +37,7 @@ export async function POST(req: Request) {
 
     // Activate the account
     await db.prepare("UPDATE users SET verified = 1, verification_code = NULL, verification_expires = NULL WHERE id = ?").run(user.id);
-    const updated = await db.prepare("SELECT * FROM users WHERE id = ?").get(user.id) as any;
+    const updated = await db.prepare("SELECT * FROM users WHERE id = ?").get(user.id) as AuthUserRow | undefined;
 
     return NextResponse.json({ ok: true, user: publicUser(updated) });
   } catch (err) {
