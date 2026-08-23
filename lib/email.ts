@@ -1,7 +1,8 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const API_KEY = process.env.RESEND_API_KEY;
-const FROM = process.env.EMAIL_FROM || "GreenDuty <onboarding@resend.dev>";
+const GMAIL_USER = process.env.GMAIL_USER || "";
+const GMAIL_PASS = process.env.GMAIL_PASS || "";
+const FROM = process.env.EMAIL_FROM || `GreenDuty <${GMAIL_USER}>`;
 /** Organizer's inbox — new cleanup participants & donation contacts land here */
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
 
@@ -13,31 +14,27 @@ export interface EmailResult {
 }
 
 /**
- * Sends the verification code to ANY email address the user signs up with.
- *
- * - `email`   → delivered via Resend (works for everyone once a verified
- *                domain is configured in Resend).
- * - `console` → no RESEND_API_KEY set; code printed to the server terminal.
- * - `failed`  → Resend rejected the send (e.g. sandbox only delivers to the
- *                account owner's address). The account is still created and
- *                the code is returned as a temporary fallback so the flow
- *                never dead-ends. Fix = verify your domain in Resend.
+ * Sends the verification code to ANY email address via Gmail SMTP.
  *
  * This NEVER throws — email delivery must never block account creation.
  */
 export async function sendVerificationEmail(to: string, code: string): Promise<EmailResult> {
-  if (!API_KEY) {
+  if (!GMAIL_USER || !GMAIL_PASS) {
     console.log("\n──────────────────────────────────────────────");
     console.log(`  [GreenDuty] Verification code for ${to}`);
     console.log(`  >>> ${code} <<<`);
-    console.log("  (Set RESEND_API_KEY in .env.local to send real emails)");
+    console.log("  (Set GMAIL_USER and GMAIL_PASS in .env.local to send real emails)");
     console.log("──────────────────────────────────────────────\n");
     return { mode: "console" };
   }
 
   try {
-    const resend = new Resend(API_KEY);
-    const { data, error } = await resend.emails.send({
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+    });
+
+    await transporter.sendMail({
       from: FROM,
       to,
       subject: "Verify your GreenDuty account",
@@ -60,18 +57,8 @@ export async function sendVerificationEmail(to: string, code: string): Promise<E
       `,
     });
 
-    if (error) {
-      console.error("\n[GreenDuty] ⚠️  Email delivery FAILED:");
-      console.error(`  To: ${to}`);
-      console.error(`  Reason: ${error.message || "Unknown error"}`);
-      console.error("  → Resend sandbox only delivers to YOUR registered email.");
-      console.error("  → To send to everyone, verify a domain: resend.com → Domains → Add → follow DNS steps, then set EMAIL_FROM in .env.local");
-      console.error("──────────────────────────────────────────────\n");
-      return { mode: "failed" };
-    }
-
-    console.log(`[GreenDuty] ✅ Verification email sent to ${to} (id: ${data?.id})`);
-    return { mode: "email", messageId: data?.id };
+    console.log(`[GreenDuty] ✅ Verification email sent to ${to}`);
+    return { mode: "email" };
   } catch (err) {
     console.error("[GreenDuty] Email exception:", err);
     return { mode: "failed" };
@@ -106,18 +93,22 @@ export async function sendParticipantNotification(details: ParticipantDetails): 
     console.log("──────────────────────────────────────────────\n");
     return { mode: "console" };
   }
-  if (!API_KEY) {
+  if (!GMAIL_USER || !GMAIL_PASS) {
     console.log("\n──────────────────────────────────────────────");
     console.log(`  [GreenDuty] New cleanup participant for ${to}`);
     console.log(`  ${details.firstName} ${details.lastName} joined "${details.eventTitle}"`);
-    console.log("  (Set RESEND_API_KEY to send real emails)");
+    console.log("  (Set GMAIL_USER and GMAIL_PASS to send real emails)");
     console.log("──────────────────────────────────────────────\n");
     return { mode: "console" };
   }
 
   try {
-    const resend = new Resend(API_KEY);
-    const { data, error } = await resend.emails.send({
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+    });
+
+    await transporter.sendMail({
       from: FROM,
       to,
       subject: `🧹 New participant: ${details.firstName} ${details.lastName} — ${details.eventTitle}`,
@@ -150,12 +141,8 @@ export async function sendParticipantNotification(details: ParticipantDetails): 
       `,
     });
 
-    if (error) {
-      console.error("[GreenDuty] Participant email FAILED:", error.message);
-      return { mode: "failed" };
-    }
-    console.log(`[GreenDuty] ✅ Participant notification sent to ${to} (id: ${data?.id})`);
-    return { mode: "email", messageId: data?.id };
+    console.log(`[GreenDuty] ✅ Participant notification sent to ${to}`);
+    return { mode: "email" };
   } catch (err) {
     console.error("[GreenDuty] Participant email exception:", err);
     return { mode: "failed" };
