@@ -313,8 +313,8 @@ export function MediaEditor({ mediaUrl, mediaType, onNext, onBack, nextLabel = "
         <MusicPicker
           currentId={musicId || undefined}
           onSelect={t => {
-            if (t) { setMusicId(t.id); setMusicUrl(t.url); setMusicName(t.name); previewTrack(t.url); setPlaying(true); }
-            else { setMusicId(null); setMusicUrl(null); setMusicName(""); stopPreview(); setPlaying(false); }
+            if (t) { setMusicId(t.id); setMusicUrl(t.url); setMusicName(t.name); previewTrack(t.url); }
+            else { setMusicId(null); setMusicUrl(null); setMusicName(""); stopPreview(); }
             setMusicPickerOpen(false);
           }}
           onClose={() => setMusicPickerOpen(false)}

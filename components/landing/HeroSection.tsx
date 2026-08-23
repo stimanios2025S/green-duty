@@ -23,7 +23,7 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
       duration: 1400,
       easing: "easeOutExpo",
       round: 1,
-      update: (animation: { animations: Array<{ currentValue: number }> }) => {
+      update: (animation: any) => {
         const v = Math.round(animation.animations[0].currentValue);
         el.textContent = v.toLocaleString();
       },

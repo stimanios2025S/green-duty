@@ -73,14 +73,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** Step 1 — create account → server hashes password, stores in SQLite, emails the code */
   const signup = useCallback(async (data: SignupData) => {
     const { res, json } = await postJson("/api/auth/signup", data);
-    if (!res.ok) throw new Error(json.error || "Signup failed");
-    setPendingEmail(json.email);
-    setVerifyMode(json.mode);
-    setFallbackCode(json.fallbackCode || null);
+    if (!res.ok) throw new Error((json.error as string) || "Signup failed");
+    setPendingEmail(json.email as string);
+    setVerifyMode(json.mode as "email" | "console" | "failed");
+    setFallbackCode((json.fallbackCode as string) || null);
     try {
-      localStorage.setItem("gd_pending_email", json.email);
-      localStorage.setItem("gd_verify_mode", json.mode || "email");
-      if (json.fallbackCode) localStorage.setItem("gd_fallback_code", json.fallbackCode);
+      localStorage.setItem("gd_pending_email", json.email as string);
+      localStorage.setItem("gd_verify_mode", (json.mode as string) || "email");
+      if (json.fallbackCode) localStorage.setItem("gd_fallback_code", json.fallbackCode as string);
       else localStorage.removeItem("gd_fallback_code");
     } catch {}
   }, []);
@@ -89,8 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verify = useCallback(async (code: string) => {
     if (!pendingEmail) return { ok: false, error: "No pending verification." };
     const { res, json } = await postJson("/api/auth/verify", { email: pendingEmail, code });
-    if (!res.ok) return { ok: false, error: json.error || "Verification failed." };
-    persist(json.user);
+    if (!res.ok) return { ok: false, error: (json.error as string) || "Verification failed." };
+    persist(json.user as User | null);
     setPendingEmail(null);
     setVerifyMode(null);
     setFallbackCode(null);
@@ -105,12 +105,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resendCode = useCallback(async () => {
     if (!pendingEmail) return { ok: false, error: "No pending verification." };
     const { res, json } = await postJson("/api/auth/resend", { email: pendingEmail });
-    if (!res.ok) return { ok: false, error: json.error || "Failed to resend." };
-    setVerifyMode(json.mode);
-    setFallbackCode(json.fallbackCode || null);
+    if (!res.ok) return { ok: false, error: (json.error as string) || "Failed to resend." };
+    setVerifyMode(json.mode as "email" | "console" | "failed");
+    setFallbackCode((json.fallbackCode as string) || null);
     try {
-      localStorage.setItem("gd_verify_mode", json.mode || "email");
-      if (json.fallbackCode) localStorage.setItem("gd_fallback_code", json.fallbackCode);
+      localStorage.setItem("gd_verify_mode", (json.mode as string) || "email");
+      if (json.fallbackCode) localStorage.setItem("gd_fallback_code", json.fallbackCode as string);
       else localStorage.removeItem("gd_fallback_code");
     } catch {}
     return { ok: true };
@@ -120,14 +120,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const { res, json } = await postJson("/api/auth/login", { email, password });
     if (!res.ok) {
-      if (json.needsVerification) {
-        setPendingEmail(json.email);
-        try { localStorage.setItem("gd_pending_email", json.email); } catch {}
-        return { ok: false, error: json.error, needsVerification: true };
+      if (json.needsVerification as boolean) {
+        setPendingEmail(json.email as string);
+        try { localStorage.setItem("gd_pending_email", json.email as string); } catch {}
+        return { ok: false, error: json.error as string, needsVerification: true };
       }
-      return { ok: false, error: json.error || "Login failed." };
+      return { ok: false, error: (json.error as string) || "Login failed." };
     }
-    persist(json.user);
+    persist(json.user as User | null);
     return { ok: true };
   }, [persist]);
 

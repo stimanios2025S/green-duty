@@ -24,6 +24,8 @@ interface StatsPayload {
   orders?: number;
   inquiries?: number;
   verifiedUsers?: number;
+  deliveredOrders?: number;
+  openOrders?: number;
 }
 
 /* ── Live platform stats hook (real DB aggregates from /api/stats) ── */

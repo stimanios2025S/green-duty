@@ -170,7 +170,7 @@ export async function serializePost(row: PostRow, viewerId?: string): Promise<Ap
   const likes = await d.prepare("SELECT COUNT(*) as c FROM post_likes WHERE post_id = ?").get(row.id);
   const likedRow = viewerId ? await d.prepare("SELECT 1 FROM post_likes WHERE post_id = ? AND user_id = ?").get(row.id, viewerId) : undefined;
 
-  const commentRows = await d.prepare("SELECT * FROM comments WHERE post_id = ? ORDER BY created_at ASC").all(row.id) as CommentRow[];
+  const commentRows = await d.prepare("SELECT * FROM comments WHERE post_id = ? ORDER BY created_at ASC").all(row.id) as unknown as CommentRow[];
   const comments: ApiComment[] = [];
   for (const c of commentRows) {
     const cu = await d.prepare("SELECT * FROM users WHERE id = ?").get(c.user_id) as UserRow | undefined;

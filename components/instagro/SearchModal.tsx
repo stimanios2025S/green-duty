@@ -18,7 +18,7 @@ export function SearchModal({ isOpen, onClose }: Props) {
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [hashtags, setHashtags] = useState<{ tag: string; count: number }[]>([]);
   const [loading, setLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

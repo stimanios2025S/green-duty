@@ -39,9 +39,16 @@ yarn-error.log*
 # local database
 /data
 
+# scratch / deploy script
+deploy.ps1
+eslint-full.txt
+eslint-report.txt
+lint.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
 .vercel
 .env*
+.env*.local

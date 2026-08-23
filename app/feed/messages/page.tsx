@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { Suspense, useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MessageCircle, Send, ArrowLeft, Loader2, MoreHorizontal, Plus, ImageIcon, Video, Mic, MapPin, Check, X, Users, Flame, Smile, Pause, Play, Phone, PhoneOff, Bell } from "lucide-react";
@@ -52,7 +52,7 @@ interface IncomingCallData {
 const ECO_REACTIONS = ["🌱", "🤝", "💧", "🔥", "🌿", "❤️"];
 const MAX_SNAP_MB = 2.5;
 
-export default function MessagesPage() {
+function MessagesContent() {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -508,7 +508,7 @@ export default function MessagesPage() {
                   <p className="flex items-center gap-1 text-xs">
                     {typingUsers.length > 0 ? (
                       <span className="text-gd-olive-400">typing<span className="animate-pulse">…</span></span>
-                    ) : active.streak > 0 ? (
+                    ) : (active?.streak ?? 0) > 0 ? (
                       <><span>{activeConversation.streakEmoji}</span> <span className="text-gd-accent-400">{streakLabel(activeConversation.streak)}</span></>
                     ) : (
                       <span className="text-gd-text-muted">Active now</span>
@@ -711,5 +711,17 @@ export default function MessagesPage() {
         </button>
       )}
     </div>
+  );
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-gd-text-muted" />
+      </div>
+    }>
+      <MessagesContent />
+    </Suspense>
   );
 }

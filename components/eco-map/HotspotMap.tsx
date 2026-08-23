@@ -267,7 +267,55 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
         </div>
       </div>
 
-      {joinEvent && <CleanupJoinModal eventId={joinEvent.id} title={joinEvent.title} onClose={() => setJoinEvent(null)} />}
+      {/* ── Selected hotspot detail ── */}
+      {selected && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setSelected(null)} />
+          <div className="fixed inset-x-4 top-[10vh] z-50 mx-auto max-w-lg rounded-2xl border border-gd-border bg-gd-card p-5 shadow-2xl">
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="text-lg font-bold text-gd-text-primary">{selected.title}</h3>
+              <button onClick={() => setSelected(null)} className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-secondary hover:bg-gd-elevated transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-sm text-gd-text-secondary mb-4 leading-relaxed">{selected.description}</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: severityColors[selected.severity] + "22", color: severityColors[selected.severity] }}>{selected.severity.toUpperCase()}</span>
+              <span className="rounded-full bg-gd-elevated px-3 py-1 text-xs font-medium text-gd-text-secondary border border-gd-border">{selected.pollution_type.replace(/_/g, " ")}</span>
+              <span className="rounded-full bg-gd-info/10 px-3 py-1 text-xs font-medium text-gd-info border border-gd-info/20">{statusLabel(selected.status)}</span>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gd-border pt-3">
+              <span className="text-xs text-gd-text-muted">{new Date(selected.created_at).toLocaleDateString()} · {selected.upvotes} upvotes</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (selected.lat && selected.lng && mapRef.current) {
+                      mapRef.current.flyTo([selected.lat, selected.lng], 15, { duration: 1 });
+                      setSelected(null);
+                    }
+                  }}
+                  className="rounded-xl border border-gd-border px-4 py-2 text-xs font-semibold text-gd-text-secondary hover:bg-gd-elevated transition-all"
+                >
+                  View on map
+                </button>
+                <button
+                  onClick={joinCleanup}
+                  className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2 text-xs font-semibold text-gd-text-inverse hover:brightness-110 transition-all"
+                >
+                  Join Cleanup
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <CleanupJoinModal
+        isOpen={!!joinEvent}
+        onClose={() => setJoinEvent(null)}
+        onJoined={() => setJoinEvent(null)}
+        event={joinEvent}
+      />
     </div>
   );
 }
@@ -285,53 +333,4 @@ function MapController({ setMapRef }: { setMapRef: React.MutableRefObject<L.Map 
   const map = useMap();
   useEffect(() => { setMapRef.current = map; }, [map, setMapRef]);
   return null;
-}
-                  )}
-                </div>
-                <button onClick={() => setSelected(null)} className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-secondary hover:bg-gd-elevated transition-colors">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <p className="text-sm text-gd-text-secondary mb-4 leading-relaxed">{selected.description}</p>
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: severityColors[selected.severity] + "22", color: severityColors[selected.severity] }}>{selected.severity.toUpperCase()}</span>
-                <span className="rounded-full bg-gd-elevated px-3 py-1 text-xs font-medium text-gd-text-secondary border border-gd-border">{selected.pollution_type.replace(/_/g, " ")}</span>
-                <span className="rounded-full bg-gd-info/10 px-3 py-1 text-xs font-medium text-gd-info border border-gd-info/20">{statusLabel(selected.status)}</span>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gd-border pt-3">
-                <span className="text-xs text-gd-text-muted">{new Date(selected.created_at).toLocaleDateString()} · {selected.upvotes} upvotes</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      if (selected.lat && selected.lng && mapRef.current) {
-                        mapRef.current.flyTo([selected.lat, selected.lng], 15, { duration: 1 });
-                        setSelected(null);
-                      }
-                    }}
-                    className="rounded-xl border border-gd-border px-4 py-2 text-xs font-semibold text-gd-text-secondary hover:bg-gd-elevated transition-all"
-                  >
-                    View on map
-                  </button>
-                  <button
-                    onClick={joinCleanup}
-                    className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2 text-xs font-semibold text-gd-text-inverse hover:brightness-110 transition-all"
-                  >
-                    Join Cleanup
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Participation form — name + contacts, organizer notified by email */}
-      <CleanupJoinModal
-        isOpen={!!joinEvent}
-        onClose={() => setJoinEvent(null)}
-        onJoined={() => setJoinEvent(null)}
-        event={joinEvent}
-      />
-    </div>
-  );
 }

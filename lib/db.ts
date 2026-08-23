@@ -1,4 +1,3 @@
-import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
 import { createClient } from "@libsql/client";
@@ -313,7 +312,8 @@ function createTursoDb(client: ReturnType<typeof createClient>): Db {
 }
 
 /** Local SQLite adapter (node:sqlite wrapped in async) */
-function createLocalDb(): Db {
+async function createLocalDb(): Promise<Db> {
+  const { DatabaseSync } = await import("node:sqlite");
   const dbDir = path.join(process.cwd(), "data");
   fs.mkdirSync(dbDir, { recursive: true });
   const raw = new DatabaseSync(path.join(dbDir, "greenduty.db"));
@@ -401,7 +401,7 @@ export async function getDb(): Promise<Db> {
     db = createTursoDb(client);
   } else {
     console.log("[db] Using local SQLite file");
-    db = createLocalDb();
+    db = await createLocalDb();
   }
   await migrate(db);
   return db;

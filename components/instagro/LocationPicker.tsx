@@ -20,7 +20,7 @@ export function LocationPicker({ value, onSelect, onClose }: Props) {
   const [results, setResults] = useState<GeoResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [geoState, setGeoState] = useState<"idle" | "locating" | "done" | "denied">("idle");
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceRef = useRef<number | null>(null);
 
   // Debounced real search
   useEffect(() => {

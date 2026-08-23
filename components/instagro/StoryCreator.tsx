@@ -149,7 +149,7 @@ export function StoryCreator({ onClose }: Props) {
       return new Promise(resolve => {
         const reader = new FileReader();
         reader.onload = () => {
-          const img = new Image();
+          const img = document.createElement("img");
           img.onload = () => {
             const scale = Math.min(1, 1200 / Math.max(img.width, img.height));
             const w = Math.round(img.width * scale);

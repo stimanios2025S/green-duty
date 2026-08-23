@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, type DbUser } from "@/lib/db";
 import { publicUser } from "@/lib/auth-helpers";
 
 interface AuthUserRow {
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Account not found. Please sign up first." }, { status: 404 });
     }
     if (user.verified) {
-      return NextResponse.json({ ok: true, alreadyVerified: true, user: publicUser(user) });
+      return NextResponse.json({ ok: true, alreadyVerified: true, user: publicUser(user as unknown as DbUser) });
     }
     if (Date.now() > (user.verification_expires || 0)) {
       return NextResponse.json({ error: "This code has expired. Request a new one." }, { status: 400 });
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     await db.prepare("UPDATE users SET verified = 1, verification_code = NULL, verification_expires = NULL WHERE id = ?").run(user.id);
     const updated = await db.prepare("SELECT * FROM users WHERE id = ?").get(user.id) as AuthUserRow | undefined;
 
-    return NextResponse.json({ ok: true, user: publicUser(updated) });
+    return NextResponse.json({ ok: true, user: publicUser(updated as unknown as DbUser) });
   } catch (err) {
     console.error("[verify]", err);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });

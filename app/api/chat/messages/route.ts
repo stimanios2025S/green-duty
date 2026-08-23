@@ -120,7 +120,7 @@ export async function POST(req: Request) {
           .run("n_" + Math.random().toString(36).slice(2, 10), otherId, `💬 ${senderName}`, preview, "message", new Date().toISOString());
       }
     } else {
-      const members = await d.prepare("SELECT user_id FROM conversation_members WHERE conversation_id = ? AND user_id != ?").all(conversationId, senderId) as MemberRow[];
+      const members = await d.prepare("SELECT user_id FROM conversation_members WHERE conversation_id = ? AND user_id != ?").all(conversationId, senderId) as unknown as MemberRow[];
       for (const m of members) {
         await d.prepare("INSERT INTO notifications (id, user_id, title, message, type, read, created_at) VALUES (?,?,?,?,?,0,?)")
           .run("n_" + Math.random().toString(36).slice(2, 10), m.user_id, `💬 ${senderName} (${conv.name})`, preview, "message", new Date().toISOString());

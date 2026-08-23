@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     const cutoff = new Date(Date.now() - TYPING_TTL_MS).toISOString();
     const rows = await d.prepare(
       "SELECT user_id FROM typing_status WHERE conversation_id = ? AND user_id != ? AND typing_at > ?"
-    ).all(conversationId, userId, cutoff) as TypingRow[];
+    ).all(conversationId, userId, cutoff) as unknown as TypingRow[];
     return NextResponse.json({ typing: rows.map(r => r.user_id) });
   } catch (err) {
     console.error("[chat/typing GET]", err);

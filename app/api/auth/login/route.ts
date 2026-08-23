@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getDb } from "@/lib/db";
+import { getDb, type DbUser } from "@/lib/db";
 import { publicUser } from "@/lib/auth-helpers";
 
 interface AuthUserRow {
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ user: publicUser(user) });
+    return NextResponse.json({ user: publicUser(user as unknown as DbUser) });
   } catch (err) {
     console.error("[login]", err);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });

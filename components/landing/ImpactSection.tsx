@@ -100,7 +100,7 @@ export function ImpactSection() {
         {/* Live data readout */}
         <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
           {[
-            { icon: <Leaf className="h-3.5 w-3.5" />, text: `${stats ? (stats.trees * 48).toLocaleString() : "—"} lbs CO₂ absorbed / year` },
+            { icon: <Leaf className="h-3.5 w-3.5" />, text: `${stats ? ((stats.trees ?? 0) * 48).toLocaleString() : "—"} lbs CO₂ absorbed / year` },
             { icon: <MapPin className="h-3.5 w-3.5" />, text: `${stats?.hotspotsResolved || 0} hotspots resolved` },
             { icon: <Users className="h-3.5 w-3.5" />, text: `${stats?.users || 0} community members` },
           ].map((b, i) => (

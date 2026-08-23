@@ -27,7 +27,7 @@ export function MusicPicker({ onSelect, onClose, currentId }: Props) {
   const [albumTracks, setAlbumTracks] = useState<AlbumTrack[]>([]);
   const [albumLoading, setAlbumLoading] = useState(false);
   const [albumMeta, setAlbumMeta] = useState<{ albumId: string; albumImage: string; albumName: string; artistName: string } | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceRef = useRef<number | null>(null);
 
   /** Load all tracks of a Deezer album so the user can pick the exact morceau */
   const expandAlbum = async (t: MusicTrack) => {

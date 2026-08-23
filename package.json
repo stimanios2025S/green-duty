@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
-    "@prisma/client": "^7.9.1",
     "animejs": "^3.2.2",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",

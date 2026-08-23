@@ -63,7 +63,7 @@ export async function GET(req: Request) {
         id: c.id,
         type: "direct",
         name: other.name,
-        otherUser: await apiUserFromRow(other),
+        otherUser: await apiUserFromRow(other as any),
         lastMessage: lastMsg ? { text: lastMsg.text || (lastMsg.media_type === "image" ? "📷 Photo" : lastMsg.media_type === "video" ? "🎬 Video" : lastMsg.media_type === "audio" ? "🎤 Voice note" : lastMsg.media_type === "location" ? "📍 Location" : ""), fromMe: lastMsg.sender_id === userId, createdAt: lastMsg.created_at } : null,
         unread: Number((unread as any)?.c || 0),
         streak: Number(c.streak || 0),
@@ -76,11 +76,11 @@ export async function GET(req: Request) {
     // Group chats
     for (const c of groupRows) {
       const lastMsg = await d.prepare("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 1").get(c.id) as MessageRow | undefined;
-      const members = await d.prepare("SELECT user_id FROM conversation_members WHERE conversation_id = ?").all(c.id) as MemberRow[];
+      const members = await d.prepare("SELECT user_id FROM conversation_members WHERE conversation_id = ?").all(c.id) as unknown as MemberRow[];
       const memberUsers = [];
       for (const m of members.slice(0, 3)) {
         const u = await d.prepare("SELECT * FROM users WHERE id = ?").get(m.user_id);
-        if (u) memberUsers.push(await apiUserFromRow(u));
+        if (u) memberUsers.push(await apiUserFromRow(u as any));
       }
       const unread = await d.prepare("SELECT COUNT(*) as c FROM messages WHERE conversation_id = ? AND sender_id != ? AND read = 0").get(c.id, userId);
       conversations.push({

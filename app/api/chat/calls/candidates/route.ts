@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     const d = await getDb();
     const rows = await d.prepare(
       "SELECT user_id, candidate FROM call_candidates WHERE call_id = ? AND user_id != ? ORDER BY created_at ASC"
-    ).all(callId, userId) as CandidateRow[];
+    ).all(callId, userId) as unknown as CandidateRow[];
     return NextResponse.json({ candidates: rows.map(r => ({ userId: r.user_id, candidate: JSON.parse(r.candidate as string) })) });
   } catch (err) {
     console.error("[chat/calls/candidates]", err);
