@@ -4,8 +4,8 @@
 @theme inline {
   --color-background: var(--gd-base);
   --color-foreground: var(--gd-text-primary);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 
   /* ── Surfaces (dark monochrome, subtle warm-green undertone) ── */
   --color-gd-deepest:  #060608;
