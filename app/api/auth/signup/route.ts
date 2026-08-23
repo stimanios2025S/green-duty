@@ -31,17 +31,30 @@ export async function POST(req: Request) {
     const db = await getDb();
     const normalizedEmail = email.trim().toLowerCase();
 
-    // ── Duplicate check ──
-    const existing = await db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
+    // ── Check for existing account ──
+    const existing = await db.prepare("SELECT id, verified FROM users WHERE email = ?").get(normalizedEmail) as { id: string; verified: number } | undefined;
+
     if (existing) {
-      return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
+      // If already verified → tell them to log in
+      if (existing.verified) {
+        return NextResponse.json({ error: "An account with this email already exists. Please log in." }, { status: 409 });
+      }
+
+      // If unverified → resend code automatically (no error)
+      const code = generateCode();
+      const expires = Date.now() + 10 * 60 * 1000;
+      await db.prepare("UPDATE users SET verification_code = ?, verification_expires = ?, name = ? WHERE id = ?")
+        .run(code, expires, name.trim(), existing.id);
+
+      const { mode } = await sendVerificationEmail(normalizedEmail, code);
+      return NextResponse.json({ id: existing.id, email: normalizedEmail, mode, ...(mode !== "email" && mode !== "console" ? { fallbackCode: code } : {}) }, { status: 200 });
     }
 
-    // ── Create account (unverified) + generate code ──
+    // ── Create new account ──
     const id = generateId();
     const hash = await bcrypt.hash(password, 10);
     const code = generateCode();
-    const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const expires = Date.now() + 10 * 60 * 1000;
 
     await db.prepare(`
       INSERT INTO users
@@ -64,12 +77,9 @@ export async function POST(req: Request) {
       new Date().toISOString()
     );
 
-    // ── Send the real verification email (never blocks account creation) ──
     const { mode } = await sendVerificationEmail(normalizedEmail, code);
 
-    // If delivery failed, return the code as a temporary fallback so the
-    // user can still activate their account (fix: verify domain in Resend).
-    if (mode === "failed") {
+    if (mode !== "email" && mode !== "console") {
       return NextResponse.json({ id, email: normalizedEmail, mode, fallbackCode: code }, { status: 201 });
     }
     return NextResponse.json({ id, email: normalizedEmail, mode }, { status: 201 });

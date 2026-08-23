@@ -1,9 +1,9 @@
+import { Resend } from "resend";
 import nodemailer from "nodemailer";
 
+const RESEND_KEY = process.env.RESEND_API_KEY || "";
 const GMAIL_USER = process.env.GMAIL_USER || "";
 const GMAIL_PASS = process.env.GMAIL_PASS || "";
-const FROM = process.env.EMAIL_FROM || `GreenDuty <${GMAIL_USER}>`;
-/** Organizer's inbox — new cleanup participants & donation contacts land here */
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
 
 export type EmailMode = "email" | "console" | "failed";
@@ -13,63 +13,80 @@ export interface EmailResult {
   messageId?: string;
 }
 
+const VERIFY_HTML = (code: string) => `
+<div style="background:#0b0b0f;padding:32px;font-family:Arial,sans-serif">
+  <div style="max-width:440px;margin:0 auto;background:#131318;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:32px">
+    <p style="font-size:20px;font-weight:bold;color:#22c55e;margin:0 0 8px">GreenDuty</p>
+    <h1 style="color:#f4f4f5;font-size:18px;margin:0 0 16px">Verify your email address</h1>
+    <p style="color:#a1a1aa;font-size:14px;line-height:1.6;margin:0 0 24px">
+      Use the code below to activate your GreenDuty account. It expires in 10 minutes.
+    </p>
+    <div style="background:#22222b;border-radius:12px;padding:20px;text-align:center;letter-spacing:8px;font-size:28px;font-weight:bold;color:#22c55e">
+      ${code}
+    </div>
+    <p style="color:#71717a;font-size:12px;line-height:1.5;margin:24px 0 0">
+      If you didn't create this account, you can safely ignore this email.
+    </p>
+  </div>
+</div>`;
+
 /**
- * Sends the verification code to ANY email address via Gmail SMTP.
- *
- * This NEVER throws — email delivery must never block account creation.
+ * Sends verification email using Resend API (HTTP — works on Vercel).
+ * Falls back to Gmail SMTP if Resend is not configured.
  */
 export async function sendVerificationEmail(to: string, code: string): Promise<EmailResult> {
-  if (!GMAIL_USER || !GMAIL_PASS) {
-    console.log("\n──────────────────────────────────────────────");
-    console.log(`  [GreenDuty] Verification code for ${to}`);
-    console.log(`  >>> ${code} <<<`);
-    console.log("  (Set GMAIL_USER and GMAIL_PASS in .env.local to send real emails)");
-    console.log("──────────────────────────────────────────────\n");
-    return { mode: "console" };
+  // ── Try Resend first (HTTP-based, reliable on Vercel) ──
+  if (RESEND_KEY) {
+    try {
+      const resend = new Resend(RESEND_KEY);
+      const { data, error } = await resend.emails.send({
+        from: "GreenDuty <onboarding@resend.dev>",
+        to,
+        subject: "Verify your GreenDuty account",
+        html: VERIFY_HTML(code),
+      });
+
+      if (!error) {
+        console.log(`[GreenDuty] ✅ Resend email sent to ${to} (id: ${data?.id})`);
+        return { mode: "email", messageId: data?.id };
+      }
+      console.error(`[GreenDuty] ⚠️ Resend failed for ${to}: ${error.message}`);
+      // Fall through to Gmail
+    } catch (err) {
+      console.error("[GreenDuty] Resend exception:", err);
+      // Fall through to Gmail
+    }
   }
 
-  try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
-    });
-
-    await transporter.sendMail({
-      from: FROM,
-      to,
-      subject: "Verify your GreenDuty account",
-      html: `
-        <div style="background:#0b0b0f;padding:32px;font-family:Arial,sans-serif">
-          <div style="max-width:440px;margin:0 auto;background:#131318;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:32px">
-            <p style="font-size:20px;font-weight:bold;color:#facc15;margin:0 0 8px">GreenDuty</p>
-            <h1 style="color:#f4f4f5;font-size:18px;margin:0 0 16px">Verify your email address</h1>
-            <p style="color:#a1a1aa;font-size:14px;line-height:1.6;margin:0 0 24px">
-              Use the code below to activate your GreenDuty account. It expires in 10 minutes.
-            </p>
-            <div style="background:#22222b;border-radius:12px;padding:20px;text-align:center;letter-spacing:8px;font-size:28px;font-weight:bold;color:#facc15">
-              ${code}
-            </div>
-            <p style="color:#71717a;font-size:12px;line-height:1.5;margin:24px 0 0">
-              If you didn't create this account, you can safely ignore this email.
-            </p>
-          </div>
-        </div>
-      `,
-    });
-
-    console.log(`[GreenDuty] ✅ Verification email sent to ${to}`);
-    return { mode: "email" };
-  } catch (err) {
-    console.error("[GreenDuty] Email exception:", err);
-    return { mode: "failed" };
+  // ── Fallback: Gmail SMTP ──
+  if (GMAIL_USER && GMAIL_PASS) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+      });
+      await transporter.sendMail({
+        from: `GreenDuty <${GMAIL_USER}>`,
+        to,
+        subject: "Verify your GreenDuty account",
+        html: VERIFY_HTML(code),
+      });
+      console.log(`[GreenDuty] ✅ Gmail email sent to ${to}`);
+      return { mode: "email" };
+    } catch (err) {
+      console.error(`[GreenDuty] Gmail SMTP failed for ${to}:`, err);
+    }
   }
+
+  // ── Last resort: console log ──
+  console.log("\n──────────────────────────────────────────────");
+  console.log(`  [GreenDuty] Verification code for ${to}`);
+  console.log(`  >>> ${code} <<<`);
+  console.log("──────────────────────────────────────────────\n");
+  return { mode: "console" };
 }
 
-/* ─────────────────────────────────────────────────────────────
- * Cleanup participant notification → sent to the organizer
- * (ADMIN_EMAIL env) every time someone fills the participation
- * form. Never throws — notification must never block signup.
- * ───────────────────────────────────────────────────────────── */
+/* ── Participant notification ── */
 export interface ParticipantDetails {
   eventTitle: string;
   firstName: string;
@@ -83,76 +100,51 @@ export interface ParticipantDetails {
 export async function sendParticipantNotification(details: ParticipantDetails): Promise<EmailResult> {
   const to = ADMIN_EMAIL;
   if (!to) {
-    console.log("\n──────────────────────────────────────────────");
-    console.log("  [GreenDuty] New cleanup participant (no ADMIN_EMAIL set):");
-    console.log(`  ${details.firstName} ${details.lastName}`);
-    console.log(`  Event: ${details.eventTitle}`);
-    console.log(`  Phone: ${details.phone || "—"} · Email: ${details.email || "—"}`);
-    console.log(`  Message: ${details.message || "—"}`);
-    console.log("  → Set ADMIN_EMAIL in .env.local to receive email notifications");
-    console.log("──────────────────────────────────────────────\n");
-    return { mode: "console" };
-  }
-  if (!GMAIL_USER || !GMAIL_PASS) {
-    console.log("\n──────────────────────────────────────────────");
-    console.log(`  [GreenDuty] New cleanup participant for ${to}`);
-    console.log(`  ${details.firstName} ${details.lastName} joined "${details.eventTitle}"`);
-    console.log("  (Set GMAIL_USER and GMAIL_PASS to send real emails)");
-    console.log("──────────────────────────────────────────────\n");
+    console.log(`[GreenDuty] New participant: ${details.firstName} ${details.lastName} for "${details.eventTitle}" (no ADMIN_EMAIL set)`);
     return { mode: "console" };
   }
 
-  try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
-    });
+  const PARTICIPANT_HTML = `
+<div style="background:#0b0b0f;padding:32px;font-family:Arial,sans-serif">
+  <div style="max-width:480px;margin:0 auto;background:#131318;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:32px">
+    <p style="font-size:20px;font-weight:bold;color:#84cc16;margin:0 0 4px">GreenDuty 🧹</p>
+    <h1 style="color:#f4f4f5;font-size:18px;margin:0 0 16px">Someone just joined your cleanup!</h1>
+    <div style="background:#22222b;border-radius:12px;padding:18px;margin-bottom:16px">
+      <p style="color:#a1a1aa;font-size:13px;margin:0 0 10px"><strong style="color:#facc15">Event:</strong> ${details.eventTitle}</p>
+      <p style="color:#f4f4f5;font-size:15px;margin:0 0 4px"><strong>${details.firstName} ${details.lastName}</strong></p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;color:#a1a1aa">
+        <tr><td style="padding:4px 0;color:#71717a">📞 Phone</td><td style="padding:4px 0;color:#f4f4f5">${details.phone || "—"}</td></tr>
+        <tr><td style="padding:4px 0;color:#71717a">✉️ Email</td><td style="padding:4px 0;color:#f4f4f5">${details.email || "—"}</td></tr>
+      </table>
+    </div>
+    ${details.message ? `<div style="background:#131318;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;margin-bottom:16px"><p style="color:#a1a1aa;font-size:13px;margin:0">"${details.message}"</p></div>` : ""}
+  </div>
+</div>`;
 
-    await transporter.sendMail({
-      from: FROM,
-      to,
-      subject: `🧹 New participant: ${details.firstName} ${details.lastName} — ${details.eventTitle}`,
-      html: `
-        <div style="background:#0b0b0f;padding:32px;font-family:Arial,sans-serif">
-          <div style="max-width:480px;margin:0 auto;background:#131318;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:32px">
-            <p style="font-size:20px;font-weight:bold;color:#84cc16;margin:0 0 4px">GreenDuty 🧹</p>
-            <p style="color:#71717a;font-size:12px;margin:0 0 20px">New cleanup participant notification</p>
-            <h1 style="color:#f4f4f5;font-size:18px;margin:0 0 16px">Someone just joined your cleanup!</h1>
-            <div style="background:#22222b;border-radius:12px;padding:18px;margin-bottom:16px">
-              <p style="color:#a1a1aa;font-size:13px;margin:0 0 10px"><strong style="color:#facc15">Event:</strong> ${details.eventTitle}</p>
-              <p style="color:#f4f4f5;font-size:15px;margin:0 0 4px"><strong>${details.firstName} ${details.lastName}</strong></p>
-              <p style="color:#a1a1aa;font-size:13px;margin:0 0 8px">wants to participate</p>
-              <table style="width:100%;border-collapse:collapse;font-size:13px;color:#a1a1aa">
-                <tr><td style="padding:4px 0;color:#71717a">📞 Phone</td><td style="padding:4px 0;color:#f4f4f5">${details.phone || "—"}</td></tr>
-                <tr><td style="padding:4px 0;color:#71717a">✉️ Email</td><td style="padding:4px 0;color:#f4f4f5">${details.email || "—"}</td></tr>
-                <tr><td style="padding:4px 0;color:#71717a">📅 Signup date</td><td style="padding:4px 0;color:#f4f4f5">${details.date || new Date().toLocaleDateString()}</td></tr>
-              </table>
-            </div>
-            ${details.message ? `
-              <div style="background:#131318;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;margin-bottom:16px">
-                <p style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:0 0 6px">Message</p>
-                <p style="color:#a1a1aa;font-size:13px;margin:0;line-height:1.6">"${details.message}"</p>
-              </div>` : ""}
-            <p style="color:#71717a;font-size:12px;line-height:1.6;margin:0">
-              Reach out to confirm their spot and share the meeting point. 🌱
-            </p>
-          </div>
-        </div>
-      `,
-    });
-
-    console.log(`[GreenDuty] ✅ Participant notification sent to ${to}`);
-    return { mode: "email" };
-  } catch (err) {
-    console.error("[GreenDuty] Participant email exception:", err);
-    return { mode: "failed" };
+  if (RESEND_KEY) {
+    try {
+      const resend = new Resend(RESEND_KEY);
+      const { error } = await resend.emails.send({
+        from: "GreenDuty <onboarding@resend.dev>",
+        to,
+        subject: `🧹 New participant: ${details.firstName} ${details.lastName}`,
+        html: PARTICIPANT_HTML,
+      });
+      if (!error) return { mode: "email" };
+    } catch {}
   }
+
+  if (GMAIL_USER && GMAIL_PASS) {
+    try {
+      const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: GMAIL_USER, pass: GMAIL_PASS } });
+      await transporter.sendMail({ from: `GreenDuty <${GMAIL_USER}>`, to, subject: `🧹 New participant: ${details.firstName} ${details.lastName}`, html: PARTICIPANT_HTML });
+      return { mode: "email" };
+    } catch {}
+  }
+
+  return { mode: "console" };
 }
 
-/** Contact info exposed to the client for donations (WhatsApp + email). */
 export function getContactInfo(): { whatsapp: string | null; email: string | null } {
-  return {
-    whatsapp: process.env.WHATSAPP_NUMBER || null,
-    email: ADMIN_EMAIL || null,
-  };
+  return { whatsapp: process.env.WHATSAPP_NUMBER || null, email: ADMIN_EMAIL || null };
 }

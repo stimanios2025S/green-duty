@@ -9,7 +9,7 @@ import { MailCheck, RefreshCw, ArrowLeft, CheckCircle2, Terminal } from "lucide-
 const CODE_LENGTH = 6;
 
 export default function VerifyPage() {
-  const { user, pendingEmail, verifyMode, fallbackCode, verify, resendCode } = useAuth();
+  const { user, pendingEmail, verifyMode, verify, resendCode } = useAuth();
   const router = useRouter();
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
@@ -145,33 +145,12 @@ export default function VerifyPage() {
             Enter it below to activate your account.
           </p>
 
-          {/* Console-mode notice (only shown when no email API key is configured) */}
-          {verifyMode === "console" && (
+          {/* Delivery-failed notice — tell user to check spam or try resend */}
+          {verifyMode === "failed" && (
             <div className="mt-4 flex items-start gap-2 rounded-xl border border-gd-accent-500/20 bg-gd-accent-500/5 p-3">
               <Terminal className="mt-0.5 h-4 w-4 flex-shrink-0 text-gd-accent-400" />
               <p className="text-[11px] text-gd-text-secondary leading-relaxed">
-                Email delivery isn't configured yet. The code was printed to your{" "}
-                <span className="font-mono text-gd-accent-400">server terminal</span> — add a{" "}
-                <span className="font-mono">RESEND_API_KEY</span> to{" "}
-                <span className="font-mono">.env.local</span> to send real emails.
-              </p>
-            </div>
-          )}
-
-          {/* Delivery-failed notice — temporary fallback so users can still activate */}
-          {verifyMode === "failed" && fallbackCode && (
-            <div className="mt-4 rounded-xl border border-gd-warning/30 bg-gd-warning/5 p-3">
-              <p className="text-[11px] font-semibold text-gd-warning">
-                ⚠️ The verification email couldn't be delivered right now.
-              </p>
-              <p className="mt-1 text-[11px] text-gd-text-secondary leading-relaxed">
-                Your account was created. Use this temporary code to activate it:
-              </p>
-              <p className="mt-2 text-center font-mono text-2xl font-bold tracking-[0.35em] text-gd-warning">
-                {fallbackCode}
-              </p>
-              <p className="mt-2 text-[10px] text-gd-text-muted leading-relaxed">
-                This happens when the sender isn't verified yet. The platform owner should verify a domain in Resend (Domains → Add → DNS records) so codes go straight to every inbox.
+                We couldn&apos;t deliver the email right now. Check your <span className="font-semibold text-gd-text-primary">spam folder</span> or tap <span className="font-semibold text-gd-accent-400">Resend code</span> to try again.
               </p>
             </div>
           )}
