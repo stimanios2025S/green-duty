@@ -44,6 +44,10 @@ deploy.ps1
 eslint-full.txt
 eslint-report.txt
 lint.json
+build-errors.txt
+check-tsc.ps1
+tsc-errors.txt
+.claude/
 
 # typescript
 *.tsbuildinfo
