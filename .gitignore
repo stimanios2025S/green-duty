@@ -47,7 +47,8 @@ lint.json
 build-errors.txt
 check-tsc.ps1
 tsc-errors.txt
-.claude/
+.claude
+.claude/**
 
 # typescript
 *.tsbuildinfo
