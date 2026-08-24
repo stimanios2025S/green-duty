@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/email";
 import { generateCode, generateId } from "@/lib/auth-helpers";
 
-const VALID_TYPES = ["guest", "buyer", "seller", "driver", "business"];
+const VALID_TYPES = ["guest", "buyer", "seller", "driver", "business", "farmer"];
 
 export async function POST(req: Request) {
   try {

@@ -1,5 +1,5 @@
 ﻿export type UserRole = 'guest' | 'buyer' | 'seller' | 'driver' | 'business' | 'citizen' | 'farmer' | 'agronomist' | 'ngo' | 'corporate' | 'admin';
-export type AccountType = 'guest' | 'buyer' | 'seller' | 'driver' | 'business';
+export type AccountType = 'guest' | 'buyer' | 'seller' | 'driver' | 'business' | 'farmer';
 export type SeverityLevel = 'low' | 'moderate' | 'severe' | 'critical';
 export type HotspotStatus = 'reported' | 'event_created' | 'in_progress' | 'cleaned' | 'resolved';
 export type PostStatus = 'pending' | 'certified' | 'rejected';
@@ -26,3 +26,97 @@ export interface Notification { id: string; userId: string; title: string; messa
 export interface PlatformStats { treesPlanted: number; hotspotsCleaned: number; activeFarmers: number; co2Offset: number; waterSaved: number; eventsHosted: number; certifiedPosts: number; productsSold: number; }
 export interface MapPin { id: string; lat: number; lng: number; severity: SeverityLevel; title: string; pollutionType: PollutionType; status: HotspotStatus; }
 export interface CartItem { product: Product; quantity: number; }
+
+/* ═══════════════════════════════════════════════════════
+ *  Farmer CRM Types
+ * ═══════════════════════════════════════════════════════ */
+
+export type LedgerEntryType = 'income' | 'expense';
+export type LedgerCategory =
+  | 'harvest_sale' | 'wholesale' | 'subsidy' | 'other_income'
+  | 'diesel' | 'labor' | 'seeds' | 'fertilizer' | 'pesticide' | 'equipment' | 'irrigation' | 'transport' | 'other_expense';
+export type DebtStatus = 'pending' | 'partial' | 'paid';
+export type DebtParty = 'supplier' | 'buyer';
+export type InventoryCategory = 'fertilizer' | 'pesticide' | 'seed' | 'fuel' | 'equipment' | 'other';
+export type InventoryUnit = 'kg' | 'quintal' | 'liter' | 'bag' | 'sack' | 'unit' | 'hectare';
+
+export interface LedgerEntry {
+  id: string;
+  user_id: string;
+  type: LedgerEntryType;
+  category: LedgerCategory;
+  amount: number;
+  description: string;
+  date: string;
+  debt_id?: string;
+  created_at: string;
+}
+
+export interface Debt {
+  id: string;
+  user_id: string;
+  party_type: DebtParty;
+  party_name: string;
+  amount: number;
+  paid: number;
+  status: DebtStatus;
+  description: string;
+  due_date?: string;
+  created_at: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  user_id: string;
+  name: string;
+  category: InventoryCategory;
+  quantity: number;
+  unit: InventoryUnit;
+  low_threshold: number;
+  crop_batch_id?: string;
+  created_at: string;
+}
+
+export interface InventoryTransaction {
+  id: string;
+  item_id: string;
+  user_id: string;
+  delta: number;
+  reason: string;
+  date: string;
+  created_at: string;
+}
+
+export interface CropBatch {
+  id: string;
+  user_id: string;
+  name: string;
+  crop_type: string;
+  area_hectares: number;
+  planted_date: string;
+  expected_harvest_date?: string;
+  status: 'growing' | 'harvested' | 'failed';
+  notes?: string;
+  created_at: string;
+}
+
+export interface HarvestLog {
+  id: string;
+  batch_id: string;
+  user_id: string;
+  date: string;
+  yield_kg: number;
+  price_per_kg: number;
+  sold_to?: string;
+  revenue: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface FarmerPnL {
+  total_income: number;
+  total_expenses: number;
+  net_profit: number;
+  roi: number;
+  period: string;
+}

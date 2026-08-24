@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import type { AccountType } from "@/types";
 import {
   ArrowLeft, ArrowRight, Building2, ShoppingCart, Truck, User as UserIcon,
-  BadgeCheck, MapPin, FileText, CreditCard, IdCard, Car, ShieldCheck, Check
+  BadgeCheck, MapPin, FileText, CreditCard, IdCard, Car, ShieldCheck, Check, Sprout
 } from "lucide-react";
 
 type IdType = "identity_card" | "drivers_license" | "passport";
@@ -24,6 +24,7 @@ const ROLE_OPTIONS: {
   { value: "seller", icon: Building2, title: "Seller", desc: "List products on the marketplace.", needs: "Standard account" },
   { value: "driver", icon: Truck, title: "Driver", desc: "Deliver marketplace orders.", needs: "ID Card · Driver's License · Passport" },
   { value: "business", icon: Building2, title: "Business", desc: "B2B services, corporate CSR, fleet management.", needs: "Business name & address" },
+  { value: "farmer", icon: Sprout, title: "Farmer", desc: "Track crops, harvests, expenses & inventory with the Agri-CRM.", needs: "Standard account" },
 ];
 
 export default function RegisterPage() {

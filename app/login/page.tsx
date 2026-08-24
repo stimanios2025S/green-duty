@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import type { AccountType } from "@/types";
 import {
   ArrowRight, Lock, Mail, User as UserIcon,
-  Building2, ShoppingCart, Truck, Check
+  Building2, ShoppingCart, Truck, Check, Sprout
 } from "lucide-react";
 
 const ACCOUNT_TYPES: { value: AccountType; icon: typeof UserIcon; label: string; hint: string }[] = [
@@ -15,6 +15,7 @@ const ACCOUNT_TYPES: { value: AccountType; icon: typeof UserIcon; label: string;
   { value: "seller", icon: Building2, label: "Seller", hint: "Sell on the marketplace" },
   { value: "driver", icon: Truck, label: "Driver", hint: "Deliver orders" },
   { value: "business", icon: Building2, label: "Business", hint: "B2B + CSR" },
+  { value: "farmer", icon: Sprout, label: "Farmer", hint: "Track crops & inventory" },
 ];
 
 export default function LoginPage() {

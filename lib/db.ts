@@ -275,6 +275,89 @@ const SCHEMA = `
     typing_at TEXT NOT NULL,
     PRIMARY KEY (conversation_id, user_id)
   );
+
+  /* ═══════════════════════════════════════════════
+   *  Farmer CRM Tables
+   * ═══════════════════════════════════════════════ */
+
+  CREATE TABLE IF NOT EXISTS ledger_entries (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    category TEXT NOT NULL,
+    amount REAL NOT NULL,
+    description TEXT,
+    date TEXT NOT NULL,
+    debt_id TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger_entries(user_id);
+
+  CREATE TABLE IF NOT EXISTS debts (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    party_type TEXT NOT NULL,
+    party_name TEXT NOT NULL,
+    amount REAL NOT NULL,
+    paid REAL NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending',
+    description TEXT,
+    due_date TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_debts_user ON debts(user_id);
+
+  CREATE TABLE IF NOT EXISTS inventory_items (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    quantity REAL NOT NULL DEFAULT 0,
+    unit TEXT NOT NULL,
+    low_threshold REAL NOT NULL DEFAULT 5,
+    crop_batch_id TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_inventory_user ON inventory_items(user_id);
+
+  CREATE TABLE IF NOT EXISTS inventory_transactions (
+    id TEXT PRIMARY KEY,
+    item_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    delta REAL NOT NULL,
+    reason TEXT,
+    date TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_invtx_user ON inventory_transactions(user_id);
+
+  CREATE TABLE IF NOT EXISTS crop_batches (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    crop_type TEXT NOT NULL,
+    area_hectares REAL NOT NULL,
+    planted_date TEXT NOT NULL,
+    expected_harvest_date TEXT,
+    status TEXT NOT NULL DEFAULT 'growing',
+    notes TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_crops_user ON crop_batches(user_id);
+
+  CREATE TABLE IF NOT EXISTS harvest_logs (
+    id TEXT PRIMARY KEY,
+    batch_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    yield_kg REAL NOT NULL,
+    price_per_kg REAL NOT NULL,
+    sold_to TEXT,
+    revenue REAL NOT NULL,
+    notes TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_harvests_user ON harvest_logs(user_id);
 `;
 
 /** Split a multi-statement SQL string into individual statements */
