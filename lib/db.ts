@@ -358,6 +358,95 @@ const SCHEMA = `
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_harvests_user ON harvest_logs(user_id);
+
+  /* ═══════════════════════════════════════════════
+   *  Subscriptions, Payments & Commission Tables
+   * ═══════════════════════════════════════════════ */
+
+  CREATE TABLE IF NOT EXISTS subscription_plans (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    price_monthly REAL NOT NULL,
+    price_annual REAL NOT NULL,
+    features TEXT NOT NULL,
+    max_listings INTEGER NOT NULL DEFAULT 10,
+    commission_rate REAL NOT NULL DEFAULT 0.05,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS user_subscriptions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    plan_id TEXT NOT NULL,
+    billing_cycle TEXT NOT NULL DEFAULT 'monthly',
+    status TEXT NOT NULL DEFAULT 'active',
+    starts_at TEXT NOT NULL,
+    expires_at TEXT,
+    payment_method TEXT,
+    amount_paid REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_subs_user ON user_subscriptions(user_id);
+
+  CREATE TABLE IF NOT EXISTS orders_v2 (
+    id TEXT PRIMARY KEY,
+    buyer_id TEXT NOT NULL,
+    seller_id TEXT NOT NULL,
+    items_json TEXT NOT NULL,
+    subtotal REAL NOT NULL,
+    commission_rate REAL NOT NULL DEFAULT 0.05,
+    commission_amount REAL NOT NULL DEFAULT 0,
+    total REAL NOT NULL,
+    payment_method TEXT NOT NULL,
+    payment_status TEXT NOT NULL DEFAULT 'pending',
+    delivery_address TEXT,
+    delivery_notes TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_orders_v2_buyer ON orders_v2(buyer_id);
+  CREATE INDEX IF NOT EXISTS idx_orders_v2_seller ON orders_v2(seller_id);
+
+  /* ═══════════════════════════════════════════════
+   *  Buyer Daily CRM Tables
+   * ═══════════════════════════════════════════════ */
+
+  CREATE TABLE IF NOT EXISTS buyer_contacts (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    company TEXT,
+    phone TEXT,
+    email TEXT,
+    category TEXT NOT NULL DEFAULT 'supplier',
+    notes TEXT,
+    last_contacted TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_buyer_contacts_user ON buyer_contacts(user_id);
+
+  CREATE TABLE IF NOT EXISTS buyer_tasks (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    due_date TEXT,
+    priority TEXT NOT NULL DEFAULT 'medium',
+    status TEXT NOT NULL DEFAULT 'pending',
+    related_contact_id TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_buyer_tasks_user ON buyer_tasks(user_id);
+
+  CREATE TABLE IF NOT EXISTS buyer_notes (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    tags TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_buyer_notes_user ON buyer_notes(user_id);
 `;
 
 /** Split a multi-statement SQL string into individual statements */
@@ -425,6 +514,25 @@ async function createLocalDb(): Promise<Db> {
 
 /** Run idempotent migrations for tables created before a schema change */
 async function migrate(db: Db): Promise<void> {
+  /* Seed subscription plans if not present */
+  try {
+    const existing = await db.prepare("SELECT COUNT(*) as c FROM subscription_plans").get();
+    if (existing && Number(existing.c) === 0) {
+      const now = new Date().toISOString();
+      const plans = [
+        { id: "plan_basic", name: "Essentiel", price_monthly: 1500, price_annual: 15000, features: JSON.stringify(["10 annonces", "CRM de base", "Support par email", "Paiement sécurisé", "Commission 5%"]), max_listings: 10, commission_rate: 0.05 },
+        { id: "plan_pro", name: "Professionnel", price_monthly: 3500, price_annual: 35000, features: JSON.stringify(["50 annonces", "CRM avancé + analytics", "Chat vendeur/acheteur", "Support prioritaire", "Commission 2.5%", "Badge vérifié"]), max_listings: 50, commission_rate: 0.025 },
+        { id: "plan_premium", name: "Premium", price_monthly: 7500, price_annual: 75000, features: JSON.stringify(["Annonces illimitées", "CRM complet + rapports", "Chat + appels vidéo", "Support dédié 24/7", "Zéro commission", "Badge premium", "Mise en avant produits"]), max_listings: 999999, commission_rate: 0 },
+      ];
+      for (const p of plans) {
+        await db.prepare("INSERT INTO subscription_plans (id, name, price_monthly, price_annual, features, max_listings, commission_rate, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(p.id, p.name, p.price_monthly, p.price_annual, p.features, p.max_listings, p.commission_rate, now);
+      }
+      console.log("[db] Seeded 3 subscription plans");
+    }
+  } catch (e) {
+    console.error("[db] Plan seed failed:", e);
+  }
+
   const migrations: [string, string][] = [
     ["posts.media_url", "ALTER TABLE posts ADD COLUMN media_url TEXT"],
     ["users.username", "ALTER TABLE users ADD COLUMN username TEXT"],

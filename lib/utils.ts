@@ -1,7 +1,8 @@
 ﻿import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 export function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
-export function formatCurrency(amount: number, currency = 'USD'): string {
+export function formatCurrency(amount: number, currency = 'DZD'): string {
+  if (currency === 'DZD') return new Intl.NumberFormat('fr-DZ', { style: 'decimal', maximumFractionDigits: 0 }).format(amount) + ' DA';
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
 }
 export function formatNumber(num: number): string {

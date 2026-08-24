@@ -1,5 +1,5 @@
 "use client";
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, Suspense } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
@@ -8,6 +8,10 @@ import {
   ArrowRight, Lock, Mail, User as UserIcon,
   Building2, ShoppingCart, Truck, Check, Sprout
 } from "lucide-react";
+
+import dynamic from "next/dynamic";
+
+const LoginBg = dynamic(() => import("@/components/auth/SylvaLoginBg"), { ssr: false });
 
 const ACCOUNT_TYPES: { value: AccountType; icon: typeof UserIcon; label: string; hint: string }[] = [
   { value: "guest", icon: UserIcon, label: "Guest / Citizen", hint: "Report, learn, donate" },
@@ -19,7 +23,7 @@ const ACCOUNT_TYPES: { value: AccountType; icon: typeof UserIcon; label: string;
 ];
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, signup } = useAuth();
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -38,8 +42,13 @@ export default function LoginPage() {
       if (mode === "signup") {
         if (!name.trim()) { setError("Please enter your name."); return; }
         if (!accountType) { setError("Please choose an account type."); return; }
-        // carry the chosen type + basic info into the detailed signup step
-        router.push(`/auth/register?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&type=${accountType}`);
+        await signup({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          accountType,
+        });
+        router.push("/auth/verify");
       } else {
         const result = await login(email, password);
         if (result.ok) {
@@ -50,173 +59,301 @@ export default function LoginPage() {
           setError(result.error || "Login failed.");
         }
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6">
-      {/* ── Full-bleed background image ── */}
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/background.webp')" }}
-      />
-      {/* Legibility overlay */}
-      <div aria-hidden className="absolute inset-0 bg-gd-deepest/75" />
+    <div style={{ position: "relative", width: "100%", minHeight: "100vh", overflow: "hidden", background: "#060608" }}>
 
-      {/* ── Centered logo ── */}
-      <div className="relative mb-10 flex flex-col items-center gap-4 sm:mb-12">
-        <Image
-          src="/logo.png"
-          alt="GreenDuty"
-          width={224}
-          height={224}
-          priority
-          className="h-40 w-40 object-contain drop-shadow-[0_0_28px_rgba(212,160,23,0.30)] sm:h-56 sm:w-56"
-        />
-        <span className="text-3xl font-bold tracking-tight gradient-text sm:text-5xl">GreenDuty</span>
-      </div>
+      {/* ── Full-viewport Three.js background ── */}
+      <Suspense fallback={null}>
+        <LoginBg />
+      </Suspense>
 
-      {/* ── Form panel ── */}
-      <div className="relative w-full max-w-md">
-        <h2 className="text-2xl font-bold text-gd-text-primary tracking-tight">
+      {/* ── Gradient overlays for depth ── */}
+      <div aria-hidden style={{
+        position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
+        background: "linear-gradient(180deg, rgba(6,6,8,0.2) 0%, rgba(6,6,8,0.05) 35%, rgba(6,6,8,0.4) 75%, #060608 100%)",
+      }} />
+      <div aria-hidden style={{
+        position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
+        background: "radial-gradient(ellipse at 30% 40%, rgba(132,204,22,0.05) 0%, transparent 55%)",
+      }} />
+
+      {/* ── Centered content ── */}
+      <div style={{
+        position: "relative", zIndex: 10,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        minHeight: "100vh", padding: "2rem 1rem",
+      }}>
+
+        {/* ── Logo + brand ── */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem", marginBottom: "2.5rem" }}>
+          <div style={{
+            width: "5rem", height: "5rem", position: "relative",
+            borderRadius: "1.25rem", overflow: "hidden",
+            boxShadow: "0 0 40px rgba(132,204,22,0.15), 0 8px 32px rgba(0,0,0,0.4)",
+          }}>
+            <Image src="/logo.png" alt="GreenDuty" fill sizes="80px" style={{ objectFit: "contain", padding: "0.25rem" }} priority />
+          </div>
+          <span style={{
+            fontFamily: "'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            fontSize: "2rem", fontWeight: 300, letterSpacing: "-0.03em", color: "#f4f4f5",
+          }}>
+            Green<span style={{ color: "#84cc16" }}>Duty</span>
+          </span>
+        </div>
+
+        {/* ── Glassmorphic card ── */}
+        <div style={{
+          width: "100%", maxWidth: "28rem",
+          background: "rgba(19, 19, 24, 0.55)",
+          backdropFilter: "blur(24px) saturate(1.2)",
+          WebkitBackdropFilter: "blur(24px) saturate(1.2)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: "1.5rem",
+          padding: "2.5rem 2rem 2rem",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03) inset, 0 1px 0 rgba(255,255,255,0.04) inset",
+        }}>
+
+          {/* ── Heading ── */}
+          <h2 style={{
+            fontFamily: "'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            fontSize: "1.625rem", fontWeight: 300, letterSpacing: "-0.02em", color: "#f4f4f5", marginBottom: "0.375rem",
+          }}>
             {mode === "login" ? "Welcome back" : "Create your account"}
           </h2>
-          <p className="mt-2 text-sm text-gd-text-secondary">
+          <p style={{ fontSize: "0.8125rem", color: "#71717a", marginBottom: "1.5rem", lineHeight: 1.6 }}>
             {mode === "login"
               ? "Sign in to continue to your portal."
               : "Choose your path — or continue with a quick login."}
           </p>
 
-          {/* Toggle */}
-          <div className="mt-6 flex rounded-xl border border-gd-border bg-gd-card p-1">
+          {/* ── Login / Signup toggle ── */}
+          <div style={{
+            display: "flex", borderRadius: "0.75rem",
+            border: "1px solid rgba(255,255,255,0.06)",
+            background: "rgba(255,255,255,0.03)",
+            padding: "3px", marginBottom: "1.5rem",
+          }}>
             {(["login", "signup"] as const).map(m => (
               <button
                 key={m}
                 onClick={() => { setMode(m); setError(""); }}
-                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${
-                  mode === m ? "bg-gradient-to-r from-gd-olive-500 to-gd-olive-600 text-gd-text-inverse shadow-sm" : "text-gd-text-secondary hover:text-gd-text-primary"
-                }`}
+                style={{
+                  flex: 1, borderRadius: "0.625rem", padding: "0.5rem 0",
+                  fontSize: "0.8125rem", fontWeight: 500, border: "none", cursor: "pointer",
+                  transition: "all 0.25s ease",
+                  fontFamily: "'Lexend', -apple-system, sans-serif",
+                  ...(mode === m
+                    ? { background: "linear-gradient(135deg, #84cc16, #65a30d)", color: "#060608", boxShadow: "0 2px 12px rgba(132,204,22,0.25)" }
+                    : { background: "transparent", color: "#71717a" }),
+                }}
               >
                 {m === "login" ? "Sign In" : "Sign Up"}
               </button>
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          {/* ── Form ── */}
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+
+            {/* Account type grid (signup only) */}
             {mode === "signup" && (
-              <>
-                {/* Account type selection */}
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gd-text-muted">
-                    I am creating an account as
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {ACCOUNT_TYPES.map(t => {
-                      const active = accountType === t.value;
-                      return (
-                        <button
-                          key={t.value}
-                          type="button"
-                          onClick={() => setAccountType(t.value)}
-                          className={`relative flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all ${
-                            active
-                              ? "border-gd-olive-500/50 bg-gd-olive-500/10 glow-green"
-                              : "border-gd-border bg-gd-card hover:border-gd-border-strong hover:bg-gd-elevated"
-                          }`}
-                        >
-                          <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border ${
-                            active ? "bg-gd-olive-500/15 text-gd-olive-500 border-gd-olive-500/20" : "bg-gd-elevated text-gd-text-secondary border-gd-border"
-                          }`}>
-                            <t.icon className="h-4 w-4" />
+              <div>
+                <p style={{
+                  fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase",
+                  letterSpacing: "0.08em", color: "#71717a", marginBottom: "0.5rem",
+                }}>
+                  I am creating an account as
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                  {ACCOUNT_TYPES.map(t => {
+                    const active = accountType === t.value;
+                    return (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setAccountType(t.value)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: "0.625rem",
+                          borderRadius: "0.75rem", padding: "0.625rem 0.75rem",
+                          textAlign: "left", cursor: "pointer", transition: "all 0.2s ease",
+                          border: `1px solid ${active ? "rgba(132,204,22,0.3)" : "rgba(255,255,255,0.06)"}`,
+                          background: active ? "rgba(132,204,22,0.08)" : "rgba(255,255,255,0.02)",
+                          position: "relative",
+                        }}
+                      >
+                        <span style={{
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          width: "2rem", height: "2rem", borderRadius: "0.5rem", flexShrink: 0,
+                          border: `1px solid ${active ? "rgba(132,204,22,0.2)" : "rgba(255,255,255,0.06)"}`,
+                          background: active ? "rgba(132,204,22,0.1)" : "rgba(255,255,255,0.03)",
+                          color: active ? "#84cc16" : "#71717a",
+                        }}>
+                          <t.icon style={{ width: "1rem", height: "1rem" }} />
+                        </span>
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{
+                            display: "block", fontSize: "0.6875rem", fontWeight: 600,
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                            color: active ? "#84cc16" : "#f4f4f5",
+                            fontFamily: "'Lexend', -apple-system, sans-serif",
+                          }}>{t.label}</span>
+                          <span style={{ display: "block", fontSize: "0.625rem", color: "#71717a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {t.hint}
                           </span>
-                          <span className="min-w-0">
-                            <span className={`block truncate text-xs font-semibold ${active ? "text-gd-olive-500" : "text-gd-text-primary"}`}>{t.label}</span>
-                            <span className="block truncate text-[10px] text-gd-text-muted">{t.hint}</span>
-                          </span>
-                          {active && (
-                            <Check className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gd-olive-500" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {accountType === "business" && (
-                    <p className="mt-2 text-[11px] text-gd-text-muted">
-                      🏢 Business accounts will be asked for their business name &amp; address in the next step.
-                    </p>
-                  )}
-                  {(accountType === "buyer" || accountType === "driver") && (
-                    <p className="mt-2 text-[11px] text-gd-text-muted">
-                      🪪 {accountType === "buyer" ? "Buyer" : "Driver"} accounts will verify with an ID card, driver&apos;s license, or passport in the next step.
-                    </p>
-                  )}
+                        </span>
+                        {active && (
+                          <Check style={{ position: "absolute", right: "0.5rem", top: "50%", transform: "translateY(-50%)", width: "0.875rem", height: "0.875rem", color: "#84cc16" }} />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
-              </>
+                {accountType === "business" && (
+                  <p style={{ fontSize: "0.6875rem", color: "#71717a", marginTop: "0.5rem" }}>
+                    🏢 You can complete your business profile after signup.
+                  </p>
+                )}
+                {(accountType === "buyer" || accountType === "driver") && (
+                  <p style={{ fontSize: "0.6875rem", color: "#71717a", marginTop: "0.5rem" }}>
+                    🪪 You can verify your identity after signup.
+                  </p>
+                )}
+              </div>
             )}
+
+            {/* Name (signup only) */}
             {mode === "signup" && (
-              <div className="group relative">
-                <UserIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gd-text-muted transition-colors group-focus-within:text-gd-olive-500" />
+              <div style={{ position: "relative" }}>
+                <UserIcon style={{ position: "absolute", left: "0.875rem", top: "50%", transform: "translateY(-50%)", width: "1rem", height: "1rem", color: "#71717a", pointerEvents: "none" }} />
                 <input
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="Full name"
-                  className="w-full rounded-xl border border-gd-border bg-gd-card py-3 pl-10 pr-4 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none transition-colors focus:border-gd-olive-500/50 focus:ring-1 focus:ring-gd-olive-500/20"
+                  style={{
+                    width: "100%", borderRadius: "0.75rem",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    background: "rgba(255,255,255,0.03)",
+                    padding: "0.75rem 0.875rem 0.75rem 2.75rem",
+                    fontSize: "0.8125rem", color: "#f4f4f5", outline: "none",
+                    fontFamily: "'Lexend', -apple-system, sans-serif",
+                    transition: "border-color 0.2s",
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = "rgba(132,204,22,0.3)")}
+                  onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}
                 />
               </div>
             )}
-            <div className="group relative">
-              <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gd-text-muted transition-colors group-focus-within:text-gd-olive-500" />
+
+            {/* Email */}
+            <div style={{ position: "relative" }}>
+              <Mail style={{ position: "absolute", left: "0.875rem", top: "50%", transform: "translateY(-50%)", width: "1rem", height: "1rem", color: "#71717a", pointerEvents: "none" }} />
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="Email address"
-                className="w-full rounded-xl border border-gd-border bg-gd-card py-3 pl-10 pr-4 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none transition-colors focus:border-gd-olive-500/50 focus:ring-1 focus:ring-gd-olive-500/20"
+                style={{
+                  width: "100%", borderRadius: "0.75rem",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "rgba(255,255,255,0.03)",
+                  padding: "0.75rem 0.875rem 0.75rem 2.75rem",
+                  fontSize: "0.8125rem", color: "#f4f4f5", outline: "none",
+                  fontFamily: "'Lexend', -apple-system, sans-serif",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = "rgba(132,204,22,0.3)")}
+                onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}
               />
             </div>
-            <div className="group relative">
-              <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gd-text-muted transition-colors group-focus-within:text-gd-olive-500" />
+
+            {/* Password */}
+            <div style={{ position: "relative" }}>
+              <Lock style={{ position: "absolute", left: "0.875rem", top: "50%", transform: "translateY(-50%)", width: "1rem", height: "1rem", color: "#71717a", pointerEvents: "none" }} />
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full rounded-xl border border-gd-border bg-gd-card py-3 pl-10 pr-4 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none transition-colors focus:border-gd-olive-500/50 focus:ring-1 focus:ring-gd-olive-500/20"
+                style={{
+                  width: "100%", borderRadius: "0.75rem",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "rgba(255,255,255,0.03)",
+                  padding: "0.75rem 0.875rem 0.75rem 2.75rem",
+                  fontSize: "0.8125rem", color: "#f4f4f5", outline: "none",
+                  fontFamily: "'Lexend', -apple-system, sans-serif",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = "rgba(132,204,22,0.3)")}
+                onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}
               />
             </div>
 
+            {/* Error */}
             {error && (
-              <p className="rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">
+              <div style={{
+                borderRadius: "0.75rem", padding: "0.625rem 1rem",
+                border: "1px solid rgba(239,68,68,0.15)",
+                background: "rgba(239,68,68,0.05)",
+                fontSize: "0.75rem", color: "#ef4444",
+              }}>
                 {error}
-              </p>
+              </div>
             )}
 
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gd-olive-500 to-gd-olive-600 py-3 text-sm font-semibold text-gd-text-inverse shadow-lg shadow-gd-olive-500/20 transition-all hover:shadow-gd-olive-500/40 hover:brightness-110 disabled:opacity-50"
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+                width: "100%", borderRadius: "0.75rem",
+                border: "none", cursor: "pointer",
+                padding: "0.75rem 0",
+                fontSize: "0.8125rem", fontWeight: 600,
+                fontFamily: "'Lexend', -apple-system, sans-serif",
+                background: "linear-gradient(135deg, #84cc16, #65a30d)",
+                color: "#060608",
+                boxShadow: "0 4px 20px rgba(132,204,22,0.2)",
+                transition: "all 0.25s ease",
+                opacity: loading ? 0.5 : 1,
+              }}
+              onMouseEnter={e => { if (!loading) e.currentTarget.style.boxShadow = "0 6px 28px rgba(132,204,22,0.35)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(132,204,22,0.2)"; }}
             >
               {loading ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-gd-text-inverse/40 border-t-gd-text-inverse" />
+                <span style={{
+                  width: "1rem", height: "1rem", borderRadius: "50%",
+                  border: "2px solid rgba(6,6,8,0.3)", borderTopColor: "#060608",
+                  animation: "spin 0.6s linear infinite", display: "inline-block",
+                }} />
               ) : (
                 <>
-                  {mode === "login" ? "Sign In" : "Continue"}
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  {mode === "login" ? "Sign In" : "Create Account"}
+                  <ArrowRight style={{ width: "1rem", height: "1rem" }} />
                 </>
               )}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-gd-text-muted">
+          {/* ── Terms ── */}
+          <p style={{ marginTop: "1.25rem", textAlign: "center", fontSize: "0.6875rem", color: "#71717a", lineHeight: 1.6 }}>
             By continuing you agree to GreenDuty&apos;s{" "}
-            <span className="text-gd-olive-500 cursor-pointer hover:underline">Terms</span> &amp;{" "}
-            <span className="text-gd-olive-500 cursor-pointer hover:underline">Privacy Policy</span>.
+            <span style={{ color: "#84cc16", cursor: "pointer" }}>Terms</span> &amp;{" "}
+            <span style={{ color: "#84cc16", cursor: "pointer" }}>Privacy Policy</span>.
           </p>
         </div>
+      </div>
+
+      {/* ── Spin keyframe ── */}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

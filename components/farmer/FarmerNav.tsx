@@ -10,7 +10,6 @@ import {
   Globe,
   LogOut,
 } from "lucide-react";
-import { useState } from "react";
 import type { LangCode } from "@/lib/farmer-i18n";
 
 const NAV_ITEMS = [
@@ -31,16 +30,19 @@ export default function FarmerNav({ lang, onLangChange }: { lang: LangCode; onLa
   const isAr = lang === "ar";
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-gd-card border-r border-gd-border flex flex-col transition-transform max-lg:hidden ${isAr ? "right-0 left-auto border-r-0 border-l" : ""}`}>
+    <aside
+      className={`fixed inset-y-0 z-40 w-64 flex flex-col transition-transform max-lg:hidden ${isAr ? "right-0 left-auto" : "left-0"}`}
+      style={{ background: "#131318", borderRight: isAr ? "none" : "1px solid rgba(255,255,255,0.05)", borderLeft: isAr ? "1px solid rgba(255,255,255,0.05)" : "none" }}
+    >
       {/* Header */}
-      <div className="px-4 py-5 border-b border-gd-border">
+      <div className="px-4 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-gd-primary/20 flex items-center justify-center">
-            <Sprout className="w-5 h-5 text-gd-primary" />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(132,204,22,0.2)" }}>
+            <Sprout className="w-5 h-5" style={{ color: "#84cc16" }} />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-gd-text-primary">GreenDuty</h1>
-            <p className="text-[10px] text-gd-text-muted">Farmer Portal</p>
+            <h1 className="text-sm font-bold" style={{ color: "#f4f4f5" }}>GreenDuty</h1>
+            <p className="text-[10px]" style={{ color: "#71717a" }}>Farmer Portal</p>
           </div>
         </div>
       </div>
@@ -54,13 +56,13 @@ export default function FarmerNav({ lang, onLangChange }: { lang: LangCode; onLa
             <Link
               key={item.key}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                isActive
-                  ? "bg-gd-primary/15 text-gd-primary"
-                  : "text-gd-text-secondary hover:bg-gd-surface hover:text-gd-text-primary"
-              }`}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              style={{
+                background: isActive ? "rgba(132,204,22,0.15)" : "transparent",
+                color: isActive ? "#84cc16" : "#a1a1aa",
+              }}
             >
-              <Icon className="w-4.5 h-4.5" />
+              <Icon className="w-5 h-5" />
               <span>{labels[item.key]}</span>
             </Link>
           );
@@ -68,19 +70,21 @@ export default function FarmerNav({ lang, onLangChange }: { lang: LangCode; onLa
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-3 border-t border-gd-border space-y-1">
+      <div className="px-3 py-3 space-y-1" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
         <button
           onClick={() => onLangChange(lang === "fr" ? "ar" : "fr")}
-          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gd-text-secondary hover:bg-gd-surface w-full"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm w-full"
+          style={{ color: "#a1a1aa" }}
         >
-          <Globe className="w-4.5 h-4.5" />
+          <Globe className="w-5 h-5" />
           <span>{labels.nextLang}</span>
         </button>
         <Link
           href="/"
-          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gd-text-secondary hover:bg-gd-surface"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm"
+          style={{ color: "#a1a1aa" }}
         >
-          <LogOut className="w-4.5 h-4.5" />
+          <LogOut className="w-5 h-5" />
           <span>{isAr ? "الخروج" : "Retour"}</span>
         </Link>
       </div>

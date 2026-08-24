@@ -55,6 +55,12 @@
   --color-gd-warning: #f59e0b;
   --color-gd-danger:  #ef4444;
   --color-gd-info:    #3b82f6;
+
+  /* ── Primary (brand green) ── */
+  --color-gd-primary: #84cc16;
+
+  /* ── Surface (elevated background) ── */
+  --color-gd-surface: #1e1e27;
 }
 
 /* ── Base ── */

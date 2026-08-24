@@ -20,29 +20,30 @@ export default function FarmerLayout({ children }: { children: React.ReactNode }
 
   return (
     <FarmerLangContext.Provider value={{ lang, setLang }}>
-      <div className={`min-h-screen bg-gd-deepest ${lang === "ar" ? "rtl" : "ltr"}`}>
+      <div className={`min-h-screen ${lang === "ar" ? "rtl" : "ltr"}`} style={{ background: "#060608" }}>
         <FarmerNav lang={lang} onLangChange={setLang} />
 
         {/* Mobile header */}
-        <div className="lg:hidden fixed top-0 inset-x-0 z-50 bg-gd-card border-b border-gd-border px-4 py-3 flex items-center justify-between">
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="text-gd-text-primary">
+        <div className="lg:hidden fixed top-0 inset-x-0 z-50 px-4 py-3 flex items-center justify-between" style={{ background: "#131318", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <button onClick={() => setMobileOpen(!mobileOpen)} style={{ color: "#f4f4f5" }}>
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <span className="text-sm font-bold text-gd-primary">GreenDuty Farmer</span>
-          <button onClick={() => setLang(lang === "fr" ? "ar" : "fr")} className="text-xs text-gd-text-muted bg-gd-surface px-2 py-1 rounded-lg">
+          <span className="text-sm font-bold" style={{ color: "#84cc16" }}>GreenDuty Farmer</span>
+          <button onClick={() => setLang(lang === "fr" ? "ar" : "fr")} className="text-xs px-2 py-1 rounded-lg" style={{ color: "#71717a", background: "#1e1e27" }}>
             {lang === "fr" ? "عر" : "FR"}
           </button>
         </div>
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMobileOpen(false)}>
-            <div className="w-64 h-full bg-gd-card p-4 space-y-2" onClick={(e) => e.stopPropagation()}>
+          <div className="lg:hidden fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.5)" }} onClick={() => setMobileOpen(false)}>
+            <div className="w-64 h-full p-4 space-y-2" style={{ background: "#131318" }} onClick={(e) => e.stopPropagation()}>
               {["Dashboard", "Ledger", "Inventory", "Crops"].map((item) => (
                 <a
                   key={item}
                   href={`/farmer/${item.toLowerCase() === "dashboard" ? "" : item.toLowerCase()}`}
-                  className="block px-3 py-2 rounded-xl text-sm text-gd-text-secondary hover:bg-gd-surface"
+                  className="block px-3 py-2 rounded-xl text-sm"
+                  style={{ color: "#a1a1aa" }}
                   onClick={() => setMobileOpen(false)}
                 >
                   {item}

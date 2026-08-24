@@ -1,5 +1,5 @@
 import {
-  Leaf, LayoutDashboard, ShoppingBag, MapPin, BookOpen, Trees, Briefcase, Package, Truck, Building2, type LucideIcon
+  Leaf, LayoutDashboard, ShoppingBag, MapPin, BookOpen, Trees, Briefcase, Package, Truck, Building2, Sprout, ClipboardList, CreditCard, type LucideIcon
 } from "lucide-react";
 import type { AccountType } from "@/types";
 
@@ -31,9 +31,10 @@ export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
     { href: "/", label: "Home", icon: Leaf },
     { href: "/dashboard", label: "My Portal", icon: LayoutDashboard },
     { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
+    { href: "/buyer/crm", label: "Daily CRM", icon: ClipboardList },
     { href: "/feed", label: "InstaGro", icon: BookOpen },
     { href: "/eco-map", label: "Eco Map", icon: MapPin },
-    { href: "/tree-tracker", label: "Tree Tracker", icon: Trees },
+    { href: "/subscriptions", label: "Abonnements", icon: CreditCard },
   ],
   seller: [
     { href: "/", label: "Home", icon: Leaf },
@@ -54,6 +55,12 @@ export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
     { href: "/marketplace", label: "Procurement", icon: ShoppingBag },
     { href: "/tree-tracker", label: "CSR & Trees", icon: Trees },
   ],
+  farmer: [
+    { href: "/", label: "Home", icon: Leaf },
+    { href: "/farmer", label: "Farm Portal", icon: Sprout },
+    { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
+    { href: "/eco-map", label: "Eco Map", icon: MapPin },
+  ],
 };
 
 export const ROLE_LABEL: Record<AccountType, string> = {
@@ -62,6 +69,7 @@ export const ROLE_LABEL: Record<AccountType, string> = {
   seller: "Seller",
   driver: "Driver",
   business: "Business",
+  farmer: "Farmer",
 };
 
 export const PORTAL_BY_ROLE: Record<AccountType, string> = {
@@ -70,4 +78,5 @@ export const PORTAL_BY_ROLE: Record<AccountType, string> = {
   seller: "/dashboard",
   driver: "/dashboard",
   business: "/dashboard",
+  farmer: "/farmer",
 };

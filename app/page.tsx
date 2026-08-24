@@ -1,15 +1,20 @@
 "use client";
 import { useEffect } from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { HeroSection } from "@/components/landing/HeroSection";
 import { LiveTicker } from "@/components/landing/LiveTicker";
 import { ServiceCards } from "@/components/landing/ServiceCards";
 import { TechShowcase } from "@/components/landing/TechShowcase";
 import { IoTSimulator } from "@/components/landing/IoTSimulator";
 import { ImpactSection } from "@/components/landing/ImpactSection";
 import { Bird } from "@/components/landing/Bird";
+
+const SylvaHero = dynamic(
+  () => import("@designcodeio/threeui/components/SylvaHero").then(m => ({ default: m.SylvaHero })),
+  { ssr: false }
+);
 
 export default function HomePage() {
   const { user, isLoading } = useAuth();
@@ -27,7 +32,17 @@ export default function HomePage() {
   return (
     <div className="h-full overflow-x-hidden">
       <Bird />
-      <HeroSection />
+      <SylvaHero
+        headingFont="lexend"
+        bodyFont="lexend"
+        headingWeight="300"
+        bodyWeight="300"
+        primaryColor="#ffffff"
+        headingSize={63}
+        bodySize={16.5}
+        headingLetterSpacing={-0.006}
+        style={{ width: "100%", height: "100vh" }}
+      />
       <LiveTicker />
       <ServiceCards />
       <TechShowcase />
