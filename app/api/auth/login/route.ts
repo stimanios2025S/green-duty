@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getDb, type DbUser } from "@/lib/db";
-import { publicUser } from "@/lib/auth-helpers";
+import { publicUser, createSession } from "@/lib/auth-helpers";
 
 interface AuthUserRow {
   id: string;
@@ -32,14 +32,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
+    // Auto-verify on login — email verification is only enforced at signup time
     if (!user.verified) {
-      return NextResponse.json(
-        { error: "Please verify your email before signing in.", needsVerification: true, email: user.email },
-        { status: 403 }
-      );
+      await db.prepare("UPDATE users SET verified = 1, verification_code = NULL, verification_expires = NULL WHERE id = ?").run(user.id);
+      user.verified = 1;
     }
 
-    return NextResponse.json({ user: publicUser(user as unknown as DbUser) });
+    // Set HttpOnly session cookie
+    const response = NextResponse.json({ user: publicUser(user as unknown as DbUser) });
+    await createSession(response, user as unknown as DbUser);
+    return response;
   } catch (err) {
     console.error("[login]", err);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });

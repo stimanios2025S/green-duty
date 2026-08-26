@@ -1,19 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { genId } from "@/lib/instagro-api";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await req.json();
-    const { userId, type, title, excerpt, content, tags, coverEmoji, coverGradient, videoUrl, mediaUrl, duration, caption, location, likesHidden, commentsDisabled, musicId, musicUrl, musicName } = body;
+    const { type, title, excerpt, content, tags, coverEmoji, coverGradient, videoUrl, mediaUrl, duration, caption, location, likesHidden, commentsDisabled, musicId, musicUrl, musicName } = body;
 
-    if (!userId || !type || !["article", "video", "image"].includes(type)) {
+    if (!type || !["article", "video", "image"].includes(type)) {
       return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     }
     const d = await getDb();
-    const user = await d.prepare("SELECT id FROM users WHERE id = ?").get(userId);
-    if (!user) return NextResponse.json({ error: "User not found." }, { status: 401 });
-
     const id = genId("p");
     await d.prepare(`
       INSERT INTO posts (id, user_id, type, title, excerpt, content, tags, cover_emoji, cover_gradient, video_url, media_url, duration, views, caption, location, likes_hidden, comments_disabled, music_id, music_url, music_name, created_at)
@@ -37,11 +37,12 @@ export async function POST(req: Request) {
   }
 }
 
-// DELETE /api/instagro/posts — owner only; removes post + its likes + comments
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
-    const { postId, userId } = await req.json();
-    if (!postId || !userId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { postId } = await req.json();
+    if (!postId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     const d = await getDb();
     const post = await d.prepare("SELECT user_id FROM posts WHERE id = ?").get(postId) as any;
     if (!post) return NextResponse.json({ error: "Post not found." }, { status: 404 });

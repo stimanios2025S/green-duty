@@ -132,13 +132,24 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS orders (
     id TEXT PRIMARY KEY,
     buyer_id TEXT NOT NULL,
+    seller_id TEXT,
     product_id TEXT NOT NULL,
     product_name TEXT NOT NULL,
-    quantity INTEGER NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1,
     total_price REAL NOT NULL,
+    items_json TEXT,
+    subtotal REAL,
+    commission_rate REAL DEFAULT 0.05,
+    commission_amount REAL DEFAULT 0,
+    payment_method TEXT,
+    payment_status TEXT DEFAULT 'pending',
+    delivery_address TEXT,
+    delivery_notes TEXT,
     status TEXT NOT NULL DEFAULT 'pending',
     created_at TEXT NOT NULL
   );
+  CREATE INDEX IF NOT EXISTS idx_orders_buyer ON orders(buyer_id);
+  CREATE INDEX IF NOT EXISTS idx_orders_seller ON orders(seller_id);
 
   CREATE TABLE IF NOT EXISTS hotspot_reports (
     id TEXT PRIMARY KEY,
@@ -388,24 +399,7 @@ const SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS idx_subs_user ON user_subscriptions(user_id);
 
-  CREATE TABLE IF NOT EXISTS orders_v2 (
-    id TEXT PRIMARY KEY,
-    buyer_id TEXT NOT NULL,
-    seller_id TEXT NOT NULL,
-    items_json TEXT NOT NULL,
-    subtotal REAL NOT NULL,
-    commission_rate REAL NOT NULL DEFAULT 0.05,
-    commission_amount REAL NOT NULL DEFAULT 0,
-    total REAL NOT NULL,
-    payment_method TEXT NOT NULL,
-    payment_status TEXT NOT NULL DEFAULT 'pending',
-    delivery_address TEXT,
-    delivery_notes TEXT,
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_orders_v2_buyer ON orders_v2(buyer_id);
-  CREATE INDEX IF NOT EXISTS idx_orders_v2_seller ON orders_v2(seller_id);
+  /* orders_v2 removed — unified into orders table */
 
   /* ═══════════════════════════════════════════════
    *  Buyer Daily CRM Tables
@@ -447,6 +441,30 @@ const SCHEMA = `
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_buyer_notes_user ON buyer_notes(user_id);
+
+  CREATE TABLE IF NOT EXISTS products (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT NOT NULL,
+    price REAL NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'DZD',
+    stock INTEGER NOT NULL DEFAULT 0,
+    quality_certified INTEGER NOT NULL DEFAULT 0,
+    organic_certified INTEGER NOT NULL DEFAULT 0,
+    seller_id TEXT NOT NULL,
+    seller_name TEXT NOT NULL,
+    seller_verified INTEGER NOT NULL DEFAULT 0,
+    image_url TEXT,
+    images TEXT,
+    rating REAL NOT NULL DEFAULT 0,
+    review_count INTEGER NOT NULL DEFAULT 0,
+    warranty_months INTEGER NOT NULL DEFAULT 0,
+    features TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_products_seller ON products(seller_id);
+  CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
 `;
 
 /** Split a multi-statement SQL string into individual statements */
@@ -568,6 +586,21 @@ async function migrate(db: Db): Promise<void> {
     ["cleanup_signups.email", "ALTER TABLE cleanup_signups ADD COLUMN email TEXT"],
     ["cleanup_signups.message", "ALTER TABLE cleanup_signups ADD COLUMN message TEXT"],
     ["cleanup_signups.joined_at", "ALTER TABLE cleanup_signups ADD COLUMN joined_at TEXT"],
+    /* ── Orders consolidation (orders_v2 → orders) ── */
+    ["orders.seller_id", "ALTER TABLE orders ADD COLUMN seller_id TEXT"],
+    ["orders.items_json", "ALTER TABLE orders ADD COLUMN items_json TEXT"],
+    ["orders.subtotal", "ALTER TABLE orders ADD COLUMN subtotal REAL"],
+    ["orders.commission_rate", "ALTER TABLE orders ADD COLUMN commission_rate REAL DEFAULT 0.05"],
+    ["orders.commission_amount", "ALTER TABLE orders ADD COLUMN commission_amount REAL DEFAULT 0"],
+    ["orders.payment_method", "ALTER TABLE orders ADD COLUMN payment_method TEXT"],
+    ["orders.payment_status", "ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT 'pending'"],
+    ["orders.delivery_address", "ALTER TABLE orders ADD COLUMN delivery_address TEXT"],
+    ["orders.delivery_notes", "ALTER TABLE orders ADD COLUMN delivery_notes TEXT"],
+    ["orders.escrow_status", "ALTER TABLE orders ADD COLUMN escrow_status TEXT DEFAULT 'held'"],
+    ["orders.escrow_held_at", "ALTER TABLE orders ADD COLUMN escrow_held_at TEXT"],
+    ["orders.escrow_released_at", "ALTER TABLE orders ADD COLUMN escrow_released_at TEXT"],
+    ["products.image_url", "ALTER TABLE products ADD COLUMN image_url TEXT"],
+    ["products.images", "ALTER TABLE products ADD COLUMN images TEXT"],
   ];
   for (const [name, sql] of migrations) {
     try {

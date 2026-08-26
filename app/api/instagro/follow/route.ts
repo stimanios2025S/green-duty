@@ -1,10 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { followerId, followingId } = await req.json();
-    if (!followerId || !followingId || followerId === followingId) {
+    const followerId = await getCurrentUserId(req);
+    if (!followerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { followingId } = await req.json();
+    if (!followingId || followerId === followingId) {
       return NextResponse.json({ error: "Missing or invalid fields." }, { status: 400 });
     }
     const d = await getDb();

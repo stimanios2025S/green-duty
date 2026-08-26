@@ -65,7 +65,7 @@ function RegisterInner() {
 
     setLoading(true);
     try {
-      await signup({
+      const result = await signup({
         name: name.trim(),
         email: email.trim(),
         password,
@@ -75,7 +75,8 @@ function RegisterInner() {
         idType,
         idNumber: idNumber.trim(),
       });
-      router.push("/auth/verify");
+      // No email verification — go straight to dashboard
+      router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed. Please try again.");
     } finally {
@@ -99,23 +100,7 @@ function RegisterInner() {
       </div>
 
       <div className="mx-auto max-w-3xl px-6 pb-16">
-        {/* Stepper */}
-        <div className="mb-10 flex items-center justify-center gap-3">
-          {[1, 2].map(step => (
-            <div key={step} className="flex items-center gap-3">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
-                step === 1 ? "bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse" : "bg-gd-card text-gd-text-secondary border border-gd-border"
-              }`}>{step}</div>
-              <span className={`text-sm ${step === 1 ? "text-gd-text-primary font-medium" : "text-gd-text-muted"}`}>
-                {step === 1 ? "Choose account type" : "Complete details"}
-              </span>
-              {step === 1 && <div className="h-px w-16 bg-gd-border-strong" />}
-            </div>
-          ))}
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Step 1: role selection */}
           <div>
             <h1 className="text-2xl font-bold text-gd-text-primary tracking-tight">What brings you to GreenDuty?</h1>
             <p className="mt-2 text-sm text-gd-text-secondary">Select the account type that fits you best.</p>
@@ -157,7 +142,6 @@ function RegisterInner() {
             </div>
           </div>
 
-          {/* Step 2: details */}
           {accountType && (
             <div className="space-y-6 rounded-2xl border border-gd-border bg-gd-card p-6">
               <h2 className="text-lg font-semibold text-gd-text-primary flex items-center gap-2">

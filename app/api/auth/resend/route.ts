@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
     const { mode } = await sendVerificationEmail(normalizedEmail, code);
 
-    if (mode === "failed") {
+    if (mode !== "email") {
       return NextResponse.json({ ok: true, mode, fallbackCode: code });
     }
     return NextResponse.json({ ok: true, mode });

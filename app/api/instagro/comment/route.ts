@@ -1,11 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { genId } from "@/lib/instagro-api";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { postId, userId, text } = await req.json();
-    if (!postId || !userId || !text?.trim()) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { postId, text } = await req.json();
+    if (!postId || !text?.trim()) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     const d = await getDb();
     const id = genId("c");
     await d.prepare("INSERT INTO comments (id, post_id, user_id, text, created_at) VALUES (?,?,?,?,?)")
@@ -17,11 +20,12 @@ export async function POST(req: Request) {
   }
 }
 
-// DELETE /api/instagro/comment — only the comment author or the post owner may delete
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
-    const { commentId, userId } = await req.json();
-    if (!commentId || !userId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { commentId } = await req.json();
+    if (!commentId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     const d = await getDb();
     const comment = await d.prepare("SELECT * FROM comments WHERE id = ?").get(commentId) as any;
     if (!comment) return NextResponse.json({ error: "Comment not found." }, { status: 404 });

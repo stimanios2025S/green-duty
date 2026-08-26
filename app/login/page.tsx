@@ -48,13 +48,11 @@ export default function LoginPage() {
           password,
           accountType,
         });
-        router.push("/auth/verify");
+        router.push("/dashboard");
       } else {
         const result = await login(email, password);
         if (result.ok) {
           router.push("/dashboard");
-        } else if (result.needsVerification) {
-          router.push("/auth/verify");
         } else {
           setError(result.error || "Login failed.");
         }
@@ -218,11 +216,6 @@ export default function LoginPage() {
                 {accountType === "business" && (
                   <p style={{ fontSize: "0.6875rem", color: "#71717a", marginTop: "0.5rem" }}>
                     🏢 You can complete your business profile after signup.
-                  </p>
-                )}
-                {(accountType === "buyer" || accountType === "driver") && (
-                  <p style={{ fontSize: "0.6875rem", color: "#71717a", marginTop: "0.5rem" }}>
-                    🪪 You can verify your identity after signup.
                   </p>
                 )}
               </div>

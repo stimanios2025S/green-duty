@@ -231,3 +231,117 @@ export async function serializeStory(row: StoryRow, viewerId?: string): Promise<
 export function genId(prefix: string): string {
   return prefix + "_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 }
+
+/**
+ * Batch-serialize multiple posts in ~4 queries instead of N×5+.
+ * Pre-loads all users, likes counts, liked status, and comments in bulk.
+ */
+export async function batchSerializePosts(rows: PostRow[], viewerId?: string): Promise<ApiPost[]> {
+  if (rows.length === 0) return [];
+  const d = await getDb();
+
+  // 1) Collect all unique user IDs (post authors + comment authors)
+  const commentRowsAll = await d.prepare(
+    `SELECT * FROM comments WHERE post_id IN (${rows.map(() => "?").join(",")}) ORDER BY created_at ASC`
+  ).all(...rows.map(r => r.id)) as unknown as (CommentRow & { post_id: string })[];
+
+  const allUserIds = new Set<string>();
+  rows.forEach(r => allUserIds.add(r.user_id));
+  commentRowsAll.forEach(c => allUserIds.add(c.user_id));
+
+  // 2) Load all users in ONE query
+  const userIdArr = [...allUserIds];
+  const userRows = userIdArr.length > 0
+    ? await d.prepare(`SELECT * FROM users WHERE id IN (${userIdArr.map(() => "?").join(",")})`).all(...userIdArr) as unknown as UserRow[]
+    : [];
+  const userMap = new Map(userRows.map(u => [u.id, u]));
+
+  // 3) Batch-load follower/following counts for all users
+  const followerCounts = await d.prepare(
+    `SELECT following_id, COUNT(*) as c FROM follows WHERE following_id IN (${userIdArr.map(() => "?").join(",")}) GROUP BY following_id`
+  ).all(...userIdArr) as { following_id: string; c: number }[];
+  const followingCounts = await d.prepare(
+    `SELECT follower_id, COUNT(*) as c FROM follows WHERE follower_id IN (${userIdArr.map(() => "?").join(",")}) GROUP BY follower_id`
+  ).all(...userIdArr) as { follower_id: string; c: number }[];
+  const followerMap = new Map(followerCounts.map(f => [f.following_id, f.c]));
+  const followingMap = new Map(followingCounts.map(f => [f.follower_id, f.c]));
+
+  // 4) Build user objects from cached data
+  const userCache = new Map<string, ApiUser>();
+  for (const [id, u] of userMap) {
+    userCache.set(id, {
+      id: u.id,
+      username: (u.username || u.name.toLowerCase().replace(/\s+/g, ".")),
+      name: u.name,
+      role: u.account_type,
+      bio: u.bio || "",
+      emoji: u.emoji || pick(EMOJIS, u.id),
+      gradient: u.gradient || pick(GRADIENTS, u.id),
+      avatarUrl: u.avatar_media || undefined,
+      verified: !!u.verified,
+      followers: followerMap.get(id) || 0,
+      following: followingMap.get(id) || 0,
+    });
+  }
+
+  // 5) Batch-load likes counts + liked status for all posts
+  const postIdArr = rows.map(r => r.id);
+  const likesCounts = await d.prepare(
+    `SELECT post_id, COUNT(*) as c FROM post_likes WHERE post_id IN (${postIdArr.map(() => "?").join(",")}) GROUP BY post_id`
+  ).all(...postIdArr) as { post_id: string; c: number }[];
+  const likesMap = new Map(likesCounts.map(l => [l.post_id, l.c]));
+
+  let likedSet = new Set<string>();
+  if (viewerId) {
+    const likedRows = await d.prepare(
+      `SELECT post_id FROM post_likes WHERE post_id IN (${postIdArr.map(() => "?").join(",")}) AND user_id = ?`
+    ).all(...postIdArr, viewerId) as { post_id: string }[];
+    likedSet = new Set(likedRows.map(l => l.post_id));
+  }
+
+  // 6) Group comments by post_id
+  const commentsByPost = new Map<string, (CommentRow & { post_id: string })[]>();
+  for (const c of commentRowsAll) {
+    const arr = commentsByPost.get(c.post_id) || [];
+    arr.push(c);
+    commentsByPost.set(c.post_id, arr);
+  }
+
+  // 7) Assemble final posts
+  return rows.map(row => {
+    const comments: ApiComment[] = (commentsByPost.get(row.id) || []).map(c => ({
+      id: c.id,
+      user: userCache.get(c.user_id) || ({} as ApiUser),
+      text: c.text,
+      createdAt: c.created_at,
+    }));
+
+    return {
+      id: row.id,
+      user: userCache.get(row.user_id)!,
+      type: row.type,
+      title: row.title || undefined,
+      excerpt: row.excerpt || undefined,
+      content: row.content || undefined,
+      tags: row.tags ? (row.tags as string).split(",").filter(Boolean) : undefined,
+      coverEmoji: row.cover_emoji || undefined,
+      coverGradient: row.cover_gradient || undefined,
+      videoUrl: row.video_url || undefined,
+      mediaUrl: row.media_url || undefined,
+      duration: row.duration || undefined,
+      views: Number(row.views || 0),
+      caption: row.caption || undefined,
+      location: row.location || undefined,
+      likes: likesMap.get(row.id) || 0,
+      liked: likedSet.has(row.id),
+      saved: false,
+      likesHidden: !!row.likes_hidden,
+      commentsDisabled: !!row.comments_disabled,
+      musicId: row.music_id || null,
+      musicUrl: row.music_url || null,
+      musicName: row.music_name || null,
+      comments,
+      createdAt: row.created_at,
+    };
+  });
+}

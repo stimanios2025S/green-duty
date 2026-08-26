@@ -1,16 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
 interface TypingRow {
   user_id: string;
 }
 
-// POST /api/chat/typing {conversationId, userId, isTyping}
-// Sets (or clears) the typing marker. Expires naturally via the TYPING_TTL.
-export async function POST(req: Request) {
+const TYPING_TTL_MS = 5000;
+
+// POST /api/chat/typing {conversationId, isTyping}
+export async function POST(req: NextRequest) {
   try {
-    const { conversationId, userId, isTyping } = await req.json();
-    if (!conversationId || !userId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { conversationId, isTyping } = await req.json();
+    if (!conversationId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     const d = await getDb();
     if (isTyping) {
       await d.prepare(`
@@ -27,15 +31,13 @@ export async function POST(req: Request) {
   }
 }
 
-const TYPING_TTL_MS = 5000;
-
-// GET /api/chat/typing?conversationId=&userId= → who is typing right now (excluding me)
-export async function GET(req: Request) {
+// GET /api/chat/typing?conversationId= → who is typing right now (excluding me)
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const conversationId = searchParams.get("conversationId");
-    const userId = searchParams.get("userId");
-    if (!conversationId || !userId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ typing: [] });
+    const conversationId = req.nextUrl.searchParams.get("conversationId");
+    if (!conversationId) return NextResponse.json({ typing: [] });
     const d = await getDb();
     const cutoff = new Date(Date.now() - TYPING_TTL_MS).toISOString();
     const rows = await d.prepare(

@@ -57,6 +57,32 @@ export const donationSchema = z.object({
   corporateMatch: z.boolean().default(false),
 });
 
+export const signupSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  email: z.string().email('Invalid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters').max(128),
+  accountType: z.enum(['guest', 'buyer', 'seller', 'driver', 'business', 'farmer']),
+  businessName: z.string().max(200).optional(),
+  businessAddress: z.string().max(300).optional(),
+  idType: z.string().max(50).optional(),
+  idNumber: z.string().max(100).optional(),
+});
+
+export const orderSchema = z.object({
+  items: z.array(z.object({
+    productId: z.string().min(1),
+    productName: z.string().min(1),
+    quantity: z.number().int().positive(),
+    price: z.number().positive(),
+  })).min(1).optional(),
+  productId: z.string().min(1).optional(),
+  productName: z.string().min(1).optional(),
+  quantity: z.number().int().positive().optional(),
+  totalPrice: z.number().positive().optional(),
+  paymentMethod: z.string().max(50).optional(),
+  deliveryAddress: z.string().max(500).optional(),
+}).refine(d => d.items || d.productId, { message: "Provide items array or single product" });
+
 export type HotspotFormData = z.infer<typeof hotspotReportSchema>;
 export type ProductFormData = z.infer<typeof productListingSchema>;
 export type EducationalPostFormData = z.infer<typeof educationalPostSchema>;

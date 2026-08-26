@@ -1,5 +1,5 @@
 import {
-  Leaf, LayoutDashboard, ShoppingBag, MapPin, BookOpen, Trees, Briefcase, Package, Truck, Building2, Sprout, ClipboardList, CreditCard, type LucideIcon
+  Leaf, LayoutDashboard, ShoppingBag, MapPin, BookOpen, Trees, Briefcase, Package, Truck, Building2, Sprout, ClipboardList, CreditCard, Users, Wallet, type LucideIcon
 } from "lucide-react";
 import type { AccountType } from "@/types";
 
@@ -39,6 +39,8 @@ export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
   seller: [
     { href: "/", label: "Home", icon: Leaf },
     { href: "/dashboard", label: "My Store", icon: LayoutDashboard },
+    { href: "/seller/crm", label: "CRM", icon: Users },
+    { href: "/seller/earnings", label: "Earnings", icon: Wallet },
     { href: "/marketplace", label: "Sell Products", icon: Package },
     { href: "/b2b", label: "B2B Services", icon: Briefcase },
   ],

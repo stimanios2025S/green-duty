@@ -1,11 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
 // POST /api/notifications/read → mark all (or one) as read
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { userId, id } = await req.json();
-    if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { id } = await req.json();
     const d = await getDb();
     if (id) {
       await d.prepare("UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?").run(id, userId);

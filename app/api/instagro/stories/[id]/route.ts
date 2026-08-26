@@ -1,12 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
-// DELETE /api/instagro/stories/:id — owner only (like Instagram: your story, your choice)
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+// DELETE /api/instagro/stories/:id — owner only
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { id } = await params;
-    const { userId } = await req.json().catch(() => ({}));
-    if (!id || !userId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    if (!id) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
 
     const d = await getDb();
     const story = await d.prepare("SELECT user_id FROM stories WHERE id = ?").get(id) as any;

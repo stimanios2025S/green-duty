@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type DbUser } from "@/lib/db";
-import { publicUser } from "@/lib/auth-helpers";
+import { publicUser, createSession } from "@/lib/auth-helpers";
 
 interface AuthUserRow {
   id: string;
@@ -26,7 +26,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Account not found. Please sign up first." }, { status: 404 });
     }
     if (user.verified) {
-      return NextResponse.json({ ok: true, alreadyVerified: true, user: publicUser(user as unknown as DbUser) });
+      // Already verified — set session cookie and return
+      const response = NextResponse.json({ ok: true, alreadyVerified: true, user: publicUser(user as unknown as DbUser) });
+      await createSession(response, user as unknown as DbUser);
+      return response;
     }
     if (Date.now() > (user.verification_expires || 0)) {
       return NextResponse.json({ error: "This code has expired. Request a new one." }, { status: 400 });
@@ -39,7 +42,10 @@ export async function POST(req: Request) {
     await db.prepare("UPDATE users SET verified = 1, verification_code = NULL, verification_expires = NULL WHERE id = ?").run(user.id);
     const updated = await db.prepare("SELECT * FROM users WHERE id = ?").get(user.id) as AuthUserRow | undefined;
 
-    return NextResponse.json({ ok: true, user: publicUser(updated as unknown as DbUser) });
+    // Set HttpOnly session cookie
+    const response = NextResponse.json({ ok: true, user: publicUser(updated as unknown as DbUser) });
+    await createSession(response, updated as unknown as DbUser);
+    return response;
   } catch (err) {
     console.error("[verify]", err);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });

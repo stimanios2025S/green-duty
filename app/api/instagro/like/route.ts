@@ -1,10 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { postId, userId } = await req.json();
-    if (!postId || !userId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { postId } = await req.json();
+    if (!postId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     const d = await getDb();
     const existing = await d.prepare("SELECT 1 FROM post_likes WHERE post_id = ? AND user_id = ?").get(postId, userId);
     if (existing) {

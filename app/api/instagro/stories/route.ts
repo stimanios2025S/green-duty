@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { genId } from "@/lib/instagro-api";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { userId, emoji, gradient, caption, mediaUrl, musicId, musicUrl, musicName, texts } = await req.json();
-    if (!userId) return NextResponse.json({ error: "Missing user." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { emoji, gradient, caption, mediaUrl, musicId, musicUrl, musicName, texts } = await req.json();
     const d = await getDb();
-    const user = await d.prepare("SELECT id FROM users WHERE id = ?").get(userId);
-    if (!user) return NextResponse.json({ error: "User not found." }, { status: 401 });
 
     const id = genId("s");
     await d.prepare(`

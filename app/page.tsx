@@ -20,10 +20,10 @@ export default function HomePage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // Landing page is the "home" for logged-in users; otherwise send to login
+  // DEV BYPASS — redirect to portal selector. REMOVE BEFORE PRODUCTION.
   useEffect(() => {
-    if (!isLoading && !user) router.replace("/login");
-  }, [user, isLoading, router]);
+    if (!isLoading) router.replace("/dev");
+  }, [isLoading, router]);
 
   if (isLoading || !user) {
     return <div className="flex min-h-screen items-center justify-center bg-gd-deepest"><div className="h-10 w-10 animate-spin rounded-full border-2 border-gd-accent-500 border-t-transparent" /></div>;

@@ -1,18 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
 interface CandidateRow {
   user_id: string;
   candidate: string;
 }
 
-// GET /api/chat/calls/candidates?callId=&userId= → ICE candidates from the other side
-export async function GET(req: Request) {
+// GET /api/chat/calls/candidates?callId= → ICE candidates from the other side
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const callId = searchParams.get("callId");
-    const userId = searchParams.get("userId");
-    if (!callId || !userId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ candidates: [] });
+    const callId = req.nextUrl.searchParams.get("callId");
+    if (!callId) return NextResponse.json({ candidates: [] });
     const d = await getDb();
     const rows = await d.prepare(
       "SELECT user_id, candidate FROM call_candidates WHERE call_id = ? AND user_id != ? ORDER BY created_at ASC"
@@ -24,11 +25,13 @@ export async function GET(req: Request) {
   }
 }
 
-// POST /api/chat/calls/candidates {callId, userId, candidate}
-export async function POST(req: Request) {
+// POST /api/chat/calls/candidates {callId, candidate}
+export async function POST(req: NextRequest) {
   try {
-    const { callId, userId, candidate } = await req.json();
-    if (!callId || !userId || !candidate) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { callId, candidate } = await req.json();
+    if (!callId || !candidate) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     const d = await getDb();
     await d.prepare("INSERT INTO call_candidates (call_id, user_id, candidate, created_at) VALUES (?,?,?,?)")
       .run(callId, userId, JSON.stringify(candidate), new Date().toISOString());

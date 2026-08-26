@@ -1,15 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
-// POST /api/chat/vanish → toggle vanish mode on a conversation (Snapchat-style)
-export async function POST(req: Request) {
+// POST /api/chat/vanish → toggle vanish mode on a conversation
+export async function POST(req: NextRequest) {
   try {
-    const { conversationId, userId, on } = await req.json();
-    if (!conversationId || !userId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { conversationId, on } = await req.json();
+    if (!conversationId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     const d = await getDb();
     const conv = await d.prepare("SELECT * FROM conversations WHERE id = ?").get(conversationId) as any;
     if (!conv) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
-    // membership check
     const isMember = conv.type === "group"
       ? await d.prepare("SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?").get(conversationId, userId)
       : conv.user_a === userId || conv.user_b === userId;

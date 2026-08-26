@@ -1,10 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ProductCard } from "@/components/marketplace/ProductCard";
-import { products } from "@/lib/mock-data";
+import { products as mockProducts } from "@/lib/mock-data";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
 import { Search, SlidersHorizontal } from "lucide-react";
-import type { ProductCategory } from "@/types";
+import type { Product, ProductCategory } from "@/types";
 
 const categories = [
   { label: "All", value: "all" as const },
@@ -22,8 +22,22 @@ export function MarketplaceFilters() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<ProductCategory | "all">("all");
   const [certifiedOnly, setCertifiedOnly] = useState(false);
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
 
-  const filtered = products.filter(p => {
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (category !== "all") params.set("category", category);
+    if (search) params.set("search", search);
+    fetch(`/api/products?${params}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setDbProducts(d.products || []))
+      .catch(() => {});
+  }, [category, search]);
+
+  // Merge DB products with mock data (DB products take priority by id)
+  const allProducts = [...dbProducts, ...mockProducts.filter(m => !dbProducts.some(d => d.id === m.id))];
+
+  const filtered = allProducts.filter(p => {
     if (category !== "all" && p.category !== category) return false;
     if (certifiedOnly && !p.qualityCertified) return false;
     if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.description.toLowerCase().includes(search.toLowerCase())) return false;

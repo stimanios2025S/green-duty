@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { apiUserFromRow } from "@/lib/instagro-api";
 import { streakEmoji } from "@/lib/chat-utils";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
 interface ConversationRow {
   id: string;
@@ -32,12 +33,11 @@ interface UnreadRow {
   c?: number | null;
 }
 
-// GET /api/chat/conversations?userId=... → DM threads + group chats (newest first)
-export async function GET(req: Request) {
+// GET /api/chat/conversations → DM threads + group chats (newest first)
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
-    if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const d = await getDb();
 
     const directRows = await d.prepare(
@@ -52,7 +52,6 @@ export async function GET(req: Request) {
 
     const conversations = [];
 
-    // Direct chats
     for (const c of directRows) {
       const otherId = c.user_a === userId ? c.user_b : c.user_b === userId ? c.user_a : c.user_b;
       const other = await d.prepare("SELECT * FROM users WHERE id = ?").get(otherId);
@@ -73,7 +72,6 @@ export async function GET(req: Request) {
       });
     }
 
-    // Group chats
     for (const c of groupRows) {
       const lastMsg = await d.prepare("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 1").get(c.id) as MessageRow | undefined;
       const members = await d.prepare("SELECT user_id FROM conversation_members WHERE conversation_id = ?").all(c.id) as unknown as MemberRow[];
@@ -108,10 +106,12 @@ export async function GET(req: Request) {
 }
 
 // POST /api/chat/conversations → open (or get) a DM thread with another user
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { userId, otherUserId } = await req.json();
-    if (!userId || !otherUserId || userId === otherUserId) {
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { otherUserId } = await req.json();
+    if (!otherUserId || userId === otherUserId) {
       return NextResponse.json({ error: "Missing or invalid fields." }, { status: 400 });
     }
     const d = await getDb();

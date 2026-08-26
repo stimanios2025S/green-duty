@@ -31,11 +31,34 @@ const VERIFY_HTML = (code: string) => `
 </div>`;
 
 /**
- * Sends verification email using Resend API (HTTP — works on Vercel).
- * Falls back to Gmail SMTP if Resend is not configured.
+ * Sends verification email.
+ * Priority: Gmail SMTP (direct, reliable) → Resend API → console fallback.
  */
 export async function sendVerificationEmail(to: string, code: string): Promise<EmailResult> {
-  // ── Try Resend first (HTTP-based, reliable on Vercel) ──
+  // ── Try Gmail SMTP first (most reliable for development) ──
+  if (GMAIL_USER && GMAIL_PASS) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+        tls: { rejectUnauthorized: false },
+      });
+      await transporter.sendMail({
+        from: `"GreenDuty" <${GMAIL_USER}>`,
+        to,
+        subject: "🔵 Verify your GreenDuty account",
+        html: VERIFY_HTML(code),
+      });
+      console.log(`[GreenDuty] ✅ Gmail email sent to ${to}`);
+      return { mode: "email" };
+    } catch (err: any) {
+      console.error(`[GreenDuty] ❌ Gmail SMTP failed for ${to}:`, err?.message || err);
+    }
+  }
+
+  // ── Fallback: Resend API ──
   if (RESEND_KEY) {
     try {
       const resend = new Resend(RESEND_KEY);
@@ -50,31 +73,9 @@ export async function sendVerificationEmail(to: string, code: string): Promise<E
         console.log(`[GreenDuty] ✅ Resend email sent to ${to} (id: ${data?.id})`);
         return { mode: "email", messageId: data?.id };
       }
-      console.error(`[GreenDuty] ⚠️ Resend failed for ${to}: ${error.message}`);
-      // Fall through to Gmail
-    } catch (err) {
-      console.error("[GreenDuty] Resend exception:", err);
-      // Fall through to Gmail
-    }
-  }
-
-  // ── Fallback: Gmail SMTP ──
-  if (GMAIL_USER && GMAIL_PASS) {
-    try {
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: { user: GMAIL_USER, pass: GMAIL_PASS },
-      });
-      await transporter.sendMail({
-        from: `GreenDuty <${GMAIL_USER}>`,
-        to,
-        subject: "Verify your GreenDuty account",
-        html: VERIFY_HTML(code),
-      });
-      console.log(`[GreenDuty] ✅ Gmail email sent to ${to}`);
-      return { mode: "email" };
-    } catch (err) {
-      console.error(`[GreenDuty] Gmail SMTP failed for ${to}:`, err);
+      console.error(`[GreenDuty] ⚠️ Resend failed for ${to}:`, JSON.stringify(error));
+    } catch (err: any) {
+      console.error("[GreenDuty] Resend exception:", err?.message || err);
     }
   }
 
@@ -121,6 +122,23 @@ export async function sendParticipantNotification(details: ParticipantDetails): 
   </div>
 </div>`;
 
+  // Gmail first
+  if (GMAIL_USER && GMAIL_PASS) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+        tls: { rejectUnauthorized: false },
+      });
+      await transporter.sendMail({ from: `"GreenDuty" <${GMAIL_USER}>`, to, subject: `🧹 New participant: ${details.firstName} ${details.lastName}`, html: PARTICIPANT_HTML });
+      return { mode: "email" };
+    } catch (err) {
+      console.error("[GreenDuty] Gmail SMTP failed for participant notification:", err);
+    }
+  }
+
   if (RESEND_KEY) {
     try {
       const resend = new Resend(RESEND_KEY);
@@ -131,14 +149,6 @@ export async function sendParticipantNotification(details: ParticipantDetails): 
         html: PARTICIPANT_HTML,
       });
       if (!error) return { mode: "email" };
-    } catch {}
-  }
-
-  if (GMAIL_USER && GMAIL_PASS) {
-    try {
-      const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: GMAIL_USER, pass: GMAIL_PASS } });
-      await transporter.sendMail({ from: `GreenDuty <${GMAIL_USER}>`, to, subject: `🧹 New participant: ${details.firstName} ${details.lastName}`, html: PARTICIPANT_HTML });
-      return { mode: "email" };
     } catch {}
   }
 

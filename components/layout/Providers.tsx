@@ -8,7 +8,7 @@ import { Header } from "./Header";
 import { SearchModal } from "@/components/instagro/SearchModal";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 
-const PUBLIC_PATHS = ["/login", "/auth/register", "/auth/verify"];
+const PUBLIC_PATHS = ["/login", "/auth/register", "/auth/verify", "/dev"];
 
 function MobileNav() {
   const { user } = useAuth();
@@ -69,13 +69,7 @@ function Shell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("gd:open-search", onSearch);
   }, []);
 
-  // Gate: not logged in + not on a public page → login
-  useEffect(() => {
-    if (!isLoading && !user && !isPublic) {
-      router.replace("/login");
-    }
-  }, [user, isLoading, isPublic, router]);
-
+  // DEV BYPASS — no login gate. REMOVE BEFORE PRODUCTION.
   // Auth / public pages render standalone (no sidebar/header)
   if (isPublic || (!isLoading && !user)) {
     return <>{children}</>;

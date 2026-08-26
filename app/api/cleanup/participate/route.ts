@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { sendParticipantNotification } from "@/lib/email";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
 interface CleanupEventRow {
   id: string;
@@ -8,12 +9,10 @@ interface CleanupEventRow {
 }
 
 // POST /api/cleanup/participate
-// A viewer fills the professional participation form (first + family name,
-// phone / email, optional message) → they are added to the cleanup signups
-// AND the organizer receives an email notification in real time.
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { eventId, userId, firstName, lastName, phone, email, message } = await req.json();
+    const userId = await getCurrentUserId(req);
+    const { eventId, firstName, lastName, phone, email, message } = await req.json();
 
     if (!eventId) return NextResponse.json({ error: "Missing event." }, { status: 400 });
     if (!firstName?.trim() || !lastName?.trim()) {
@@ -27,12 +26,6 @@ export async function POST(req: Request) {
     const event = await d.prepare("SELECT id, title FROM cleanup_events WHERE id = ?").get(eventId) as CleanupEventRow | undefined;
     if (!event) return NextResponse.json({ error: "Cleanup event not found." }, { status: 404 });
 
-    if (userId) {
-      const user = await d.prepare("SELECT id FROM users WHERE id = ?").get(userId);
-      if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
-    }
-
-    // 1) Real signup (with participant details)
     await d.prepare(`
       INSERT OR REPLACE INTO cleanup_signups
         (event_id, user_id, first_name, last_name, phone, email, message, joined_at)
@@ -48,7 +41,6 @@ export async function POST(req: Request) {
       new Date().toISOString()
     );
 
-    // 2) Notify the organizer by email (never blocks the signup)
     const result = await sendParticipantNotification({
       eventTitle: event.title,
       firstName: firstName.trim(),

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { recomputeStreak, applyStreakTrees } from "@/lib/chat-utils";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
 interface MessageRow {
   id: string;
@@ -30,20 +31,19 @@ interface MemberRow {
   user_id: string;
 }
 
-// GET /api/chat/messages?conversationId=...&userId=... → thread + mark read (+ vanish cleanup)
-export async function GET(req: Request) {
+// GET /api/chat/messages?conversationId=... → thread + mark read (+ vanish cleanup)
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const conversationId = searchParams.get("conversationId");
-    const userId = searchParams.get("userId");
-    if (!conversationId || !userId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const conversationId = req.nextUrl.searchParams.get("conversationId");
+    if (!conversationId) return NextResponse.json({ error: "Missing conversationId." }, { status: 400 });
     const d = await getDb();
 
     const rows = await d.prepare(
       "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 300"
     ).all(conversationId) as MessageRow[];
 
-    // Vanish mode: delete any vanish messages the other user already read
     const vanishIds: string[] = [];
     const messages = rows.map(m => {
       const isVanish = !!m.vanish;
@@ -64,13 +64,11 @@ export async function GET(req: Request) {
       };
     }).filter(m => !vanishIds.includes(m.id));
 
-    // Clean up vanished messages + mark incoming as read
     for (const id of vanishIds) {
       await d.prepare("DELETE FROM messages WHERE id = ?").run(id);
     }
     await d.prepare("UPDATE messages SET read = 1 WHERE conversation_id = ? AND sender_id != ?").run(conversationId, userId);
 
-    // Refresh the streak
     const { streakTrees } = await recomputeStreak(conversationId);
     await applyStreakTrees(userId, conversationId, streakTrees);
 
@@ -81,11 +79,13 @@ export async function GET(req: Request) {
   }
 }
 
-// POST /api/chat/messages → send (text, photo/video snap, voice, location, reply)
-export async function POST(req: Request) {
+// POST /api/chat/messages → send
+export async function POST(req: NextRequest) {
   try {
-    const { conversationId, senderId, text, mediaUrl, mediaType, replyTo } = await req.json();
-    if (!conversationId || !senderId) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const senderId = await getCurrentUserId(req);
+    if (!senderId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { conversationId, text, mediaUrl, mediaType, replyTo } = await req.json();
+    if (!conversationId) return NextResponse.json({ error: "Missing conversationId." }, { status: 400 });
     if (!text?.trim() && !mediaUrl) return NextResponse.json({ error: "Nothing to send." }, { status: 400 });
     const d = await getDb();
 
@@ -105,11 +105,9 @@ export async function POST(req: Request) {
     );
     await d.prepare("UPDATE conversations SET updated_at = ? WHERE id = ?").run(new Date().toISOString(), conversationId);
 
-    // Recompute streak on send
     const { streak, streakTrees } = await recomputeStreak(conversationId);
     await applyStreakTrees(senderId, conversationId, streakTrees);
 
-    // Push notification to the other party (powers the bell + unread badge)
     const sender = await d.prepare("SELECT name FROM users WHERE id = ?").get(senderId) as { name?: string | null } | undefined;
     const senderName = sender?.name || "Someone";
     const preview = mediaType === "image" ? "📷 sent a photo" : mediaType === "video" ? "🎬 sent a video" : mediaType === "audio" ? "🎤 sent a voice note" : mediaType === "location" ? "📍 shared a location" : (text?.trim() || "").slice(0, 80);

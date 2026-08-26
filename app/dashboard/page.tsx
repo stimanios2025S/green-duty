@@ -1,14 +1,15 @@
 "use client";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { ROLE_LABEL } from "@/lib/nav-config";
 import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
 import {
   Trees, MapPin, Users, ShieldCheck, Sprout, CalendarCheck,
-  Building2, Package, ShoppingCart, Truck, Store, Wallet, BadgeCheck, TrendingUp, Briefcase, Leaf
+  Building2, Package, ShoppingCart, Truck, Store, Wallet, BadgeCheck, TrendingUp, Briefcase, Leaf,
+  Plus, Upload, X, Image as ImageIcon, Loader2
 } from "lucide-react";
 
 interface StatsPayload {
@@ -41,10 +42,7 @@ export default function DashboardPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading && !user) router.replace("/login");
-  }, [user, isLoading, router]);
-
+  // DEV BYPASS — skip login redirect. REMOVE BEFORE PRODUCTION.
   if (isLoading || !user) {
     return <div className="flex h-64 items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-gd-accent-500 border-t-transparent" /></div>;
   }
@@ -247,15 +245,207 @@ function BusinessPortal() {
   );
 }
 
+/* ── Seller product creation form with image upload ── */
+function SellerProductForm() {
+  const { user } = useAuth();
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [imgPreview, setImgPreview] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [dragOver, setDragOver] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [form, setForm] = useState({
+    name: "", description: "", category: "seeds", price: "",
+    stock: "", qualityCertified: false, organicCertified: false,
+    warrantyMonths: "0", features: "",
+  });
+
+  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setImgPreview(URL.createObjectURL(file));
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) {
+        const { url } = await res.json();
+        setImageUrl(url);
+      }
+    } catch {}
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  }, [handleFile]);
+
+  const clearImage = () => { setImgPreview(null); setImageUrl(""); if (fileRef.current) fileRef.current.value = ""; };
+
+  const submit = async () => {
+    if (!form.name || !form.description || !form.price || !form.stock) { setMsg("Fill in all required fields."); return; }
+    setSaving(true); setMsg("");
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name, description: form.description, category: form.category,
+          price: Number(form.price), stock: Number(form.stock),
+          qualityCertified: form.qualityCertified, organicCertified: form.organicCertified,
+          warrantyMonths: Number(form.warrantyMonths),
+          features: form.features.split(",").map(f => f.trim()).filter(Boolean),
+          imageUrl: imageUrl || undefined,
+        }),
+      });
+      if (res.ok) {
+        setMsg("✅ Product listed!");
+        setForm({ name: "", description: "", category: "seeds", price: "", stock: "", qualityCertified: false, organicCertified: false, warrantyMonths: "0", features: "" });
+        clearImage();
+        setTimeout(() => { setMsg(""); setShowForm(false); }, 2000);
+      } else {
+        const d = await res.json();
+        setMsg(d.error || "Failed.");
+      }
+    } catch { setMsg("Network error."); }
+    finally { setSaving(false); }
+  };
+
+  if (!user || user.accountType !== "seller") return null;
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between">
+        <SectionHead icon={<Package className="h-4 w-4" />} title="My Product Listings" sub="Create and manage your marketplace products" />
+        {!showForm && (
+          <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2 text-xs font-semibold text-gd-text-inverse shadow-sm hover:brightness-110 transition-all">
+            <Plus className="h-3.5 w-3.5" /> New Product
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <div className="mt-4 space-y-4 rounded-xl border border-gd-border bg-gd-elevated/30 p-5">
+          {/* Image upload area */}
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gd-text-muted">Product Photo</p>
+            {imgPreview ? (
+              <div className="relative inline-block">
+                <img src={imgPreview} alt="Preview" className="h-32 w-32 rounded-xl object-cover border border-gd-border" />
+                <button onClick={clearImage} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-gd-danger text-white shadow-md">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div
+                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileRef.current?.click()}
+                className={`flex h-32 w-full max-w-sm cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-all ${
+                  dragOver ? "border-gd-accent-500 bg-gd-accent-500/5" : "border-gd-border hover:border-gd-accent-500/30"
+                }`}
+              >
+                <Upload className="h-6 w-6 text-gd-text-muted" />
+                <p className="text-xs text-gd-text-muted">Drop image here or click to browse</p>
+                <p className="text-[10px] text-gd-text-muted">PNG, JPEG, WebP · Max 5 MB</p>
+              </div>
+            )}
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-[10px] text-gd-text-muted">or paste image URL:</span>
+              <input
+                type="url"
+                placeholder="https://example.com/photo.jpg"
+                value={imageUrl}
+                onChange={e => { setImageUrl(e.target.value); setImgPreview(e.target.value); }}
+                className="flex-1 rounded-lg border border-gd-border bg-gd-elevated px-3 py-1.5 text-xs text-gd-text-primary outline-none focus:border-gd-accent-500/40"
+              />
+            </div>
+          </div>
+
+          {/* Form fields */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gd-text-secondary">Product Name *</label>
+              <input value={form.name} onChange={e => set("name", e.target.value)} className="w-full rounded-xl border border-gd-border bg-gd-elevated px-4 py-2.5 text-sm text-gd-text-primary outline-none focus:border-gd-accent-500/40" placeholder="e.g. Organic Tomato Seeds" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gd-text-secondary">Category *</label>
+              <select value={form.category} onChange={e => set("category", e.target.value)} className="w-full rounded-xl border border-gd-border bg-gd-elevated px-4 py-2.5 text-sm text-gd-text-primary outline-none focus:border-gd-accent-500/40">
+                {["seeds","fertilizers","irrigation","tools","organic_produce","smart_farming","bio_pesticides","sensors"].map(c => (
+                  <option key={c} value={c}>{c.replace(/_/g, " ")}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gd-text-secondary">Price (DA) *</label>
+              <input type="number" value={form.price} onChange={e => set("price", e.target.value)} className="w-full rounded-xl border border-gd-border bg-gd-elevated px-4 py-2.5 text-sm text-gd-text-primary outline-none focus:border-gd-accent-500/40" placeholder="1500" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gd-text-secondary">Stock *</label>
+              <input type="number" value={form.stock} onChange={e => set("stock", e.target.value)} className="w-full rounded-xl border border-gd-border bg-gd-elevated px-4 py-2.5 text-sm text-gd-text-primary outline-none focus:border-gd-accent-500/40" placeholder="100" />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gd-text-secondary">Description *</label>
+            <textarea value={form.description} onChange={e => set("description", e.target.value)} rows={3} className="w-full rounded-xl border border-gd-border bg-gd-elevated px-4 py-2.5 text-sm text-gd-text-primary outline-none focus:border-gd-accent-500/40 resize-none" placeholder="Detailed product description..." />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gd-text-secondary">Features (comma-separated)</label>
+            <input value={form.features} onChange={e => set("features", e.target.value)} className="w-full rounded-xl border border-gd-border bg-gd-elevated px-4 py-2.5 text-sm text-gd-text-primary outline-none focus:border-gd-accent-500/40" placeholder="Non-GMO, Organic, Heirloom" />
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm text-gd-text-secondary cursor-pointer">
+              <input type="checkbox" checked={form.qualityCertified} onChange={e => set("qualityCertified", e.target.checked)} className="accent-gd-olive-500" /> Quality Certified
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gd-text-secondary cursor-pointer">
+              <input type="checkbox" checked={form.organicCertified} onChange={e => set("organicCertified", e.target.checked)} className="accent-gd-olive-500" /> Organic Certified
+            </label>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gd-text-secondary">Warranty (months):</label>
+              <input type="number" value={form.warrantyMonths} onChange={e => set("warrantyMonths", e.target.value)} className="w-20 rounded-lg border border-gd-border bg-gd-elevated px-2 py-1 text-sm text-gd-text-primary outline-none focus:border-gd-accent-500/40" />
+            </div>
+          </div>
+
+          {msg && <p className={`text-sm ${msg.startsWith("✅") ? "text-gd-success" : "text-gd-danger"}`}>{msg}</p>}
+
+          <div className="flex gap-2 pt-2">
+            <button onClick={() => setShowForm(false)} className="rounded-xl border border-gd-border px-4 py-2.5 text-sm text-gd-text-secondary hover:bg-gd-elevated transition-colors">Cancel</button>
+            <button onClick={submit} disabled={saving} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-5 py-2.5 text-sm font-semibold text-gd-text-inverse shadow-sm hover:brightness-110 disabled:opacity-50 transition-all">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              {saving ? "Saving..." : "List Product"}
+            </button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 /* ── Seller portal (real stats) ── */
 function SellerPortal() {
+  const { user } = useAuth();
   const stats = useLiveStats();
+  const [myOrders, setMyOrders] = useState<any[]>([]);
   const revenue = stats?.revenue || 0;
   const orders = stats?.orders || 0;
   const delivered = stats?.deliveredOrders || 0;
   const open = stats?.openOrders || 0;
   const trees = stats?.trees || 0;
   const deliveredPct = orders > 0 ? Math.round((delivered / orders) * 100) : 0;
+
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/seller/earnings")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setMyOrders(d.orders || []))
+      .catch(() => {});
+  }, [user]);
 
   return (
     <>
@@ -281,6 +471,35 @@ function SellerPortal() {
           ))}
         </div>
       </Card>
+
+      {/* Recent orders with escrow status */}
+      {myOrders.length > 0 && (
+        <Card>
+          <SectionHead icon={<Package className="h-4 w-4" />} title="Recent Orders" sub="Escrow status and payout timeline" />
+          <div className="space-y-2">
+            {myOrders.slice(0, 5).map((o: any) => (
+              <div key={o.id} className="flex items-center justify-between rounded-xl border border-gd-border bg-gd-elevated/50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gd-text-primary">{o.productName}</p>
+                  <p className="text-xs text-gd-text-muted mt-0.5">{new Date(o.createdAt).toLocaleDateString()} · {o.quantity}× · ${Number(o.totalPrice).toFixed(0)}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-gd-text-primary">${Number(o.sellerEarning).toFixed(0)}</span>
+                  <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${
+                    o.escrowStatus === "released" ? "border-gd-success/20 bg-gd-success/10 text-gd-success"
+                    : o.escrowStatus === "paid" ? "border-gd-info/20 bg-gd-info/10 text-gd-info"
+                    : "border-gd-accent-500/20 bg-gd-accent-500/10 text-gd-accent-400"
+                  }`}>
+                    {o.escrowStatus === "released" ? "Disponible" : o.escrowStatus === "paid" ? "Payé" : o.hoursUntilRelease ? `${o.hoursUntilRelease}h` : "En attente"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <SellerProductForm />
     </>
   );
 }
@@ -289,13 +508,42 @@ function SellerPortal() {
 function DriverPortal() {
   const stats = useLiveStats();
   const [queue, setQueue] = useState<any[]>([]);
+  const [updating, setUpdating] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadQueue = () => {
     fetch("/api/orders?all=1")
       .then(r => (r.ok ? r.json() : null))
       .then(d => d && setQueue((d.orders || []).filter((o: any) => ["pending", "confirmed", "shipped"].includes(o.status))))
       .catch(() => {});
-  }, []);
+  };
+
+  useEffect(() => { loadQueue(); }, []);
+
+  const markDelivered = async (orderId: string) => {
+    setUpdating(orderId);
+    try {
+      await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, status: "delivered" }),
+      });
+      loadQueue();
+    } catch {}
+    setUpdating(null);
+  };
+
+  const markShipped = async (orderId: string) => {
+    setUpdating(orderId);
+    try {
+      await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, status: "shipped" }),
+      });
+      loadQueue();
+    } catch {}
+    setUpdating(null);
+  };
 
   const revenue = stats?.revenue || 0;
   const delivered = stats?.deliveredOrders || 0;
@@ -321,13 +569,27 @@ function DriverPortal() {
                   <p className="text-sm font-medium text-gd-text-primary">Order {o.id.slice(-6).toUpperCase()}</p>
                   <p className="text-xs text-gd-text-muted mt-0.5">{o.product_name} ×{o.quantity} · ${Number(o.total_price).toFixed(2)} · {new Date(o.created_at).toLocaleDateString()}</p>
                 </div>
-                <span className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${
-                  o.status === "shipped"
-                    ? "border-gd-info/20 bg-gd-info/10 text-gd-info"
-                    : o.status === "confirmed"
-                    ? "border-gd-success/20 bg-gd-success/10 text-gd-success"
-                    : "border-gd-accent-500/20 bg-gd-accent-500/10 text-gd-accent-400"
-                }`}>{o.status}</span>
+                <div className="flex items-center gap-2">
+                  <span className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${
+                    o.status === "shipped"
+                      ? "border-gd-info/20 bg-gd-info/10 text-gd-info"
+                      : o.status === "confirmed"
+                      ? "border-gd-success/20 bg-gd-success/10 text-gd-success"
+                      : "border-gd-accent-500/20 bg-gd-accent-500/10 text-gd-accent-400"
+                  }`}>{o.status}</span>
+                  {o.status === "confirmed" && (
+                    <button onClick={() => markShipped(o.id)} disabled={updating === o.id}
+                      className="rounded-lg bg-gd-info/20 px-3 py-1.5 text-xs font-medium text-gd-info hover:bg-gd-info/30 transition-colors disabled:opacity-50">
+                      {updating === o.id ? "..." : "Ship"}
+                    </button>
+                  )}
+                  {o.status === "shipped" && (
+                    <button onClick={() => markDelivered(o.id)} disabled={updating === o.id}
+                      className="rounded-lg bg-gd-success/20 px-3 py-1.5 text-xs font-medium text-gd-success hover:bg-gd-success/30 transition-colors disabled:opacity-50">
+                      {updating === o.id ? "..." : "Deliver ✓"}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

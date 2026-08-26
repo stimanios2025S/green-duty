@@ -1,5 +1,5 @@
 "use client";
-import { ShoppingCart, Star, ShieldCheck, Leaf as LeafIcon, Check } from "lucide-react";
+import { ShoppingCart, Star, ShieldCheck, Leaf as LeafIcon, Check, ImageIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { formatCurrency } from "@/lib/utils";
@@ -10,6 +10,10 @@ import type { Product } from "@/types";
 export function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
   const [added, setAdded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  const imageUrl = product.imageUrl || product.images?.[0] || null;
+  const showImage = imageUrl && !imgError;
 
   const handleAdd = () => {
     add({ productId: product.id, name: product.name, price: product.price });
@@ -19,8 +23,20 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <Card hover className="flex flex-col">
-      <div className="relative mb-3 flex h-40 items-center justify-center rounded-xl bg-gradient-to-br from-gd-accent-500/8 to-gd-olive-500/5 border border-gd-border">
-        <div className="text-4xl font-bold text-gd-accent-400/20">{product.name[0]}</div>
+      <div className="relative mb-3 flex h-40 items-center justify-center rounded-xl bg-gradient-to-br from-gd-accent-500/8 to-gd-olive-500/5 border border-gd-border overflow-hidden">
+        {showImage ? (
+          <img
+            src={imageUrl!}
+            alt={product.name}
+            className="h-full w-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-1">
+            <ImageIcon className="h-8 w-8 text-gd-accent-400/20" />
+            <div className="text-4xl font-bold text-gd-accent-400/20">{product.name[0]}</div>
+          </div>
+        )}
         {product.qualityCertified && (
           <div className="absolute right-2 top-2 rounded-full bg-gd-olive-500/20 border border-gd-olive-500/30 p-1.5">
             <ShieldCheck className="h-3 w-3 text-gd-olive-400" />

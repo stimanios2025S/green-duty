@@ -1,15 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getCurrentUserId } from "@/lib/auth-helpers";
 
 interface MessageRow {
   reactions?: string | null;
 }
 
-// POST /api/chat/reaction → toggle an eco-reaction (🌱🤝💧🔥🌿) on a message
-export async function POST(req: Request) {
+// POST /api/chat/reaction → toggle an eco-reaction on a message
+export async function POST(req: NextRequest) {
   try {
-    const { messageId, userId, emoji } = await req.json();
-    if (!messageId || !userId || !emoji) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+    const userId = await getCurrentUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { messageId, emoji } = await req.json();
+    if (!messageId || !emoji) return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     const d = await getDb();
     const msg = await d.prepare("SELECT reactions FROM messages WHERE id = ?").get(messageId) as MessageRow | undefined;
     if (!msg) return NextResponse.json({ error: "Message not found." }, { status: 404 });
@@ -21,7 +24,6 @@ export async function POST(req: Request) {
       reactions[emoji] = users.filter(u => u !== userId);
       if (reactions[emoji].length === 0) delete reactions[emoji];
     } else {
-      // one reaction per user — remove from others first (like IG/WhatsApp)
       for (const k of Object.keys(reactions)) {
         reactions[k] = reactions[k].filter(u => u !== userId);
         if (reactions[k].length === 0) delete reactions[k];
