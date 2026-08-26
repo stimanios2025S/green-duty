@@ -2,8 +2,8 @@
 @import "leaflet/dist/leaflet.css";
 
 @theme inline {
-  --color-background: var(--gd-base);
-  --color-foreground: var(--gd-text-primary);
+  --color-background: var(--color-gd-base);
+  --color-foreground: var(--color-gd-text-primary);
   --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 
@@ -63,158 +63,171 @@
   --color-gd-surface: #1e1e27;
 }
 
-/* ── Base ── */
-body {
-  background: var(--gd-base);
-  color: var(--gd-text-primary);
-  font-family: var(--font-sans), system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  overscroll-behavior-y: none;
+/* ═══════════════════════════════════════════════════════
+ *  All custom CSS must live inside @layer blocks so
+ *  Tailwind v4 utilities (which are layered) can still
+ *  override them via specificity. Unlayered CSS always
+ *  beats layered CSS in the cascade.
+ * ═══════════════════════════════════════════════════════ */
+
+@layer base {
+  /* ── Base ── */
+  body {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--color-gd-base); }
+  ::-webkit-scrollbar-thumb { background: var(--color-gd-border-strong); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-gd-text-muted); }
 }
 
-html {
-  scroll-behavior: smooth;
+@layer components {
+  /* ── Glass utility ── */
+  .glass {
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--color-gd-border);
+  }
+  .glass-strong {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--color-gd-border-soft);
+  }
+
+  /* ── Glow ring (used on active/hover cards) ── */
+  .glow-ring {
+    box-shadow: 0 0 0 1px var(--color-gd-border-soft),
+                0 0 20px rgba(212, 160, 23, 0.06),
+                0 0 60px rgba(212, 160, 23, 0.02);
+  }
+  .glow-ring-strong {
+    box-shadow: 0 0 0 1px var(--color-gd-border-strong),
+                0 0 30px rgba(212, 160, 23, 0.12),
+                0 0 80px rgba(132, 204, 22, 0.04);
+  }
+  .glow-orange {
+    box-shadow: 0 0 0 1px rgba(249,115,22,0.12),
+                0 0 24px rgba(249,115,22,0.08);
+  }
+  .glow-green {
+    box-shadow: 0 0 0 1px rgba(132,204,22,0.12),
+                0 0 24px rgba(132,204,22,0.08);
+  }
+
+  /* ── Gradient text (accent) ── */
+  .gradient-text {
+    background: linear-gradient(135deg, var(--color-gd-accent-400), var(--color-gd-olive-500));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Subtle bg grid (used on maps / empty states) ── */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
 }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--gd-base); }
-::-webkit-scrollbar-thumb { background: var(--gd-border-strong); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--gd-text-muted); }
+@layer utilities {
+  /* ── High-tech / agro-tech landing animations ── */
 
-/* ── Glass utility ── */
-.glass {
-  background: rgba(255,255,255,0.03);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--gd-border);
-}
-.glass-strong {
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--gd-border-soft);
-}
+  /* Panning blueprint grid (hero floor) */
+  .bg-grid-pan {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    animation: grid-pan 6s linear infinite;
+  }
 
-/* ── Glow ring (used on active/hover cards) ── */
-.glow-ring {
-  box-shadow: 0 0 0 1px var(--gd-border-soft),
-              0 0 20px rgba(212, 160, 23, 0.06),
-              0 0 60px rgba(212, 160, 23, 0.02);
-}
-.glow-ring-strong {
-  box-shadow: 0 0 0 1px var(--gd-border-strong),
-              0 0 30px rgba(212, 160, 23, 0.12),
-              0 0 80px rgba(132, 204, 22, 0.04);
-}
-.glow-orange {
-  box-shadow: 0 0 0 1px rgba(249,115,22,0.12),
-              0 0 24px rgba(249,115,22,0.08);
-}
-.glow-green {
-  box-shadow: 0 0 0 1px rgba(132,204,22,0.12),
-              0 0 24px rgba(132,204,22,0.08);
-}
+  /* Floating particles (hero) */
+  .float-slow   { animation: float-y 9s ease-in-out infinite; }
+  .float-slower { animation: float-y 14s ease-in-out infinite; }
 
-/* ── Gradient text (accent) ── */
-.gradient-text {
-  background: linear-gradient(135deg, var(--gd-accent-400), var(--gd-olive-500));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
+  /* Expanding radar / pulse rings */
+  .pulse-ring { animation: pulse-ring 2.6s cubic-bezier(0.2, 0.6, 0.35, 1) infinite; }
 
-/* ── Subtle bg grid (used on maps / empty states) ── */
-.bg-grid {
-  background-image:
-    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-  background-size: 48px 48px;
+  /* Scanning line sweep (holographic cards) */
+  .scan-line {
+    animation: scan-line 4.5s linear infinite;
+  }
+
+  /* Marquee ticker */
+  .animate-marquee {
+    animation: marquee-x 32s linear infinite;
+  }
+  .animate-marquee:hover { animation-play-state: paused; }
+
+  /* Gradient sheen sweep on text/buttons */
+  .shimmer {
+    background: linear-gradient(110deg, var(--color-gd-accent-400) 30%, #fff8d6 50%, var(--color-gd-accent-400) 70%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer-x 5s linear infinite;
+  }
+
+  /* Slow rotation (radar sweep) */
+  .animate-spin-slow { animation: spin-slow 14s linear infinite; }
+
+  /* Dash-flow along SVG paths (pipelines) */
+  .dash-flow { animation: dash-flow 2.4s linear infinite; }
+
+  /* Soft glow breathing for live dots */
+  .glow-breathe { animation: glow-breathe 2.4s ease-in-out infinite; }
 }
 
-/* ── High-tech / agro-tech landing animations ── */
-
-/* Panning blueprint grid (hero floor) */
+/* Keyframes must be outside @layer (they're not style rules) */
 @keyframes grid-pan {
   0%   { background-position: 0 0; }
   100% { background-position: 48px 48px; }
 }
-.bg-grid-pan {
-  background-image:
-    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
-  background-size: 48px 48px;
-  animation: grid-pan 6s linear infinite;
-}
-
-/* Floating particles (hero) */
 @keyframes float-y {
   0%, 100% { transform: translateY(0) translateX(0); }
   50%      { transform: translateY(-26px) translateX(8px); }
 }
-.float-slow   { animation: float-y 9s ease-in-out infinite; }
-.float-slower { animation: float-y 14s ease-in-out infinite; }
-
-/* Expanding radar / pulse rings */
 @keyframes pulse-ring {
   0%   { transform: scale(0.6); opacity: 0.9; }
   100% { transform: scale(2.2); opacity: 0; }
 }
-.pulse-ring { animation: pulse-ring 2.6s cubic-bezier(0.2, 0.6, 0.35, 1) infinite; }
-
-/* Scanning line sweep (holographic cards) */
 @keyframes scan-line {
   0%   { transform: translateY(-120%); }
   100% { transform: translateY(320%); }
 }
-.scan-line {
-  animation: scan-line 4.5s linear infinite;
-}
-
-/* Marquee ticker */
 @keyframes marquee-x {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
-.animate-marquee {
-  animation: marquee-x 32s linear infinite;
-}
-.animate-marquee:hover { animation-play-state: paused; }
-
-/* Gradient sheen sweep on text/buttons */
 @keyframes shimmer-x {
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
-.shimmer {
-  background: linear-gradient(110deg, var(--gd-accent-400) 30%, #fff8d6 50%, var(--gd-accent-400) 70%);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shimmer-x 5s linear infinite;
-}
-
-/* Slow rotation (radar sweep) */
 @keyframes spin-slow {
   to { transform: rotate(360deg); }
 }
-.animate-spin-slow { animation: spin-slow 14s linear infinite; }
-
-/* Dash-flow along SVG paths (pipelines) */
 @keyframes dash-flow {
   to { stroke-dashoffset: -48; }
 }
-.dash-flow { animation: dash-flow 2.4s linear infinite; }
-
-/* Soft glow breathing for live dots */
 @keyframes glow-breathe {
   0%, 100% { opacity: 0.55; }
   50%      { opacity: 1; }
 }
-.glow-breathe { animation: glow-breathe 2.4s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .bg-grid-pan, .float-slow, .float-slower, .pulse-ring, .scan-line,
