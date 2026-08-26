@@ -18,10 +18,10 @@ export async function GET(req: Request) {
 
     const like = `%${q.toLowerCase()}%`;
 
-    // Users (name or username) — all users, no verified filter
+    // Users (name or username only — never search by email to prevent enumeration)
     const userRows = await d.prepare(
-      "SELECT * FROM users WHERE LOWER(name) LIKE ? OR LOWER(COALESCE(username, name)) LIKE ? OR LOWER(email) LIKE ? LIMIT 8"
-    ).all(like, like, like);
+      "SELECT * FROM users WHERE LOWER(name) LIKE ? OR LOWER(COALESCE(username, name)) LIKE ? LIMIT 8"
+    ).all(like, like);
     const users = [];
     for (const u of userRows as any[]) users.push(await apiUserFromRow(u, viewerId));
 

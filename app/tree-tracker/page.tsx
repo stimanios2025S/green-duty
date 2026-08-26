@@ -1,213 +1,138 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import anime from "animejs";
 import { TreeCounter } from "@/components/tree-tracker/TreeCounter";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
 import { Card } from "@/components/ui/Card";
-import { Heart, HandHeart, Trees, Droplets, Loader2, CheckCircle2, MessageCircle, Mail, ExternalLink } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { Heart, TreePine, MapPin, Leaf, ArrowRight, Users, Globe, Sprout } from "lucide-react";
+import Link from "next/link";
+
+const TreePlantingMap = dynamic(() => import("@/components/tree-tracker/TreePlantingMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[600px] items-center justify-center rounded-2xl border border-gd-border-strong bg-gd-elevated/50">
+      <div className="text-center">
+        <div className="mx-auto h-10 w-10 border-3 border-gd-olive-500/20 border-t-gd-olive-500 rounded-full animate-spin" />
+        <p className="mt-3 text-xs text-gd-text-muted">Loading map...</p>
+      </div>
+    </div>
+  ),
+});
+
+const IMPACT_STATS = [
+  { icon: TreePine, value: "12,450+", label: "Trees Planted", color: "text-gd-olive-500" },
+  { icon: MapPin, value: "48", label: "Wilayas Covered", color: "text-gd-accent-400" },
+  { icon: Users, value: "3,200+", label: "Contributors", color: "text-gd-info" },
+  { icon: Globe, value: "960", label: "Tons CO₂ Offset", color: "text-gd-success" },
+];
+
+const HOW_IT_WORKS = [
+  { step: "1", icon: MapPin, title: "Pick a Location", desc: "Choose any spot on the map where you want to plant a tree" },
+  { step: "2", icon: Sprout, title: "Report Planting", desc: "Enter the tree name and species, confirm the planting spot" },
+  { step: "3", icon: Leaf, title: "Track Growth", desc: "Watch your tree grow and see the collective impact across Algeria" },
+];
 
 export default function TreeTrackerPage() {
-  const { user } = useAuth();
   const titleRef = useRef<HTMLDivElement>(null);
-  const [showDonate, setShowDonate] = useState(false);
-  const [amount, setAmount] = useState("25");
-  const [name, setName] = useState(user?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [donating, setDonating] = useState(false);
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState("");
-  const [contact, setContact] = useState<{ whatsapp: string | null; email: string | null }>({ whatsapp: null, email: null });
-  const [treesPlanted, setTreesPlanted] = useState(0);
-  useEffect(() => { if (titleRef.current) anime({ targets: titleRef.current, opacity: [0, 1], translateY: [20, 0], duration: 600, easing: "easeOutCubic" }); }, []);
 
-  // Contact channels (WhatsApp + Gmail) for completing the donation
   useEffect(() => {
-    fetch("/api/contact").then(r => (r.ok ? r.json() : null)).then(d => d && setContact(d)).catch(() => {});
+    if (titleRef.current) {
+      anime({ targets: titleRef.current, opacity: [0, 1], translateY: [20, 0], duration: 600, easing: "easeOutCubic" });
+    }
   }, []);
 
-  const treesFor = (amt: number) => Math.max(1, Math.floor(amt / 5));
-
-  const donate = async () => {
-    setError("");
-    const amt = Number(amount);
-    if (!amt || amt <= 0) { setError("Enter a valid amount."); return; }
-    if (user && !name.trim()) { setError("Please enter your name."); return; }
-    setDonating(true);
-    try {
-      const res = await fetch("/api/donations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user?.id || null, amount: amt, name: name.trim(), email: email.trim() }),
-      });
-      if (!res.ok) throw new Error();
-      setTreesPlanted(treesFor(amt));
-      setDone(true); // keep the modal open → contact step
-    } catch {
-      setError("Donation failed. Please try again.");
-    } finally {
-      setDonating(false);
-    }
-  };
-
-  const closeModal = () => { setShowDonate(false); setDone(false); setError(""); };
-
-  const waText = encodeURIComponent(
-    `Hello GreenDuty! 🌳 I'd like to donate $${amount} to plant ${treesFor(Number(amount || 0))} tree(s).\nName: ${name || "—"}\nEmail: ${email || "—"}`
-  );
-  const mailSubject = encodeURIComponent(`Tree Donation — $${amount} (${treesFor(Number(amount || 0))} trees)`);
-  const mailBody = encodeURIComponent(
-    `Hello GreenDuty team,\n\nI would like to complete a tree donation:\n\n• Amount: $${amount}\n• Trees: ${treesFor(Number(amount || 0))}\n• Name: ${name || "—"}\n• Email: ${email || "—"}\n\nPlease guide me on how to finalize the payment.\n\nThank you!`
-  );
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Header */}
       <AnimeWrapper animate="fadeIn">
-        <div ref={titleRef} className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gd-text-primary tracking-tight">Tree Planting Tracker</h1>
-            <p className="text-sm text-gd-text-secondary mt-1">Track reforestation, sign up for planting events, sponsor trees</p>
+        <div ref={titleRef} className="text-center py-4">
+          <div className="inline-flex items-center gap-2 rounded-full border border-gd-olive-500/20 bg-gd-olive-500/5 px-4 py-1.5 mb-4">
+            <TreePine className="h-4 w-4 text-gd-olive-500" />
+            <span className="text-xs font-semibold text-gd-olive-500">Reforestation Initiative</span>
           </div>
-          <button
-            onClick={() => setShowDonate(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2.5 text-sm font-semibold text-gd-text-inverse shadow-lg shadow-gd-accent-500/20 hover:shadow-gd-accent-500/40 hover:brightness-110 transition-all"
-          >
-            <Heart className="h-4 w-4" /> Sponsor Trees
-          </button>
+          <h1 className="text-3xl font-bold text-gd-text-primary tracking-tight">
+            Tree <span className="gradient-text">Tracker</span>
+          </h1>
+          <p className="mt-3 text-sm text-gd-text-secondary max-w-lg mx-auto leading-relaxed">
+            Help us reforest Algeria. Pick a location, plant a tree, and track our collective impact in real-time.
+          </p>
         </div>
       </AnimeWrapper>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2"><TreeCounter /></div>
-        <div className="space-y-4">
-          <Card>
-            <h3 className="font-semibold text-gd-text-primary mb-4 flex items-center gap-2">
-              <Trees className="h-4 w-4 text-gd-olive-500" /> Why Plant Trees?
-            </h3>
-            <div className="space-y-3 text-sm text-gd-text-secondary">
-              <p className="flex items-center gap-2"><span className="text-base">🌳</span> 1 tree absorbs ~48 lbs CO₂/year</p>
-              <p className="flex items-center gap-2"><span className="text-base">💧</span> Trees reduce water runoff by 30%</p>
-              <p className="flex items-center gap-2"><span className="text-base">🌱</span> Forests host 80% of biodiversity</p>
-            </div>
-          </Card>
-          <Card>
-            <h3 className="font-semibold text-gd-text-primary mb-4 flex items-center gap-2">
-              <Droplets className="h-4 w-4 text-gd-accent-400" /> Donation Impact
-            </h3>
-            <p className="text-sm text-gd-text-secondary leading-relaxed">
-              <span className="font-semibold text-gd-accent-400">$5 plants 1 tree.</span> Choose your amount — we&apos;ll contact you directly on WhatsApp or by email to finalize your sponsorship.
-            </p>
-          </Card>
-        </div>
+      {/* Impact Stats */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {IMPACT_STATS.map((stat, i) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={i} className="text-center py-4">
+              <Icon className={`mx-auto h-5 w-5 ${stat.color} mb-1`} />
+              <p className="text-lg font-bold text-gd-text-primary">{stat.value}</p>
+              <p className="text-[10px] text-gd-text-muted font-medium">{stat.label}</p>
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Donation modal */}
-      {showDonate && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={closeModal} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-md rounded-2xl bg-gd-card border border-gd-border-soft p-6 shadow-2xl shadow-black/40" onClick={e => e.stopPropagation()}>
-              {done ? (
-                /* ── Step 2: complete donation via WhatsApp or Email ── */
-                <div className="text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gd-success/10 border border-gd-success/25">
-                    <CheckCircle2 className="h-8 w-8 text-gd-success" />
-                  </div>
-                  <p className="mt-3 text-lg font-semibold text-gd-text-primary">Almost there! 🌳</p>
-                  <p className="mt-1 text-sm text-gd-text-muted">
-                    Your sponsorship of <span className="text-gd-text-primary font-semibold">${Number(amount).toLocaleString()}</span> ({treesPlanted} tree{treesPlanted > 1 ? "s" : ""}) is recorded.
-                  </p>
-                  <p className="mt-3 text-sm text-gd-text-secondary">Finish your donation by contacting us directly:</p>
+      {/* Tree Counter */}
+      <AnimeWrapper animate="fadeIn" delay={200}>
+        <TreeCounter />
+      </AnimeWrapper>
 
-                  <div className="mt-5 space-y-3">
-                    {contact.whatsapp ? (
-                      <a
-                        href={`https://wa.me/${contact.whatsapp}?text=${waText}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between gap-3 rounded-xl border border-gd-success/25 bg-gd-success/5 px-4 py-3.5 text-left transition-all hover:border-gd-success/40 hover:bg-gd-success/10"
-                      >
-                        <div className="flex items-center gap-3">
-                          <MessageCircle className="h-5 w-5 text-gd-success" />
-                          <div>
-                            <p className="text-sm font-semibold text-gd-text-primary">Donate via WhatsApp</p>
-                            <p className="text-xs text-gd-text-muted">Chat with us directly — quick & easy</p>
-                          </div>
-                        </div>
-                        <ExternalLink className="h-4 w-4 text-gd-text-muted" />
-                      </a>
-                    ) : (
-                      <p className="rounded-xl border border-gd-border bg-gd-elevated/50 px-4 py-3 text-xs text-gd-text-muted">WhatsApp contact coming soon.</p>
-                    )}
-
-                    {contact.email ? (
-                      <a
-                        href={`mailto:${contact.email}?subject=${mailSubject}&body=${mailBody}`}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-gd-accent-500/25 bg-gd-accent-500/5 px-4 py-3.5 text-left transition-all hover:border-gd-accent-500/40 hover:bg-gd-accent-500/10"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Mail className="h-5 w-5 text-gd-accent-400" />
-                          <div>
-                            <p className="text-sm font-semibold text-gd-text-primary">Donate via Email</p>
-                            <p className="text-xs text-gd-text-muted">We&apos;ll send you the payment details</p>
-                          </div>
-                        </div>
-                        <ExternalLink className="h-4 w-4 text-gd-text-muted" />
-                      </a>
-                    ) : (
-                      <p className="rounded-xl border border-gd-border bg-gd-elevated/50 px-4 py-3 text-xs text-gd-text-muted">Email contact coming soon.</p>
-                    )}
-                  </div>
-
-                  <button onClick={closeModal} className="mt-5 w-full rounded-xl border border-gd-border bg-gd-card py-2.5 text-sm font-medium text-gd-text-secondary hover:bg-gd-elevated transition-colors">
-                    Close
-                  </button>
-                </div>
-              ) : (
-                /* ── Step 1: choose amount + details ── */
-                <>
-                  <div className="text-center mb-6">
-                    <Heart className="mx-auto h-10 w-10 text-gd-accent-400" />
-                    <h3 className="mt-3 text-lg font-semibold text-gd-text-primary">Sponsor Trees</h3>
-                    <p className="text-sm text-gd-text-secondary mt-1">$5 plants one tree. We&apos;ll contact you to finalize.</p>
-                  </div>
-                  <div className="space-y-3 mb-6">
-                    <div className="flex gap-2">
-                      {["$10","$25","$50","$100"].map(a => (
-                        <button
-                          key={a}
-                          onClick={() => setAmount(a.replace("$", ""))}
-                          className={`flex-1 rounded-xl border py-3 text-sm font-medium transition-all ${
-                            amount === a.replace("$", "")
-                              ? "border-gd-accent-500/50 bg-gd-accent-500/10 text-gd-accent-400"
-                              : "border-gd-border bg-gd-elevated text-gd-text-secondary hover:border-gd-accent-500/40"
-                          }`}
-                        >
-                          {a}
-                        </button>
-                      ))}
-                    </div>
-                    <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="Custom amount" className="w-full rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-                    <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" className="w-full rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-                    <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email" className="w-full rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-                    <p className="rounded-xl border border-gd-olive-500/15 bg-gd-olive-500/5 px-3.5 py-2.5 text-[11px] text-gd-olive-500">
-                      🌳 You&apos;re planting <span className="font-semibold">{treesFor(Number(amount || 0))} tree(s)</span> — we&apos;ll finalize via WhatsApp or email.
-                    </p>
-                  </div>
-                  {error && <p className="mb-3 rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">{error}</p>}
-                  <button
-                    onClick={donate}
-                    disabled={donating}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-3 text-sm font-semibold text-gd-text-inverse hover:brightness-110 transition-all shadow-lg shadow-gd-accent-500/20 disabled:opacity-50"
-                  >
-                    {donating ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</> : <><HandHeart className="h-4 w-4" /> Continue — Plant {treesFor(Number(amount || 0))} Tree(s)</>}
-                  </button>
-                </>
-              )}
-            </div>
+      {/* Interactive Map */}
+      <AnimeWrapper animate="fadeIn" delay={300}>
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gd-text-primary flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-gd-accent-400" /> Choose a Planting Location
+            </h2>
+            <p className="text-[10px] text-gd-text-muted">Click anywhere on the map</p>
           </div>
-        </>
-      )}
+          <TreePlantingMap />
+        </div>
+      </AnimeWrapper>
+
+      {/* How It Works */}
+      <AnimeWrapper animate="fadeIn" delay={400}>
+        <div>
+          <h2 className="text-lg font-bold text-gd-text-primary text-center mb-5">How It Works</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {HOW_IT_WORKS.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <Card key={i} className="text-center relative overflow-hidden group hover:border-gd-accent-500/20 transition-all">
+                  <div className="absolute -top-2 -right-2 h-12 w-12 rounded-full bg-gd-accent-500/5 flex items-center justify-center text-2xl font-bold text-gd-accent-500/10">
+                    {item.step}
+                  </div>
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-gd-accent-500/5 border border-gd-accent-500/15 group-hover:scale-110 transition-transform">
+                    <Icon className="h-6 w-6 text-gd-accent-400" />
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-gd-text-primary">{item.title}</p>
+                  <p className="mt-1 text-xs text-gd-text-secondary leading-relaxed">{item.desc}</p>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </AnimeWrapper>
+
+      {/* Donate CTA */}
+      <AnimeWrapper animate="fadeIn" delay={500}>
+        <Card className="text-center !bg-gradient-to-br !from-gd-olive-500/10 !to-gd-accent-500/5 !border-gd-olive-500/15">
+          <Heart className="mx-auto h-8 w-8 text-gd-success mb-3" />
+          <h3 className="text-lg font-bold text-gd-text-primary">Can&apos;t Plant Right Now?</h3>
+          <p className="mt-2 text-sm text-gd-text-secondary max-w-md mx-auto">
+            Donate to fund tree planting. We handle the logistics — you get the impact.
+            500 DA plants one tree in Algeria.
+          </p>
+          <Link
+            href="/donations"
+            className="inline-flex items-center gap-2 mt-4 rounded-xl bg-gradient-to-r from-gd-olive-500 to-gd-olive-600 px-6 py-3 text-sm font-semibold text-gd-text-inverse shadow-lg shadow-gd-olive-500/20 hover:shadow-gd-olive-500/40 hover:brightness-110 transition-all"
+          >
+            <Heart className="h-4 w-4" /> Donate Now <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Card>
+      </AnimeWrapper>
     </div>
   );
 }

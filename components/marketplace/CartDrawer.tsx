@@ -13,14 +13,13 @@ const PAYMENT_METHODS = [
 ];
 
 export function CartDrawer() {
-  const { lines, total, isOpen, closeCart, setQty, remove, clear } = useCart();
+  const { lines, total, isOpen, step, closeCart, setStep, setQty, remove, clear } = useCart();
   const { user } = useAuth();
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [error, setError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("ccp");
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [step, setStep] = useState<"cart" | "payment">("cart");
 
   if (!isOpen) return null;
 

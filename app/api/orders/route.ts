@@ -4,16 +4,13 @@ import { genId } from "@/lib/instagro-api";
 import { getCurrentUserId } from "@/lib/auth-helpers";
 import { orderSchema } from "@/lib/validations";
 
-// GET /api/orders → list the authenticated user's orders (or all for admin/driver)
+// GET /api/orders → list the authenticated user's orders
 export async function GET(req: NextRequest) {
   try {
     const userId = await getCurrentUserId(req);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const all = req.nextUrl.searchParams.get("all") === "1";
     const d = await getDb();
-    const rows = all
-      ? await d.prepare("SELECT * FROM orders ORDER BY created_at DESC LIMIT 50").all()
-      : await d.prepare("SELECT * FROM orders WHERE buyer_id = ? ORDER BY created_at DESC").all(userId);
+    const rows = await d.prepare("SELECT * FROM orders WHERE buyer_id = ? ORDER BY created_at DESC").all(userId);
     return NextResponse.json({ orders: rows });
   } catch (err) {
     console.error("[orders]", err);
@@ -86,7 +83,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PATCH /api/orders → update order status (driver confirms delivery → starts escrow countdown)
+// PATCH /api/orders → update order status (only the buyer or assigned driver can update)
 export async function PATCH(req: NextRequest) {
   try {
     const userId = await getCurrentUserId(req);
@@ -104,6 +101,11 @@ export async function PATCH(req: NextRequest) {
     const d = await getDb();
     const order = await d.prepare("SELECT * FROM orders WHERE id = ?").get(orderId) as any;
     if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+
+    // Authorization: only the buyer who placed this order can update it
+    if (order.buyer_id !== userId) {
+      return NextResponse.json({ error: "You can only update your own orders." }, { status: 403 });
+    }
 
     // When delivered, set escrow_held_at to now (starts 24h countdown)
     if (status === "delivered") {

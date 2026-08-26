@@ -201,6 +201,15 @@ const SCHEMA = `
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS tree_plantings (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    species TEXT,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    planted_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS b2b_inquiries (
     id TEXT PRIMARY KEY,
     user_id TEXT,

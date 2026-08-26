@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { genId } from "@/lib/instagro-api";
 
-// POST /api/donations → sponsor trees ($5 = 1 tree)
+// POST /api/donations → sponsor trees (500 DA = 1 tree)
 export async function POST(req: Request) {
   try {
-    const { userId, amount, name, email } = await req.json();
+    const { userId, amount, name, email, message } = await req.json();
     const amt = Number(amount);
     if (!amt || amt <= 0) return NextResponse.json({ error: "Enter a valid amount." }, { status: 400 });
     const d = await getDb();
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       const user = await d.prepare("SELECT id FROM users WHERE id = ?").get(userId);
       if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
     }
-    const trees = Math.floor(amt / 5);
+    const trees = Math.floor(amt / 500);
     const id = genId("don");
     await d.prepare("INSERT INTO tree_donations (id, user_id, amount, trees, created_at) VALUES (?,?,?,?,?)")
       .run(id, userId || null, amt, trees, new Date().toISOString());

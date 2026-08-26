@@ -12,7 +12,15 @@ const SESSION_COOKIE = "gd_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 function getSecret(): Uint8Array {
-  const secret = process.env.SESSION_SECRET || process.env.AUTH_SECRET || "greenduty-dev-secret-change-in-production";
+  const secret = process.env.SESSION_SECRET || process.env.AUTH_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("SESSION_SECRET or AUTH_SECRET must be set in production.");
+    }
+    // Dev fallback — NOT safe for production
+    console.warn("[auth] ⚠️  No SESSION_SECRET set. Using dev fallback. Set SESSION_SECRET in production!");
+    return new TextEncoder().encode("greenduty-dev-only-not-for-production");
+  }
   return new TextEncoder().encode(secret);
 }
 
@@ -36,8 +44,9 @@ export async function createSession(response: Response, user: DbUser): Promise<v
     .setExpirationTime("30d")
     .sign(getSecret());
 
-  // We need to set the cookie on the response headers
-  const cookieValue = `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`;
+  const isProd = process.env.NODE_ENV === "production";
+  const secureFlag = isProd ? "; Secure" : "";
+  const cookieValue = `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax${secureFlag}; Max-Age=${SESSION_MAX_AGE}`;
   const existing = response.headers.get("Set-Cookie");
   if (existing) {
     response.headers.set("Set-Cookie", `${existing}, ${cookieValue}`);
@@ -48,7 +57,9 @@ export async function createSession(response: Response, user: DbUser): Promise<v
 
 /** Clear the session cookie */
 export async function destroySession(response: Response): Promise<void> {
-  const cookieValue = `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+  const isProd = process.env.NODE_ENV === "production";
+  const secureFlag = isProd ? "; Secure" : "";
+  const cookieValue = `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax${secureFlag}; Max-Age=0`;
   response.headers.set("Set-Cookie", cookieValue);
 }
 

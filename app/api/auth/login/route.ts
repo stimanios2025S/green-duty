@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getDb, type DbUser } from "@/lib/db";
 import { publicUser, createSession } from "@/lib/auth-helpers";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 interface AuthUserRow {
   id: string;
@@ -12,12 +13,22 @@ interface AuthUserRow {
   [key: string]: unknown;
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { email, password } = body;
     if (!email?.trim() || !password?.trim()) {
       return NextResponse.json({ error: "Please enter your email and password." }, { status: 400 });
+    }
+
+    // Rate limit: 5 attempts per minute per IP
+    const ip = getClientIp(req);
+    const rl = checkRateLimit(`login:${ip}`, 5, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many login attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetMs / 1000)) } }
+      );
     }
 
     const db = await getDb();
@@ -27,15 +38,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
+    // Handle users with empty password (created via dev bypass)
+    if (!user.password) {
+      return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
+    }
+
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
-    // Auto-verify on login — email verification is only enforced at signup time
+    // Require verified account to log in
     if (!user.verified) {
-      await db.prepare("UPDATE users SET verified = 1, verification_code = NULL, verification_expires = NULL WHERE id = ?").run(user.id);
-      user.verified = 1;
+      return NextResponse.json(
+        { error: "Please verify your email before logging in." },
+        { status: 403 }
+      );
     }
 
     // Set HttpOnly session cookie

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { ProductCard } from "@/components/marketplace/ProductCard";
+import { ProductDetailModal } from "@/components/marketplace/ProductDetailModal";
 import { products as mockProducts } from "@/lib/mock-data";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
 import { Search, SlidersHorizontal } from "lucide-react";
@@ -23,6 +24,8 @@ export function MarketplaceFilters() {
   const [category, setCategory] = useState<ProductCategory | "all">("all");
   const [certifiedOnly, setCertifiedOnly] = useState(false);
   const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -43,6 +46,11 @@ export function MarketplaceFilters() {
     if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.description.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  const openDetail = (product: Product) => {
+    setSelectedProduct(product);
+    setShowDetail(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -86,7 +94,9 @@ export function MarketplaceFilters() {
 
       {/* Product grid */}
       <AnimeWrapper animate="stagger" className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filtered.map(p => <ProductCard key={p.id} product={p} />)}
+        {filtered.map(p => (
+          <ProductCard key={p.id} product={p} onClick={() => openDetail(p)} />
+        ))}
       </AnimeWrapper>
 
       {filtered.length === 0 && (
@@ -94,6 +104,13 @@ export function MarketplaceFilters() {
           <p className="text-gd-text-muted text-sm">No products found matching your filters.</p>
         </div>
       )}
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        product={selectedProduct}
+        isOpen={showDetail}
+        onClose={() => { setShowDetail(false); setSelectedProduct(null); }}
+      />
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
 import {
-  Trees, MapPin, Users, ShieldCheck, Sprout, CalendarCheck,
+  Trees, MapPin, Users, ShieldCheck, Sprout, CalendarCheck, Check,
   Building2, Package, ShoppingCart, Truck, Store, Wallet, BadgeCheck, TrendingUp, Briefcase, Leaf,
   Plus, Upload, X, Image as ImageIcon, Loader2
 } from "lucide-react";
@@ -599,6 +599,179 @@ function DriverPortal() {
   );
 }
 
+/* ── Delivery roadmap step indicator ── */
+function DeliveryRoadmap({ status }: { status: string }) {
+  const steps = [
+    { key: "pending", label: "Order Placed", icon: Package },
+    { key: "confirmed", label: "Confirmed", icon: BadgeCheck },
+    { key: "shipped", label: "In Transit", icon: Truck },
+    { key: "delivered", label: "Delivered", icon: Check },
+  ];
+
+  const statusOrder = ["pending", "confirmed", "shipped", "delivered"];
+  const currentIdx = statusOrder.indexOf(status);
+  const isCancelled = status === "cancelled";
+
+  if (isCancelled) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5">
+        <X className="h-4 w-4 text-gd-danger" />
+        <span className="text-xs font-medium text-gd-danger">Order Canceled</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-0 w-full">
+      {steps.map((step, i) => {
+        const isCompleted = i <= currentIdx;
+        const isCurrent = i === currentIdx;
+        const Icon = step.icon;
+        return (
+          <div key={step.key} className="flex items-center flex-1">
+            <div className="flex flex-col items-center gap-1 flex-1">
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all ${
+                isCompleted
+                  ? "border-gd-success bg-gd-success/15 text-gd-success"
+                  : "border-gd-border-strong bg-gd-elevated text-gd-text-muted"
+              } ${isCurrent ? "ring-2 ring-gd-success/30 shadow-[0_0_12px_rgba(34,197,94,0.2)]" : ""}`}>
+                <Icon className="h-3.5 w-3.5" />
+              </div>
+              <span className={`text-[9px] font-medium text-center leading-tight ${isCompleted ? "text-gd-text-primary" : "text-gd-text-muted"}`}>
+                {step.label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`h-0.5 flex-1 mx-1 rounded-full transition-all -mt-4 ${i < currentIdx ? "bg-gd-success" : "bg-gd-border-strong"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Single order card with product info + roadmap ── */
+function OrderCard({ order }: { order: any }) {
+  const [expanded, setExpanded] = useState(false);
+  const statusColors: Record<string, string> = {
+    pending: "border-gd-accent-500/20 bg-gd-accent-500/10 text-gd-accent-400",
+    confirmed: "border-gd-info/20 bg-gd-info/10 text-gd-info",
+    shipped: "border-gd-olive-500/20 bg-gd-olive-500/10 text-gd-olive-500",
+    delivered: "border-gd-success/20 bg-gd-success/10 text-gd-success",
+    cancelled: "border-gd-danger/20 bg-gd-danger/10 text-gd-danger",
+  };
+
+  // Parse items from cart orders or single product orders
+  const items: Array<{ productName: string; quantity: number; price: number }> = (() => {
+    try {
+      if (order.items_json) return JSON.parse(order.items_json);
+    } catch {}
+    return [{ productName: order.product_name, quantity: order.quantity, price: order.total_price }];
+  })();
+
+  return (
+    <div className="rounded-xl border border-gd-border bg-gd-card overflow-hidden transition-all hover:border-gd-border-strong">
+      {/* Header row */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-gd-elevated/30 transition-colors"
+      >
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gd-accent-500/10 border border-gd-accent-500/10 text-gd-accent-400 shrink-0">
+          <Package className="h-5 w-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gd-text-primary truncate">{order.product_name}</p>
+            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${statusColors[order.status] || statusColors.pending}`}>
+              {order.status}
+            </span>
+          </div>
+          <p className="text-xs text-gd-text-muted mt-0.5">
+            Order #{order.id.slice(-8).toUpperCase()} · {new Date(order.created_at).toLocaleDateString()} · {items.length} item{items.length > 1 ? "s" : ""}
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-sm font-bold text-gd-text-primary">${Number(order.total_price).toFixed(2)}</p>
+          {order.payment_method && (
+            <p className="text-[10px] text-gd-text-muted uppercase">{order.payment_method}</p>
+          )}
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-gd-border px-4 py-4 space-y-4 bg-gd-elevated/20">
+          {/* Delivery Roadmap */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gd-text-muted mb-3">Delivery Progress</p>
+            <DeliveryRoadmap status={order.status} />
+          </div>
+
+          {/* Product items */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gd-text-muted mb-2">Products</p>
+            <div className="space-y-2">
+              {items.map((item: any, i: number) => (
+                <div key={i} className="flex items-center gap-3 rounded-xl bg-gd-elevated/50 border border-gd-border px-3 py-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gd-olive-500/10 text-sm font-bold text-gd-olive-500 shrink-0">
+                    {item.productName?.[0] || "?"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gd-text-primary truncate">{item.productName}</p>
+                    <p className="text-[10px] text-gd-text-muted">Qty: {item.quantity} × ${Number(item.price).toFixed(2)}</p>
+                  </div>
+                  <p className="text-sm font-semibold text-gd-text-primary shrink-0">${(item.price * item.quantity).toFixed(2)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Order details grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {order.delivery_address && (
+              <div className="rounded-xl bg-gd-elevated/50 border border-gd-border p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gd-text-muted">Delivery Address</p>
+                <p className="mt-1 text-xs text-gd-text-primary">{order.delivery_address}</p>
+              </div>
+            )}
+            {order.delivery_notes && (
+              <div className="rounded-xl bg-gd-elevated/50 border border-gd-border p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gd-text-muted">Delivery Notes</p>
+                <p className="mt-1 text-xs text-gd-text-primary">{order.delivery_notes}</p>
+              </div>
+            )}
+            <div className="rounded-xl bg-gd-elevated/50 border border-gd-border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gd-text-muted">Payment Method</p>
+              <p className="mt-1 text-xs text-gd-text-primary uppercase">{order.payment_method || "CCP"}</p>
+            </div>
+            {order.commission_amount > 0 && (
+              <div className="rounded-xl bg-gd-elevated/50 border border-gd-border p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gd-text-muted">Platform Fee</p>
+                <p className="mt-1 text-xs text-gd-text-primary">${Number(order.commission_amount).toFixed(2)}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Escrow info */}
+          {order.escrow_status && (
+            <div className={`rounded-xl border px-3.5 py-2.5 flex items-center gap-2 ${
+              order.escrow_status === "released"
+                ? "border-gd-success/20 bg-gd-success/5"
+                : "border-gd-accent-500/20 bg-gd-accent-500/5"
+            }`}>
+              <ShieldCheck className={`h-4 w-4 ${order.escrow_status === "released" ? "text-gd-success" : "text-gd-accent-400"}`} />
+              <span className={`text-xs font-medium ${order.escrow_status === "released" ? "text-gd-success" : "text-gd-text-secondary"}`}>
+                Escrow: {order.escrow_status === "released" ? "Funds released to seller" : order.escrow_status === "paid" ? "Payment confirmed" : "Held in escrow"}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Buyer portal ── */
 function BuyerPortal() {
   const { user } = useAuth();
@@ -613,35 +786,30 @@ function BuyerPortal() {
   }, [user]);
 
   const totalSpent = orders.reduce((s, o) => s + Number(o.total_price || 0), 0);
+  const inTransit = orders.filter(o => o.status === "shipped" || o.status === "confirmed").length;
+  const delivered = orders.filter(o => o.status === "delivered").length;
 
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Orders" value={orders.length} icon={<ShoppingCart className="h-5 w-5" />} />
-        <StatCard label="In Transit" value={orders.filter(o => o.status === "shipped" || o.status === "confirmed").length} icon={<Truck className="h-5 w-5" />} />
+        <StatCard label="Total Orders" value={orders.length} icon={<ShoppingCart className="h-5 w-5" />} />
+        <StatCard label="In Transit" value={inTransit} icon={<Truck className="h-5 w-5" />} trend={inTransit > 0 ? { value: inTransit, isPositive: true } : undefined} />
+        <StatCard label="Delivered" value={delivered} icon={<BadgeCheck className="h-5 w-5" />} />
         <StatCard label="Total Spent" value={`$${totalSpent.toLocaleString()}`} icon={<Wallet className="h-5 w-5" />} />
-        <StatCard label="Pending" value={orders.filter(o => o.status === "pending").length} icon={<BadgeCheck className="h-5 w-5" />} />
       </div>
+
       <Card>
-        <SectionHead icon={<ShoppingCart className="h-4 w-4" />} title="Order Tracking" />
+        <SectionHead icon={<ShoppingCart className="h-4 w-4" />} title="My Purchases" sub="Track all your orders and delivery status" />
         {orders.length === 0 ? (
-          <p className="py-8 text-center text-sm text-gd-text-muted">No orders yet — shop the marketplace!</p>
+          <div className="py-12 text-center">
+            <ShoppingCart className="mx-auto h-12 w-12 text-gd-text-muted/30" />
+            <p className="mt-3 text-sm text-gd-text-muted">No orders yet</p>
+            <p className="mt-1 text-xs text-gd-text-muted">Browse the marketplace and make your first purchase!</p>
+          </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {orders.map(o => (
-              <div key={o.id} className="flex items-center justify-between rounded-xl border border-gd-border bg-gd-elevated/50 px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gd-text-primary">{o.product_name} ×{o.quantity}</p>
-                  <p className="text-xs text-gd-text-muted mt-0.5">${Number(o.total_price).toFixed(2)} · {new Date(o.created_at).toLocaleDateString()}</p>
-                </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
-                  o.status === "delivered"
-                    ? "bg-gd-success/10 text-gd-success border border-gd-success/20"
-                    : o.status === "shipped"
-                    ? "bg-gd-info/10 text-gd-info border border-gd-info/20"
-                    : "bg-gd-accent-500/10 text-gd-accent-400 border border-gd-accent-500/20"
-                }`}>{o.status}</span>
-              </div>
+              <OrderCard key={o.id} order={o} />
             ))}
           </div>
         )}

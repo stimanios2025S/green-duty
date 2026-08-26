@@ -1,28 +1,24 @@
 "use client";
-import { ShoppingCart, Star, ShieldCheck, Leaf as LeafIcon, Check, ImageIcon } from "lucide-react";
+import { ShoppingCart, Star, ShieldCheck, Leaf as LeafIcon, ImageIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { formatCurrency } from "@/lib/utils";
-import { useCart } from "@/lib/cart-store";
 import { useState } from "react";
 import type { Product } from "@/types";
 
-export function ProductCard({ product }: { product: Product }) {
-  const { add } = useCart();
-  const [added, setAdded] = useState(false);
+interface ProductCardProps {
+  product: Product;
+  onClick?: () => void;
+}
+
+export function ProductCard({ product, onClick }: ProductCardProps) {
   const [imgError, setImgError] = useState(false);
 
   const imageUrl = product.imageUrl || product.images?.[0] || null;
   const showImage = imageUrl && !imgError;
 
-  const handleAdd = () => {
-    add({ productId: product.id, name: product.name, price: product.price });
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1200);
-  };
-
   return (
-    <Card hover className="flex flex-col">
+    <Card hover className="flex cursor-pointer flex-col" onClick={onClick}>
       <div className="relative mb-3 flex h-40 items-center justify-center rounded-xl bg-gradient-to-br from-gd-accent-500/8 to-gd-olive-500/5 border border-gd-border overflow-hidden">
         {showImage ? (
           <img
@@ -50,7 +46,7 @@ export function ProductCard({ product }: { product: Product }) {
           )}
           <Badge variant="default">{product.category.replace(/_/g, ' ')}</Badge>
         </div>
-        <h3 className="font-semibold text-gd-text-primary">{product.name}</h3>
+        <h3 className="font-semibold text-gd-text-primary line-clamp-1">{product.name}</h3>
         <p className="mt-1 text-xs text-gd-text-secondary line-clamp-2 leading-relaxed">{product.description}</p>
         <div className="mt-2 flex items-center gap-1">
           <Star className="h-3 w-3 fill-gd-accent-400 text-gd-accent-400" />
@@ -63,16 +59,9 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="text-lg font-bold text-gd-text-primary">{formatCurrency(product.price)}</p>
           <p className="text-xs text-gd-text-muted">{product.stock} in stock</p>
         </div>
-        <button
-          onClick={handleAdd}
-          className={`rounded-xl p-2.5 transition-all ${
-            added
-              ? "bg-gd-success text-white"
-              : "bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse hover:brightness-110 shadow-sm shadow-gd-accent-500/10"
-          }`}
-        >
-          {added ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
-        </button>
+        <span className="rounded-xl bg-gd-elevated border border-gd-border px-3 py-2 text-xs font-medium text-gd-text-secondary transition-all group-hover:border-gd-accent-500/40 group-hover:text-gd-accent-400">
+          View Details
+        </span>
       </div>
       {product.warrantyMonths > 0 && (
         <p className="mt-1.5 text-[10px] text-gd-text-muted">{product.warrantyMonths}-month warranty</p>

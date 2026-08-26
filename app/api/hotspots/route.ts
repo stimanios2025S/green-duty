@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { genId } from "@/lib/instagro-api";
 import { hotspotReportSchema } from "@/lib/validations";
@@ -17,7 +17,7 @@ export async function GET() {
 }
 
 // POST /api/hotspots → create a report (with optional photo + eco points reward)
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const userId = await getCurrentUserId(req);
     if (!userId) return NextResponse.json({ error: "Sign in required." }, { status: 401 });

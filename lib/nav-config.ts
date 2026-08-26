@@ -1,5 +1,5 @@
 import {
-  Leaf, LayoutDashboard, ShoppingBag, MapPin, BookOpen, Trees, Briefcase, Package, Truck, Building2, Sprout, ClipboardList, CreditCard, Users, Wallet, type LucideIcon
+  Leaf, LayoutDashboard, ShoppingBag, MapPin, BookOpen, Trees, Briefcase, Package, Truck, Building2, Sprout, ClipboardList, CreditCard, Users, Wallet, Heart, type LucideIcon
 } from "lucide-react";
 import type { AccountType } from "@/types";
 
@@ -16,6 +16,7 @@ export const ALL_TABS: NavItem[] = [
   { href: "/eco-map", label: "Eco Map", icon: MapPin },
   { href: "/feed", label: "InstaGro", icon: BookOpen },
   { href: "/tree-tracker", label: "Tree Tracker", icon: Trees },
+  { href: "/donations", label: "Donations", icon: Heart },
   { href: "/b2b", label: "B2B Services", icon: Briefcase },
 ];
 
@@ -34,6 +35,8 @@ export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
     { href: "/buyer/crm", label: "Daily CRM", icon: ClipboardList },
     { href: "/feed", label: "InstaGro", icon: BookOpen },
     { href: "/eco-map", label: "Eco Map", icon: MapPin },
+    { href: "/tree-tracker", label: "Tree Tracker", icon: Trees },
+    { href: "/donations", label: "Donations", icon: Heart },
     { href: "/subscriptions", label: "Abonnements", icon: CreditCard },
   ],
   seller: [
@@ -49,6 +52,8 @@ export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
     { href: "/dashboard", label: "My Deliveries", icon: LayoutDashboard },
     { href: "/marketplace", label: "Orders", icon: Truck },
     { href: "/eco-map", label: "Eco Map", icon: MapPin },
+    { href: "/tree-tracker", label: "Tree Tracker", icon: Trees },
+    { href: "/donations", label: "Donations", icon: Heart },
   ],
   business: [
     { href: "/", label: "Home", icon: Leaf },
@@ -56,12 +61,15 @@ export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
     { href: "/b2b", label: "B2B Services", icon: Briefcase },
     { href: "/marketplace", label: "Procurement", icon: ShoppingBag },
     { href: "/tree-tracker", label: "CSR & Trees", icon: Trees },
+    { href: "/donations", label: "Donations", icon: Heart },
   ],
   farmer: [
     { href: "/", label: "Home", icon: Leaf },
     { href: "/farmer", label: "Farm Portal", icon: Sprout },
     { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
     { href: "/eco-map", label: "Eco Map", icon: MapPin },
+    { href: "/tree-tracker", label: "Tree Tracker", icon: Trees },
+    { href: "/donations", label: "Donations", icon: Heart },
   ],
 };
 

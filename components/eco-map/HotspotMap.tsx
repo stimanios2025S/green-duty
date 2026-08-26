@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap, useMapEve
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { cn, severityColor, statusLabel } from "@/lib/utils";
-import { MapPin, AlertTriangle, Loader2, Navigation, Plus, X } from "lucide-react";
+import { MapPin, AlertTriangle, Loader2, Navigation, Plus, X, Search, Camera, ImageIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useAuth } from "@/lib/auth-context";
 import { CleanupJoinModal } from "@/components/eco-map/CleanupJoinModal";
@@ -22,6 +22,7 @@ interface ApiHotspot {
   reporter_id: string;
   status: string;
   upvotes: number;
+  media_url?: string | null;
   created_at: string;
 }
 
@@ -43,6 +44,73 @@ function makeIcon(color: string) {
     iconAnchor: [14, 28],
     popupAnchor: [0, -26],
   });
+}
+
+// Search bar component using Nominatim geocoding
+function LocationSearch({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) {
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<Array<{ display_name: string; lat: number; lon: number }>>([]);
+  const [open, setOpen] = useState(false);
+
+  const search = async () => {
+    if (!query.trim()) return;
+    setSearching(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+      const data = await res.json();
+      setResults(data);
+      setOpen(true);
+    } catch {} finally { setSearching(false); }
+  };
+
+  const flyTo = (r: { lat: number; lon: number; display_name: string }) => {
+    if (mapRef.current) {
+      mapRef.current.flyTo([r.lat, r.lon], 14, { duration: 1.2 });
+    }
+    setOpen(false);
+    setQuery(r.display_name.split(",").slice(0, 2).join(","));
+  };
+
+  return (
+    <div className="absolute top-4 left-4 z-[500] w-72">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gd-text-muted" />
+        <input
+          type="text"
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(false); }}
+          onKeyDown={e => e.key === "Enter" && search()}
+          placeholder="Search location..."
+          className="w-full rounded-xl border border-gd-border bg-gd-card/95 backdrop-blur-sm py-2.5 pl-10 pr-10 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none shadow-lg shadow-black/20 focus:border-gd-accent-500/40 transition-colors"
+        />
+        {query && (
+          <button onClick={() => { setQuery(""); setResults([]); setOpen(false); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gd-text-muted hover:text-gd-text-primary">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {searching && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <Loader2 className="h-4 w-4 animate-spin text-gd-accent-400" />
+          </div>
+        )}
+      </div>
+      {open && results.length > 0 && (
+        <div className="mt-2 rounded-xl border border-gd-border bg-gd-card shadow-xl shadow-black/30 overflow-hidden max-h-48 overflow-y-auto">
+          {results.map((r, i) => (
+            <button
+              key={i}
+              onClick={() => flyTo(r)}
+              className="w-full text-left px-3 py-2.5 text-xs text-gd-text-secondary hover:bg-gd-elevated border-b border-gd-border last:border-0 transition-colors"
+            >
+              <MapPin className="h-3 w-3 inline mr-1.5 text-gd-accent-400" />
+              {r.display_name.split(",").slice(0, 3).join(",")}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Component that flies to the user's location
@@ -90,7 +158,7 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
     }
   }, []);
 
-  const center: [number, number] = userPos || [40.7128, -74.006];
+  const center: [number, number] = userPos || [36.7538, 3.0588]; // Default: Algiers
   const filtered = filter === "all" ? hotspots : hotspots.filter(h => h.severity === filter);
 
   const goToMyLocation = () => {
@@ -151,7 +219,7 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
         <Card className="relative h-[520px] overflow-hidden !p-0">
           <MapContainer
             center={center}
-            zoom={userPos ? 12 : 11}
+            zoom={userPos ? 12 : 6}
             scrollWheelZoom
             className="h-full w-full z-0"
             style={{ background: "#0b0b0f" }}
@@ -173,8 +241,8 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
             )}
             {/* Hotspot markers */}
             {filtered.map(h => {
-              const lat = h.lat ?? 40.7128;
-              const lng = h.lng ?? -74.006;
+              const lat = h.lat ?? 36.7538;
+              const lng = h.lng ?? 3.0588;
               return (
                 <Marker
                   key={h.id}
@@ -183,7 +251,11 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
                   eventHandlers={{ click: () => setSelected(h) }}
                 >
                   <Popup>
-                    <div className="min-w-[180px]">
+                    <div className="min-w-[200px]">
+                      {h.media_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={h.media_url} alt={h.title} className="w-full h-28 object-cover rounded-lg mb-2" />
+                      )}
                       <p className="font-semibold text-slate-900">{h.title}</p>
                       <p className="text-xs text-slate-500 mt-0.5">{h.pollution_type.replace(/_/g, " ")} · {h.address || "Unknown"}</p>
                       <span className="inline-block mt-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase" style={{ backgroundColor: severityColors[h.severity] + "22", color: severityColors[h.severity] }}>
@@ -201,6 +273,8 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
               );
             })}
           </MapContainer>
+          {/* Search bar */}
+          <LocationSearch mapRef={mapRef} />
           <LocateButton onLocate={goToMyLocation} />
           {/* Hint */}
           <div className="pointer-events-none absolute bottom-6 left-4 z-[500] rounded-xl border border-gd-border bg-gd-deepest/90 px-3 py-2 text-xs text-gd-text-secondary backdrop-blur">
@@ -249,15 +323,22 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
                 )}
               >
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: severityColors[h.severity] + "22" }}>
-                    <MapPin className="h-4 w-4" style={{ color: severityColors[h.severity] }} />
-                  </div>
+                  {/* Thumbnail if available */}
+                  {h.media_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={h.media_url} alt={h.title} className="h-10 w-10 rounded-lg object-cover shrink-0 border border-gd-border" />
+                  ) : (
+                    <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full shrink-0" style={{ backgroundColor: severityColors[h.severity] + "22" }}>
+                      <MapPin className="h-4 w-4" style={{ color: severityColors[h.severity] }} />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gd-text-primary truncate">{h.title}</p>
                     <p className="text-xs text-gd-text-muted mt-0.5">{h.pollution_type.replace(/_/g, " ")} · {h.address || "Unknown"}</p>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: severityColors[h.severity] + "22", color: severityColors[h.severity] }}>{h.severity}</span>
                       <span className="text-[10px] text-gd-text-muted">{statusLabel(h.status)}</span>
+                      {h.media_url && <Camera className="h-3 w-3 text-gd-text-muted" />}
                     </div>
                   </div>
                 </div>
@@ -271,39 +352,57 @@ export function HotspotMap({ refreshKey }: { refreshKey?: number }) {
       {selected && (
         <>
           <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setSelected(null)} />
-          <div className="fixed inset-x-4 top-[10vh] z-50 mx-auto max-w-lg rounded-2xl border border-gd-border bg-gd-card p-5 shadow-2xl">
-            <div className="flex items-start justify-between mb-3">
-              <h3 className="text-lg font-bold text-gd-text-primary">{selected.title}</h3>
-              <button onClick={() => setSelected(null)} className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-secondary hover:bg-gd-elevated transition-colors">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="text-sm text-gd-text-secondary mb-4 leading-relaxed">{selected.description}</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: severityColors[selected.severity] + "22", color: severityColors[selected.severity] }}>{selected.severity.toUpperCase()}</span>
-              <span className="rounded-full bg-gd-elevated px-3 py-1 text-xs font-medium text-gd-text-secondary border border-gd-border">{selected.pollution_type.replace(/_/g, " ")}</span>
-              <span className="rounded-full bg-gd-info/10 px-3 py-1 text-xs font-medium text-gd-info border border-gd-info/20">{statusLabel(selected.status)}</span>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gd-border pt-3">
-              <span className="text-xs text-gd-text-muted">{new Date(selected.created_at).toLocaleDateString()} · {selected.upvotes} upvotes</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    if (selected.lat && selected.lng && mapRef.current) {
-                      mapRef.current.flyTo([selected.lat, selected.lng], 15, { duration: 1 });
-                      setSelected(null);
-                    }
-                  }}
-                  className="rounded-xl border border-gd-border px-4 py-2 text-xs font-semibold text-gd-text-secondary hover:bg-gd-elevated transition-all"
-                >
-                  View on map
+          <div className="fixed inset-x-4 top-[10vh] z-50 mx-auto max-w-lg rounded-2xl border border-gd-border bg-gd-card shadow-2xl overflow-hidden">
+            {/* Photo header */}
+            {selected.media_url && (
+              <div className="relative h-48 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={selected.media_url} alt={selected.title} className="h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-gd-card via-transparent to-transparent" />
+                <button onClick={() => setSelected(null)} className="absolute top-3 right-3 rounded-lg p-1.5 bg-gd-deepest/60 text-white backdrop-blur-sm hover:bg-gd-deepest/80 transition-colors">
+                  <X className="h-4 w-4" />
                 </button>
-                <button
-                  onClick={joinCleanup}
-                  className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2 text-xs font-semibold text-gd-text-inverse hover:brightness-110 transition-all"
-                >
-                  Join Cleanup
-                </button>
+              </div>
+            )}
+            <div className="p-5">
+              {!selected.media_url && (
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="text-lg font-bold text-gd-text-primary">{selected.title}</h3>
+                  <button onClick={() => setSelected(null)} className="rounded-lg p-1.5 text-gd-text-muted hover:text-gd-text-secondary hover:bg-gd-elevated transition-colors">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              {selected.media_url && (
+                <h3 className="text-lg font-bold text-gd-text-primary mb-1">{selected.title}</h3>
+              )}
+              <p className="text-sm text-gd-text-secondary mb-4 leading-relaxed">{selected.description}</p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: severityColors[selected.severity] + "22", color: severityColors[selected.severity] }}>{selected.severity.toUpperCase()}</span>
+                <span className="rounded-full bg-gd-elevated px-3 py-1 text-xs font-medium text-gd-text-secondary border border-gd-border">{selected.pollution_type.replace(/_/g, " ")}</span>
+                <span className="rounded-full bg-gd-info/10 px-3 py-1 text-xs font-medium text-gd-info border border-gd-info/20">{statusLabel(selected.status)}</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gd-border pt-3">
+                <span className="text-xs text-gd-text-muted">{new Date(selected.created_at).toLocaleDateString()} · {selected.upvotes} upvotes</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (selected.lat && selected.lng && mapRef.current) {
+                        mapRef.current.flyTo([selected.lat, selected.lng], 15, { duration: 1 });
+                        setSelected(null);
+                      }
+                    }}
+                    className="rounded-xl border border-gd-border px-4 py-2 text-xs font-semibold text-gd-text-secondary hover:bg-gd-elevated transition-all"
+                  >
+                    View on map
+                  </button>
+                  <button
+                    onClick={joinCleanup}
+                    className="rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2 text-xs font-semibold text-gd-text-inverse hover:brightness-110 transition-all"
+                  >
+                    Join Cleanup
+                  </button>
+                </div>
               </div>
             </div>
           </div>

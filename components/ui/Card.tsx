@@ -1,9 +1,11 @@
 import { cn } from "@/lib/utils";
-interface CardProps { children: React.ReactNode; className?: string; hover?: boolean; id?: string; }
-export function Card({ children, className, hover = false, id }: CardProps) {
-  return <div id={id} className={cn(
+import { MouseEventHandler } from "react";
+interface CardProps { children: React.ReactNode; className?: string; hover?: boolean; id?: string; onClick?: MouseEventHandler<HTMLDivElement>; }
+export function Card({ children, className, hover = false, id, onClick }: CardProps) {
+  return <div id={id} onClick={onClick} className={cn(
     "rounded-2xl border border-gd-border-soft bg-gd-card p-5 transition-all duration-300",
     hover && "hover:border-gd-border-strong hover:bg-gd-elevated hover:glow-ring",
+    onClick && "cursor-pointer",
     className
   )}>{children}</div>;
 }

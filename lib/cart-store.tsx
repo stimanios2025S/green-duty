@@ -9,14 +9,20 @@ export interface CartLine {
   image?: string;
 }
 
+type CartStep = "cart" | "payment";
+
 interface CartValue {
   lines: CartLine[];
   count: number;
   total: number;
   isOpen: boolean;
+  step: CartStep;
   openCart: () => void;
+  openCheckout: () => void;
   closeCart: () => void;
-  add: (line: Omit<CartLine, "quantity">) => void;
+  setStep: (s: CartStep) => void;
+  /** Add item WITHOUT opening cart — caller decides when to open */
+  add: (line: Omit<CartLine, "quantity"> & { image?: string }) => void;
   remove: (productId: string) => void;
   setQty: (productId: string, qty: number) => void;
   clear: () => void;
@@ -27,14 +33,15 @@ const CartContext = createContext<CartValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [step, setStep] = useState<CartStep>("cart");
 
-  const add = useCallback((line: Omit<CartLine, "quantity">) => {
+  const add = useCallback((line: Omit<CartLine, "quantity"> & { image?: string }) => {
     setLines(prev => {
       const existing = prev.find(l => l.productId === line.productId);
       if (existing) return prev.map(l => (l.productId === line.productId ? { ...l, quantity: l.quantity + 1 } : l));
       return [...prev, { ...line, quantity: 1 }];
     });
-    setIsOpen(true);
+    // Do NOT auto-open — caller controls openCart/openCheckout
   }, []);
 
   const remove = useCallback((productId: string) => {
@@ -46,14 +53,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clear = useCallback(() => setLines([]), []);
-  const openCart = useCallback(() => setIsOpen(true), []);
+  const openCart = useCallback(() => { setStep("cart"); setIsOpen(true); }, []);
+  const openCheckout = useCallback(() => { setStep("payment"); setIsOpen(true); }, []);
   const closeCart = useCallback(() => setIsOpen(false), []);
 
   const count = lines.reduce((s, l) => s + l.quantity, 0);
   const total = lines.reduce((s, l) => s + l.price * l.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ lines, count, total, isOpen, openCart, closeCart, add, remove, setQty, clear }}>
+    <CartContext.Provider value={{ lines, count, total, isOpen, step, openCart, openCheckout, closeCart, setStep, add, remove, setQty, clear }}>
       {children}
     </CartContext.Provider>
   );

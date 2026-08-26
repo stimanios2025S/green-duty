@@ -1,11 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getDb, type DbUser } from "@/lib/db";
 import { createSession, publicUser, generateId } from "@/lib/auth-helpers";
 import { signupSchema } from "@/lib/validations";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    // Rate limit: 3 signups per minute per IP
+    const ip = getClientIp(req);
+    const rl = checkRateLimit(`signup:${ip}`, 3, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many signup attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetMs / 1000)) } }
+      );
+    }
+
     const body = await req.json();
     const parsed = signupSchema.safeParse(body);
     if (!parsed.success) {
