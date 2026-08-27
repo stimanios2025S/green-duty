@@ -183,7 +183,7 @@ function BusinessPortal() {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Verified Commerce" value={`$${revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} icon={<Wallet className="h-5 w-5" />} />
+        <StatCard label="Verified Commerce" value={`${revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} DA`} icon={<Wallet className="h-5 w-5" />} />
         <StatCard label="Marketplace Orders" value={orders.toLocaleString()} icon={<ShoppingCart className="h-5 w-5" />} />
         <StatCard label="CSR Trees Planted" value={trees.toLocaleString()} icon={<Trees className="h-5 w-5" />} />
         <StatCard label="B2B Inquiries" value={inquiries.toLocaleString()} icon={<Briefcase className="h-5 w-5" />} />

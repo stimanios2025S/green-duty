@@ -1,9 +1,15 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
-@theme inline {
-  --color-background: var(--color-gd-base);
-  --color-foreground: var(--color-gd-text-primary);
+/*
+ * Use @theme (NOT @theme inline) so that CSS custom properties are
+ * emitted to :root.  @theme inline only inlines values into utility
+ * classes and does NOT create CSS variables — so any var(--color-gd-*)
+ * references in custom CSS below would resolve to nothing.
+ */
+@theme {
+  --color-background: #0b0b0f;
+  --color-foreground: #f4f4f5;
   --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 
@@ -33,6 +39,7 @@
   --color-gd-accent-950: #3d2a04;
 
   /* ── Green undertone (organic feel) ── */
+  --color-gd-olive-400: #a3e635;
   --color-gd-olive-500: #84cc16;
   --color-gd-olive-600: #65a30d;
   --color-gd-olive-700: #4d7c0f;
@@ -40,6 +47,7 @@
   --color-gd-olive-900: #365314;
 
   /* ── Warm oranges (alerts / CTAs) ── */
+  --color-gd-ember-400: #fb923c;
   --color-gd-ember-500: #f97316;
   --color-gd-ember-600: #ea580c;
   --color-gd-ember-700: #c2410c;
@@ -73,6 +81,8 @@
 @layer base {
   /* ── Base ── */
   body {
+    background-color: #060608; /* fallback, overridden by Tailwind utility */
+    color: #f4f4f5;
     font-family: var(--font-sans), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
