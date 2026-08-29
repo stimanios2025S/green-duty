@@ -8,7 +8,7 @@ import { Header } from "./Header";
 import { SearchModal } from "@/components/instagro/SearchModal";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 
-const PUBLIC_PATHS = ["/login", "/auth/register", "/auth/verify", "/dev"];
+const PUBLIC_PATHS = ["/", "/login", "/auth/register", "/auth/verify", "/dev"];
 
 function MobileNav() {
   const { user } = useAuth();

@@ -10,8 +10,7 @@ export interface NavItem {
 }
 
 export const ALL_TABS: NavItem[] = [
-  { href: "/", label: "Home", icon: Leaf },
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Home", icon: Leaf },
   { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
   { href: "/eco-map", label: "Eco Map", icon: MapPin },
   { href: "/feed", label: "InstaGro", icon: BookOpen },
@@ -29,7 +28,6 @@ export const ALL_TABS: NavItem[] = [
 export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
   guest: ALL_TABS,
   buyer: [
-    { href: "/", label: "Home", icon: Leaf },
     { href: "/dashboard", label: "My Portal", icon: LayoutDashboard },
     { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
     { href: "/buyer/crm", label: "Daily CRM", icon: ClipboardList },
@@ -40,7 +38,6 @@ export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
     { href: "/subscriptions", label: "Abonnements", icon: CreditCard },
   ],
   seller: [
-    { href: "/", label: "Home", icon: Leaf },
     { href: "/dashboard", label: "My Store", icon: LayoutDashboard },
     { href: "/seller/crm", label: "CRM", icon: Users },
     { href: "/seller/earnings", label: "Earnings", icon: Wallet },
@@ -48,7 +45,6 @@ export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
     { href: "/b2b", label: "B2B Services", icon: Briefcase },
   ],
   driver: [
-    { href: "/", label: "Home", icon: Leaf },
     { href: "/dashboard", label: "My Deliveries", icon: LayoutDashboard },
     { href: "/marketplace", label: "Orders", icon: Truck },
     { href: "/eco-map", label: "Eco Map", icon: MapPin },
@@ -56,7 +52,6 @@ export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
     { href: "/donations", label: "Donations", icon: Heart },
   ],
   business: [
-    { href: "/", label: "Home", icon: Leaf },
     { href: "/dashboard", label: "Business Portal", icon: Building2 },
     { href: "/b2b", label: "B2B Services", icon: Briefcase },
     { href: "/marketplace", label: "Procurement", icon: ShoppingBag },
@@ -64,7 +59,6 @@ export const TABS_BY_ROLE: Record<AccountType, NavItem[]> = {
     { href: "/donations", label: "Donations", icon: Heart },
   ],
   farmer: [
-    { href: "/", label: "Home", icon: Leaf },
     { href: "/farmer", label: "Farm Portal", icon: Sprout },
     { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
     { href: "/eco-map", label: "Eco Map", icon: MapPin },

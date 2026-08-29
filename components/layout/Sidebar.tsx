@@ -31,14 +31,14 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-gd-border px-4">
         {!collapsed ? (
-          <Link href="/" className="flex items-center gap-2.5 group">
+          <Link href="/dashboard" className="flex items-center gap-2.5 group">
             <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-xl bg-gd-card ring-1 ring-gd-border-strong group-hover:ring-gd-accent-500/40 transition-all">
               <Image src="/logo.png" alt="GreenDuty logo" fill sizes="36px" className="object-contain p-0.5" priority />
             </div>
             <span className="text-lg font-bold tracking-tight gradient-text">GreenDuty</span>
           </Link>
         ) : (
-          <Link href="/" className="mx-auto">
+          <Link href="/dashboard" className="mx-auto">
             <div className="relative h-9 w-9 overflow-hidden rounded-xl bg-gd-card ring-1 ring-gd-border-strong">
               <Image src="/logo.png" alt="GreenDuty logo" fill sizes="36px" className="object-contain p-0.5" priority />
             </div>
@@ -55,7 +55,7 @@ export function Sidebar() {
       {/* Navigation (role-filtered) */}
       <nav className="flex-1 space-y-0.5 p-3">
         {tabs.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
           return (
             <Link
               key={item.href}
