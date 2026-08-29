@@ -69,10 +69,25 @@ function Shell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("gd:open-search", onSearch);
   }, []);
 
-  // DEV BYPASS — no login gate. REMOVE BEFORE PRODUCTION.
+  // Redirect unauthenticated users away from protected pages
+  useEffect(() => {
+    if (!isLoading && !user && !isPublic) {
+      router.replace("/login");
+    }
+  }, [isLoading, user, isPublic, router]);
+
   // Auth / public pages render standalone (no sidebar/header)
-  if (isPublic || (!isLoading && !user)) {
+  if (isPublic) {
     return <>{children}</>;
+  }
+
+  // Not logged in on a protected page — show spinner while redirect happens
+  if (!isLoading && !user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gd-deepest">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-gd-accent-500 border-t-transparent" />
+      </div>
+    );
   }
   if (isLoading) {
     return (

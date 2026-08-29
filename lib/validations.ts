@@ -19,7 +19,7 @@ export const productListingSchema = z.object({
   qualityCertified: z.boolean(),
   organicCertified: z.boolean(),
   warrantyMonths: z.number().int().min(0).max(120),
-  features: z.array(z.string()).min(1),
+  features: z.array(z.string()).default([]),
 });
 
 export const educationalPostSchema = z.object({

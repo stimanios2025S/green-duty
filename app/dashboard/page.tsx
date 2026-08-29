@@ -42,7 +42,6 @@ export default function DashboardPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // DEV BYPASS — skip login redirect. REMOVE BEFORE PRODUCTION.
   if (isLoading || !user) {
     return <div className="flex h-64 items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-gd-accent-500 border-t-transparent" /></div>;
   }
@@ -220,7 +219,7 @@ function BusinessPortal() {
           <SectionHead icon={<TrendingUp className="h-4 w-4" />} title="Real Impact Pipeline" sub="Live progress toward community goals" />
           <div className="space-y-3">
             {[
-              { name: "Verified Commerce", value: revenue, goal: 50000, suffix: "$" },
+              { name: "Verified Commerce", value: revenue, goal: 50000, suffix: "" },
               { name: "Trees Planted", value: trees, goal: 20000, suffix: "" },
               { name: "B2B Inquiries", value: inquiries, goal: 100, suffix: "" },
               { name: "Verified Members", value: verified, goal: 1000, suffix: "" },
@@ -230,7 +229,7 @@ function BusinessPortal() {
                 <div key={i} className="rounded-xl border border-gd-border bg-gd-elevated/50 p-3.5">
                   <div className="flex justify-between text-sm">
                     <span className="font-medium text-gd-text-primary">{p.name}</span>
-                    <span className="text-xs text-gd-accent-400">{p.suffix}{Math.round(p.value).toLocaleString()} / {p.suffix}{p.goal.toLocaleString()}</span>
+                    <span className="text-xs text-gd-accent-400">{Math.round(p.value).toLocaleString()} / {p.goal.toLocaleString()}{p.name === "Verified Commerce" ? " DA" : ""}</span>
                   </div>
                   <div className="mt-2 h-1.5 w-full rounded-full bg-gd-overlay">
                     <div className="h-full rounded-full bg-gradient-to-r from-gd-accent-500 to-gd-olive-500 transition-all duration-700" style={{ width: pct + '%' }} />
@@ -450,7 +449,7 @@ function SellerPortal() {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Marketplace Revenue" value={`$${revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} icon={<Wallet className="h-5 w-5" />} />
+        <StatCard label="Marketplace Revenue" value={`${revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} DA`} icon={<Wallet className="h-5 w-5" />} />
         <StatCard label="Orders Placed" value={orders.toLocaleString()} icon={<ShoppingCart className="h-5 w-5" />} trend={{ value: deliveredPct, isPositive: true }} />
         <StatCard label="Open Orders" value={open.toLocaleString()} icon={<Package className="h-5 w-5" />} />
         <StatCard label="Delivered" value={delivered.toLocaleString()} icon={<BadgeCheck className="h-5 w-5" />} />
@@ -481,10 +480,10 @@ function SellerPortal() {
               <div key={o.id} className="flex items-center justify-between rounded-xl border border-gd-border bg-gd-elevated/50 px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-gd-text-primary">{o.productName}</p>
-                  <p className="text-xs text-gd-text-muted mt-0.5">{new Date(o.createdAt).toLocaleDateString()} · {o.quantity}× · ${Number(o.totalPrice).toFixed(0)}</p>
+                  <p className="text-xs text-gd-text-muted mt-0.5">{new Date(o.createdAt).toLocaleDateString()} · {o.quantity}× · {Number(o.totalPrice).toFixed(0)} DA</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-gd-text-primary">${Number(o.sellerEarning).toFixed(0)}</span>
+                  <span className="text-sm font-semibold text-gd-text-primary">{Number(o.sellerEarning).toFixed(0)} DA</span>
                   <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${
                     o.escrowStatus === "released" ? "border-gd-success/20 bg-gd-success/10 text-gd-success"
                     : o.escrowStatus === "paid" ? "border-gd-info/20 bg-gd-info/10 text-gd-info"
@@ -554,7 +553,7 @@ function DriverPortal() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Active Deliveries" value={open.toLocaleString()} icon={<Truck className="h-5 w-5" />} />
         <StatCard label="Completed" value={delivered.toLocaleString()} icon={<BadgeCheck className="h-5 w-5" />} />
-        <StatCard label="Platform Volume" value={`$${revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} icon={<Wallet className="h-5 w-5" />} />
+        <StatCard label="Platform Volume" value={`${revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} DA`} icon={<Wallet className="h-5 w-5" />} />
         <StatCard label="CSR Trees" value={(stats?.trees || 0).toLocaleString()} icon={<Trees className="h-5 w-5" />} />
       </div>
       <Card>
@@ -567,7 +566,7 @@ function DriverPortal() {
               <div key={o.id} className="flex items-center justify-between rounded-xl border border-gd-border bg-gd-elevated/50 px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-gd-text-primary">Order {o.id.slice(-6).toUpperCase()}</p>
-                  <p className="text-xs text-gd-text-muted mt-0.5">{o.product_name} ×{o.quantity} · ${Number(o.total_price).toFixed(2)} · {new Date(o.created_at).toLocaleDateString()}</p>
+                  <p className="text-xs text-gd-text-muted mt-0.5">{o.product_name} ×{o.quantity} · {Number(o.total_price).toFixed(0)} DA · {new Date(o.created_at).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${
@@ -692,7 +691,7 @@ function OrderCard({ order }: { order: any }) {
           </p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm font-bold text-gd-text-primary">${Number(order.total_price).toFixed(2)}</p>
+          <p className="text-sm font-bold text-gd-text-primary">{Number(order.total_price).toFixed(0)} DA</p>
           {order.payment_method && (
             <p className="text-[10px] text-gd-text-muted uppercase">{order.payment_method}</p>
           )}
@@ -719,9 +718,9 @@ function OrderCard({ order }: { order: any }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gd-text-primary truncate">{item.productName}</p>
-                    <p className="text-[10px] text-gd-text-muted">Qty: {item.quantity} × ${Number(item.price).toFixed(2)}</p>
+                    <p className="text-[10px] text-gd-text-muted">Qty: {item.quantity} × {Number(item.price).toFixed(0)} DA</p>
                   </div>
-                  <p className="text-sm font-semibold text-gd-text-primary shrink-0">${(item.price * item.quantity).toFixed(2)}</p>
+                  <p className="text-sm font-semibold text-gd-text-primary shrink-0">{(item.price * item.quantity).toFixed(0)} DA</p>
                 </div>
               ))}
             </div>
@@ -748,7 +747,7 @@ function OrderCard({ order }: { order: any }) {
             {order.commission_amount > 0 && (
               <div className="rounded-xl bg-gd-elevated/50 border border-gd-border p-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-gd-text-muted">Platform Fee</p>
-                <p className="mt-1 text-xs text-gd-text-primary">${Number(order.commission_amount).toFixed(2)}</p>
+                <p className="mt-1 text-xs text-gd-text-primary">{Number(order.commission_amount).toFixed(0)} DA</p>
               </div>
             )}
           </div>
@@ -795,7 +794,7 @@ function BuyerPortal() {
         <StatCard label="Total Orders" value={orders.length} icon={<ShoppingCart className="h-5 w-5" />} />
         <StatCard label="In Transit" value={inTransit} icon={<Truck className="h-5 w-5" />} trend={inTransit > 0 ? { value: inTransit, isPositive: true } : undefined} />
         <StatCard label="Delivered" value={delivered} icon={<BadgeCheck className="h-5 w-5" />} />
-        <StatCard label="Total Spent" value={`$${totalSpent.toLocaleString()}`} icon={<Wallet className="h-5 w-5" />} />
+        <StatCard label="Total Spent" value={`${totalSpent.toLocaleString()} DA`} icon={<Wallet className="h-5 w-5" />} />
       </div>
 
       <Card>

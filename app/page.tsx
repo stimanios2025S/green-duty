@@ -20,15 +20,24 @@ export default function HomePage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // DEV BYPASS — redirect to portal selector. REMOVE BEFORE PRODUCTION.
+  // Redirect logged-in users to their portal
   useEffect(() => {
-    if (!isLoading) router.replace("/dev");
-  }, [isLoading, router]);
+    if (!isLoading && user) {
+      const role = user.accountType || "guest";
+      const target = role === "farmer" ? "/farmer" : "/dashboard";
+      router.replace(target);
+    }
+  }, [isLoading, user, router]);
 
-  if (isLoading || !user) {
+  // Show loading spinner while checking auth
+  if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-gd-deepest"><div className="h-10 w-10 animate-spin rounded-full border-2 border-gd-accent-500 border-t-transparent" /></div>;
   }
 
+  // If logged in, don't render landing (redirect is happening)
+  if (user) return null;
+
+  // Landing page for guests / unauthenticated visitors
   return (
     <div className="h-full overflow-x-hidden">
       <Bird />
