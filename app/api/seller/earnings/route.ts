@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/auth-helpers";
+import { payoutSchema } from "@/lib/validations";
 
 /**
  * GET /api/seller/earnings
@@ -113,9 +114,9 @@ export async function POST(req: NextRequest) {
     const userId = await getCurrentUserId(req);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await req.json();
-    const { orderId } = body;
-    if (!orderId) return NextResponse.json({ error: "Missing orderId." }, { status: 400 });
+    const parsed = payoutSchema.safeParse(await req.json());
+    if (!parsed.success) return NextResponse.json({ error: "Missing orderId." }, { status: 400 });
+    const { orderId } = parsed.data;
 
     const d = await getDb();
     const order = await d.prepare("SELECT * FROM orders WHERE id = ? AND seller_id = ?").get(orderId, userId) as any;

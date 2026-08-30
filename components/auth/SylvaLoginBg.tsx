@@ -40,17 +40,31 @@ export default function SylvaLoginBg() {
 
     const onLoad = () => {
       applyPresentation();
-      setLoaded(true);
+      // The iframe `load` event also fires for an error document. Wait until the
+      // authored Three.js scene says it is ready before hiding the CSS fallback.
+      const markReady = () => {
+        const root = frame.contentDocument?.documentElement;
+        const scene = frame.contentDocument?.querySelector("#scene canvas");
+        if (root?.classList.contains("is-ready") && scene) setLoaded(true);
+      };
+      markReady();
+      window.setTimeout(markReady, 800);
+      window.setTimeout(markReady, 2_000);
     };
 
+    const onError = () => setLoaded(false);
     frame.addEventListener("load", onLoad);
+    frame.addEventListener("error", onError);
 
     // If already loaded (cached), apply immediately
     if (frame.contentDocument?.readyState === "complete") {
       onLoad();
     }
 
-    return () => frame.removeEventListener("load", onLoad);
+    return () => {
+      frame.removeEventListener("load", onLoad);
+      frame.removeEventListener("error", onError);
+    };
   }, []);
 
   return (

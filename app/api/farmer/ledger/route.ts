@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { randomUUID } from "crypto";
 import { getCurrentUserId } from "@/lib/auth-helpers";
+import { ledgerEntrySchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +28,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    const parsed = ledgerEntrySchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     const id = randomUUID();
-    const { type, category, amount, description, date } = body;
-
-    if (!type || !category || amount === undefined) {
-      return NextResponse.json({ error: "Type, category, and amount required" }, { status: 400 });
-    }
+    const { type, category, amount, description, date } = parsed.data;
 
     const d = await getDb();
     const now = new Date().toISOString();

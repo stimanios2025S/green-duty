@@ -12,7 +12,7 @@ import { ImpactSection } from "@/components/landing/ImpactSection";
 import { Bird } from "@/components/landing/Bird";
 
 const SylvaHero = dynamic(
-  () => import("@designcodeio/threeui/components/SylvaHero").then(m => ({ default: m.SylvaHero })),
+  () => import("@/components/landing/SylvaHero"),
   { ssr: false }
 );
 
@@ -41,17 +41,7 @@ export default function HomePage() {
   return (
     <div className="h-full overflow-x-hidden">
       <Bird />
-      <SylvaHero
-        headingFont="lexend"
-        bodyFont="lexend"
-        headingWeight="300"
-        bodyWeight="300"
-        primaryColor="#ffffff"
-        headingSize={63}
-        bodySize={16.5}
-        headingLetterSpacing={-0.006}
-        style={{ width: "100%", height: "100vh" }}
-      />
+      <SylvaHero />
       <LiveTicker />
       <ServiceCards />
       <TechShowcase />

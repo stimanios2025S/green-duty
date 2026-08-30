@@ -28,11 +28,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
-    const { productId, productName, quantity, totalPrice, items, paymentMethod, deliveryAddress } = parsed.data;
-    const sellerId = body.sellerId;
-    const deliveryNotes = body.deliveryNotes;
-    const commissionRate = body.commissionRate;
-    const commissionAmount = body.commissionAmount;
+    const { productId, productName, quantity, totalPrice, items, paymentMethod, deliveryAddress, sellerId, deliveryNotes, commissionRate, commissionAmount } = parsed.data;
 
     // Cart checkout: items array with multiple products
     if (items && items.length > 0) {
@@ -50,7 +46,7 @@ export async function POST(req: NextRequest) {
         id, buyerId, sellerId || null,
         items[0].productId || "cart",
         `Cart (${items.length} items)`,
-        items.reduce((sum: number, item: any) => sum + item.quantity, 0),
+        items.reduce((sum, item) => sum + item.quantity, 0),
         total,
         JSON.stringify(items),
         subtotal, rate, commission,
@@ -99,7 +95,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const d = await getDb();
-    const order = await d.prepare("SELECT * FROM orders WHERE id = ?").get(orderId) as any;
+    const order = await d.prepare("SELECT * FROM orders WHERE id = ?").get(orderId) as { buyer_id: string } | undefined;
     if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
     // Authorization: only the buyer who placed this order can update it

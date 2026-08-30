@@ -1,9 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
   Users, CheckSquare, StickyNote, Plus, Trash2, Phone, Mail,
-  Building2, Calendar, Flag, Search, X, Package, Truck
+  Building2, Calendar, Flag, Search, X
 } from "lucide-react";
 
 type Tab = "contacts" | "tasks" | "notes";
@@ -24,9 +24,7 @@ export default function SellerCRMPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => { loadAll(); }, [user]);
-
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     if (!user) return;
     try {
       const [cRes, tRes, nRes] = await Promise.all([
@@ -39,7 +37,9 @@ export default function SellerCRMPage() {
       setTasks(t.tasks || []);
       setNotes(n.notes || []);
     } catch {}
-  };
+  }, [user]);
+
+  useEffect(() => { void Promise.resolve().then(loadAll); }, [loadAll]);
 
   const todayTasks = tasks.filter(t => t.due_date && t.due_date.startsWith(new Date().toISOString().slice(0, 10)));
   const pendingTasks = tasks.filter(t => t.status === "pending");

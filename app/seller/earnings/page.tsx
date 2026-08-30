@@ -1,10 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { formatCurrency } from "@/lib/utils";
 import {
   Wallet, Clock, CheckCircle2, ArrowDownCircle, Package,
-  TrendingUp, Shield, Timer, Loader2
+  Shield, Timer, Loader2
 } from "lucide-react";
 
 interface EarningsSummary {
@@ -44,9 +44,7 @@ export default function SellerEarningsPage() {
   const [loading, setLoading] = useState(true);
   const [payoutLoading, setPayoutLoading] = useState<string | null>(null);
 
-  useEffect(() => { loadEarnings(); }, [user]);
-
-  const loadEarnings = async () => {
+  const loadEarnings = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
@@ -58,7 +56,9 @@ export default function SellerEarningsPage() {
       }
     } catch {}
     setLoading(false);
-  };
+  }, [user]);
+
+  useEffect(() => { void Promise.resolve().then(loadEarnings); }, [loadEarnings]);
 
   const handlePayout = async (orderId: string) => {
     setPayoutLoading(orderId);
@@ -101,9 +101,9 @@ export default function SellerEarningsPage() {
           <div className="flex items-start gap-3">
             <Timer className="mt-0.5 h-5 w-5 flex-shrink-0 text-gd-accent-400" />
             <div>
-              <p className="text-sm font-medium text-gd-text-primary">Comment fonctionne l'escrow ?</p>
+              <p className="text-sm font-medium text-gd-text-primary">Comment fonctionne l&apos;escrow ?</p>
               <p className="mt-1 text-xs text-gd-text-secondary leading-relaxed">
-                L'argent des commandes est d'abord déposé chez GreenDuty. Dès que la commande est <strong className="text-gd-text-primary">livrée</strong>, un compteur de 24h démarre.
+                L&apos;argent des commandes est d&apos;abord déposé chez GreenDuty. Dès que la commande est <strong className="text-gd-text-primary">livrée</strong>, un compteur de 24h démarre.
                 Passé ce délai, les fonds sont automatiquement transférés sur votre compte. Vous pouvez aussi demander le retrait manuellement.
               </p>
             </div>

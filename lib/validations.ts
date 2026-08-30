@@ -81,7 +81,21 @@ export const orderSchema = z.object({
   totalPrice: z.number().positive().optional(),
   paymentMethod: z.string().max(50).optional(),
   deliveryAddress: z.string().max(500).optional(),
+  deliveryNotes: z.string().max(1000).optional(),
+  sellerId: z.string().min(1).optional(),
+  commissionRate: z.number().min(0).max(1).optional(),
+  commissionAmount: z.number().min(0).optional(),
 }).refine(d => d.items || d.productId, { message: "Provide items array or single product" });
+
+export const payoutSchema = z.object({ orderId: z.string().min(1) });
+
+export const ledgerEntrySchema = z.object({
+  type: z.enum(["income", "expense"]),
+  category: z.string().min(1).max(100),
+  amount: z.number().finite(),
+  description: z.string().max(1000).optional(),
+  date: z.string().date().optional(),
+});
 
 export type HotspotFormData = z.infer<typeof hotspotReportSchema>;
 export type ProductFormData = z.infer<typeof productListingSchema>;

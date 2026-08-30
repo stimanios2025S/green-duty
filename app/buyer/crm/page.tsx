@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
-import { formatDate } from "@/lib/utils";
 import {
   Users, CheckSquare, StickyNote, Plus, Trash2, Phone, Mail,
   Building2, Calendar, Flag, Search, X
@@ -27,12 +26,7 @@ export default function BuyerCRMPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => {
-    if (!user) { router.replace("/login"); return; }
-    loadAll();
-  }, [user]);
-
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     if (!user) return;
     try {
       const [cRes, tRes, nRes] = await Promise.all([
@@ -45,7 +39,12 @@ export default function BuyerCRMPage() {
       setTasks(t.tasks || []);
       setNotes(n.notes || []);
     } catch {}
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) { router.replace("/login"); return; }
+    void Promise.resolve().then(loadAll);
+  }, [user, router, loadAll]);
 
   const todayTasks = tasks.filter(t => t.due_date && t.due_date.startsWith(new Date().toISOString().slice(0, 10)));
   const pendingTasks = tasks.filter(t => t.status === "pending");
@@ -59,7 +58,7 @@ export default function BuyerCRMPage() {
             📋 CRM Quotidien
           </h1>
           <p style={{ fontSize: "0.8125rem", color: "#71717a", marginTop: "0.25rem" }}>
-            Gérez vos contacts, tâches et notes d'achat
+            Gérez vos contacts, tâches et notes d&apos;achat
           </p>
         </div>
 
