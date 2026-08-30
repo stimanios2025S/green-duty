@@ -19,18 +19,18 @@ export default function SylvaLoginBg() {
       const doc = frame.contentDocument;
       if (!doc) return;
 
-      // Make the page fill the viewport and hide everything except the 3D scene
+      // Kill everything — nav dock, cards, text, buttons — show ONLY the Three.js canvas
       const style = doc.createElement("style");
       style.id = "gd-login-presentation";
       style.textContent = `
-        html, body { width: 100% !important; height: 100% !important; min-height: 100% !important; overflow: hidden !important; margin: 0 !important; }
-        body * { visibility: hidden !important; pointer-events: none !important; }
-        canvas, #scene, #gl, .hero { visibility: visible !important; pointer-events: auto !important; }
-        canvas, #scene, #gl, .hero {
-          position: fixed !important; inset: 0 !important;
-          width: 100vw !important; height: 100vh !important;
-          max-width: none !important; max-height: none !important;
-        }
+        html, body { width: 100% !important; height: 100% !important; min-height: 100% !important; overflow: hidden !important; margin: 0 !important; background: #060608 !important; }
+        /* Nuke all children of body */
+        body > * { display: none !important; }
+        /* Bring back ONLY the scene container */
+        #scene { display: block !important; position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; z-index: 9999 !important; pointer-events: none !important; }
+        #scene canvas { display: block !important; width: 100% !important; height: 100% !important; pointer-events: none !important; }
+        .hero { display: block !important; position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
+        .hero > * { display: none !important; }
       `;
       doc.head.appendChild(style);
 
