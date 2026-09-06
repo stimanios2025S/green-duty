@@ -2,6 +2,8 @@
 
 import { useRef, useMemo, Suspense, useEffect, useState } from "react";
 import Image from "next/image";
+import { SylvaHero as ThreeUISylvaHero } from "@designcodeio/threeui";
+import "@designcodeio/threeui/style.css";
 
 /* ─── Configurable Props ─── */
 
@@ -49,67 +51,101 @@ const DEFAULTS: Required<SylvaHeroProps> = {
   },
 };
 
-/* ─── ThreeUI SylvaHero Background (real Living Green 3D scene via iframe) ─── */
+/* ─── Presentation CSS — hides ALL Sylva page UI, shows ONLY the Three.js canvas ─── */
+const PRESENTATION_CSS = `
+  html, body { width: 100% !important; height: 100% !important; min-height: 100% !important; overflow: hidden !important; margin: 0 !important; background: #060608 !important; }
+  /* Nuke all children of body */
+  body > * { display: none !important; }
+  /* Bring back the hero container */
+  .hero { display: block !important; position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
+  /* Nuke everything inside hero */
+  .hero > * { display: none !important; }
+  /* Show ONLY the Three.js canvas */
+  #scene { display: block !important; position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; z-index: 9999 !important; pointer-events: none !important; }
+  #scene canvas { display: block !important; width: 100% !important; height: 100% !important; pointer-events: none !important; }
+`;
+
+/* ─── ThreeUI SylvaHero Background (real Living Green 3D scene via package) ─── */
 
 function ThreeUIBackground() {
-  const frameRef = useRef<HTMLIFrameElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const frame = frameRef.current;
-    if (!frame) return;
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
 
-    const applyPresentation = () => {
-      const doc = frame.contentDocument;
+    const applyPresentation = (iframe: HTMLIFrameElement) => {
+      const doc = iframe.contentDocument;
       if (!doc) return;
-      // Kill everything — nav dock, cards, text, buttons — show ONLY the Three.js canvas
       const style = doc.createElement("style");
       style.id = "gd-hero-presentation";
-      style.textContent = `
-        html, body { width: 100% !important; height: 100% !important; min-height: 100% !important; overflow: hidden !important; margin: 0 !important; background: #060608 !important; }
-        /* Nuke all children of body */
-        body > * { display: none !important; }
-        /* Bring back ONLY the scene container */
-        #scene { display: block !important; position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; z-index: 9999 !important; pointer-events: none !important; }
-        #scene canvas { display: block !important; width: 100% !important; height: 100% !important; pointer-events: none !important; }
-        .hero { display: block !important; position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
-        .hero > * { display: none !important; }
-      `;
+      style.textContent = PRESENTATION_CSS;
       doc.head.appendChild(style);
-      frame.contentWindow?.dispatchEvent(new Event("resize"));
+      iframe.contentWindow?.dispatchEvent(new Event("resize"));
     };
 
-    const onLoad = () => {
-      applyPresentation();
-      const markReady = () => {
-        const root = frame.contentDocument?.documentElement;
-        const scene = frame.contentDocument?.querySelector("#scene canvas");
-        if (root?.classList.contains("is-ready") && scene) setLoaded(true);
-      };
-      markReady();
-      window.setTimeout(markReady, 800);
-      window.setTimeout(markReady, 2_000);
+    const markReady = () => {
+      const iframe = wrapper.querySelector("iframe");
+      if (!iframe) return;
+      const doc = iframe.contentDocument;
+      const root = doc?.documentElement;
+      const scene = doc?.querySelector("#scene canvas");
+      if (root?.classList.contains("is-ready") && scene) {
+        setLoaded(true);
+        return true;
+      }
+      return false;
     };
 
-    frame.addEventListener("load", onLoad);
-    if (frame.contentDocument?.readyState === "complete") onLoad();
+    // Poll for the iframe to appear and load
+    let attempts = 0;
+    const maxAttempts = 40; // 4 seconds max
+    const interval = setInterval(() => {
+      attempts++;
+      const iframe = wrapper.querySelector("iframe");
+      if (iframe) {
+        if (iframe.contentDocument?.readyState === "complete") {
+          applyPresentation(iframe);
+          if (markReady()) { clearInterval(interval); return; }
+        } else {
+          iframe.addEventListener("load", () => {
+            applyPresentation(iframe);
+            markReady();
+            // Retry marking ready as Three.js may need time
+            setTimeout(markReady, 500);
+            setTimeout(markReady, 1500);
+          }, { once: true });
+        }
+        if (attempts >= 2) { clearInterval(interval); return; }
+      }
+      if (attempts >= maxAttempts) clearInterval(interval);
+    }, 100);
 
-    return () => frame.removeEventListener("load", onLoad);
+    return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="absolute inset-0" style={{ opacity: loaded ? 1 : 0, transition: "opacity 0.6s ease" }}>
-      <iframe
-        ref={frameRef}
-        title="Sylva Living Green"
-        src="/landing-pages/inner-green-3d.html"
-        sandbox="allow-scripts allow-same-origin"
-        loading="eager"
-        style={{
-          position: "absolute", inset: 0,
-          display: "block", width: "100%", height: "100%",
-          border: 0, background: "#060608",
-        }}
+    <div
+      ref={wrapperRef}
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 0,
+        background: "#060608",
+        opacity: loaded ? 1 : 0,
+        transition: "opacity 0.6s ease",
+      }}
+    >
+      <ThreeUISylvaHero
+        headingFont="lexend"
+        bodyFont="lexend"
+        headingWeight="300"
+        bodyWeight="300"
+        primaryColor="#ffffff"
+        headingSize={63}
+        bodySize={16.5}
+        headingLetterSpacing={-0.006}
       />
     </div>
   );
@@ -167,7 +203,7 @@ export default function SylvaHero(props: SylvaHeroProps) {
 
   return (
     <section className="relative w-full overflow-hidden" style={{ background: "#060608", minHeight: "100vh" }}>
-      {/* ─── ThreeUI Living Green 3D Background (iframe) ─── */}
+      {/* ─── ThreeUI Living Green 3D Background (package component) ─── */}
       <Suspense fallback={<CSSFallbackBg />}>
         <ThreeUIBackground />
       </Suspense>
