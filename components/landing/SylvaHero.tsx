@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo, Suspense, useEffect, useState } from "react";
+import { useRef, Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { SylvaHero as ThreeUISylvaHero } from "@designcodeio/threeui";
 import "@designcodeio/threeui/style.css";
@@ -52,24 +52,36 @@ const DEFAULTS: Required<SylvaHeroProps> = {
 };
 
 /* ─── Presentation CSS — hides ALL Sylva page UI, shows ONLY the Three.js canvas ─── */
+/* IMPORTANT: Use visibility:hidden (NOT display:none) on .stage to preserve
+   layout dimensions — the ResizeObserver on .stage and stage.getBoundingClientRect()
+   are used by the Three.js resize() function to size the canvas drawing buffer. */
 const PRESENTATION_CSS = `
-  html, body { width: 100% !important; height: 100% !important; min-height: 100% !important; overflow: hidden !important; margin: 0 !important; background: #060608 !important; }
-  /* Nuke all children of body */
-  body > * { display: none !important; }
-  /* Bring back the hero container */
-  .hero { display: block !important; position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
-  /* Nuke everything inside hero */
-  .hero > * { display: none !important; }
-  /* Show ONLY the Three.js canvas */
-  #scene { display: block !important; position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; z-index: 9999 !important; pointer-events: none !important; }
-  #scene canvas { display: block !important; width: 100% !important; height: 100% !important; pointer-events: none !important; }
+  html, body {
+    width: 100% !important; height: 100% !important;
+    min-height: 100% !important; overflow: hidden !important;
+    margin: 0 !important; background: #060608 !important;
+  }
+  #scene {
+    position: fixed !important; inset: 0 !important;
+    width: 100% !important; height: 100% !important;
+    z-index: 9999 !important; pointer-events: none !important;
+    opacity: 1 !important;
+  }
+  #scene canvas {
+    display: block !important; width: 100% !important; height: 100% !important;
+    pointer-events: none !important;
+  }
+  .dock-wrap { visibility: hidden !important; pointer-events: none !important; }
+  .stage { visibility: hidden !important; pointer-events: none !important; }
+  #hero, #hero * { pointer-events: none !important; }
 `;
 
-/* ─── ThreeUI SylvaHero Background (real Living Green 3D scene via package) ─── */
+/* ─── ThreeUI SylvaHero Background ─── */
 
 function ThreeUIBackground() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
+  const appliedRef = useRef(false);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -77,52 +89,61 @@ function ThreeUIBackground() {
 
     const applyPresentation = (iframe: HTMLIFrameElement) => {
       const doc = iframe.contentDocument;
-      if (!doc) return;
+      if (!doc || appliedRef.current) return;
+      appliedRef.current = true;
       const style = doc.createElement("style");
       style.id = "gd-hero-presentation";
       style.textContent = PRESENTATION_CSS;
       doc.head.appendChild(style);
+      // Dispatch resize so dock measurement recalculates
       iframe.contentWindow?.dispatchEvent(new Event("resize"));
     };
 
-    const markReady = () => {
+    const checkReady = (): boolean => {
       const iframe = wrapper.querySelector("iframe");
-      if (!iframe) return;
+      if (!iframe) return false;
       const doc = iframe.contentDocument;
-      const root = doc?.documentElement;
-      const scene = doc?.querySelector("#scene canvas");
-      if (root?.classList.contains("is-ready") && scene) {
-        setLoaded(true);
-        return true;
-      }
-      return false;
+      if (!doc) return false;
+      // Apply presentation CSS once the iframe document exists
+      if (!appliedRef.current) applyPresentation(iframe);
+      // The authored page adds `is-ready` to <body> after first Three.js frame (line 2140)
+      // Check both body and htmlElement for maximum compatibility
+      return doc.body?.classList.contains("is-ready") || doc.documentElement.classList.contains("is-ready");
     };
 
-    // Poll for the iframe to appear and load
-    let attempts = 0;
-    const maxAttempts = 40; // 4 seconds max
+    // Poll for iframe load + is-ready. The MutationObserver approach doesn't
+    // work here because `is-ready` is added inside the iframe's own document,
+    // which is a separate DOM tree from the wrapper.
     const interval = setInterval(() => {
-      attempts++;
-      const iframe = wrapper.querySelector("iframe");
-      if (iframe) {
-        if (iframe.contentDocument?.readyState === "complete") {
-          applyPresentation(iframe);
-          if (markReady()) { clearInterval(interval); return; }
-        } else {
-          iframe.addEventListener("load", () => {
-            applyPresentation(iframe);
-            markReady();
-            // Retry marking ready as Three.js may need time
-            setTimeout(markReady, 500);
-            setTimeout(markReady, 1500);
-          }, { once: true });
-        }
-        if (attempts >= 2) { clearInterval(interval); return; }
+      if (checkReady()) {
+        setLoaded(true);
+        clearInterval(interval);
       }
-      if (attempts >= maxAttempts) clearInterval(interval);
-    }, 100);
+    }, 200);
 
-    return () => clearInterval(interval);
+    // Also listen for the iframe's load event directly
+    const iframe = wrapper.querySelector("iframe");
+    if (iframe) {
+      iframe.addEventListener("load", () => {
+        applyPresentation(iframe);
+        // Check immediately and start polling for is-ready
+        if (checkReady()) {
+          setLoaded(true);
+          clearInterval(interval);
+        }
+      }, { once: true });
+    }
+
+    // Fallback: never leave the hero black — force visible after 4s
+    const fallback = window.setTimeout(() => {
+      setLoaded(true);
+      clearInterval(interval);
+    }, 4000);
+
+    return () => {
+      clearInterval(interval);
+      window.clearTimeout(fallback);
+    };
   }, []);
 
   return (

@@ -59,7 +59,8 @@ function Shell({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const isPublic = PUBLIC_PATHS.some(p => pathname?.startsWith(p));
+  // Use exact match for root "/" to avoid matching every pathname (since every path starts with "/")
+  const isPublic = PUBLIC_PATHS.some(p => p === "/" ? pathname === "/" : pathname?.startsWith(p));
   const [showSearch, setShowSearch] = useState(false);
 
   // Global search — works from the header search box & mobile nav on ANY page

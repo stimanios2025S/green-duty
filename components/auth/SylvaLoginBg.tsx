@@ -1,31 +1,87 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useEffect, useState, Suspense } from "react";
 import { SylvaHero as ThreeUISylvaHero } from "@designcodeio/threeui";
 import "@designcodeio/threeui/style.css";
 
 /* ─── Presentation CSS — hides ALL Sylva page UI, shows ONLY the Three.js canvas ─── */
+/* IMPORTANT: Use visibility:hidden (NOT display:none) on .stage to preserve
+   layout dimensions — the ResizeObserver on .stage and stage.getBoundingClientRect()
+   are used by the Three.js resize() function to size the canvas drawing buffer. */
 const PRESENTATION_CSS = `
-  html, body { width: 100% !important; height: 100% !important; min-height: 100% !important; overflow: hidden !important; margin: 0 !important; background: #060608 !important; }
-  /* Nuke all children of body */
-  body > * { display: none !important; }
-  /* Bring back the hero container */
-  .hero { display: block !important; position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
-  /* Nuke everything inside hero */
-  .hero > * { display: none !important; }
-  /* Show ONLY the Three.js canvas */
-  #scene { display: block !important; position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; z-index: 9999 !important; pointer-events: none !important; }
-  #scene canvas { display: block !important; width: 100% !important; height: 100% !important; pointer-events: none !important; }
+  html, body {
+    width: 100% !important; height: 100% !important;
+    min-height: 100% !important; overflow: hidden !important;
+    margin: 0 !important; background: #060608 !important;
+  }
+  #scene {
+    position: fixed !important; inset: 0 !important;
+    width: 100% !important; height: 100% !important;
+    z-index: 9999 !important; pointer-events: none !important;
+    opacity: 1 !important;
+  }
+  #scene canvas {
+    display: block !important; width: 100% !important; height: 100% !important;
+    pointer-events: none !important;
+  }
+  .dock-wrap { visibility: hidden !important; pointer-events: none !important; }
+  .stage { visibility: hidden !important; pointer-events: none !important; }
+  #hero, #hero * { pointer-events: none !important; }
 `;
 
-/**
- * Loads the complete SylvaHero Living Green scene via the @designcodeio/threeui
- * package component, same as the landing page but used as a pure background.
- * Falls back to CSS particles if WebGL is unavailable.
- */
-export default function SylvaLoginBg() {
+/* ─── Animated Particles ─── */
+function AnimatedParticles() {
+  const particles = Array.from({ length: 25 }).map((_, i) => ({
+    id: i,
+    size: 1.5 + (i % 5) * 1,
+    x: (i * 4) % 100,
+    y: (i * 3.7) % 100,
+    duration: 6 + (i % 4) * 2,
+    delay: (i * 0.3) % 3,
+    color: i % 3 === 0 ? "rgba(132,204,22,0.35)" : i % 3 === 1 ? "rgba(34,197,94,0.25)" : "rgba(163,230,53,0.2)",
+  }));
+
+  return (
+    <div className="absolute inset-0 overflow-hidden" style={{ pointerEvents: "none" }}>
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="absolute rounded-full"
+          style={{
+            width: p.size,
+            height: p.size,
+            background: p.color,
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            animation: `floatUp ${p.duration}s ease-in-out ${p.delay}s infinite`,
+            boxShadow: `0 0 ${p.size * 3}px ${p.color}`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ─── Fallback Background (while iframe loads) ─── */
+function CSSFallbackBg() {
+  return (
+    <div className="absolute inset-0" style={{ background: "#060608" }}>
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "radial-gradient(ellipse at 30% 50%, rgba(132,204,22,0.06) 0%, transparent 60%)",
+        }}
+      />
+      <AnimatedParticles />
+    </div>
+  );
+}
+
+/* ─── ThreeUI SylvaHero Background ─── */
+function ThreeUIBackground() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
+  const appliedRef = useRef(false);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -33,7 +89,8 @@ export default function SylvaLoginBg() {
 
     const applyPresentation = (iframe: HTMLIFrameElement) => {
       const doc = iframe.contentDocument;
-      if (!doc) return;
+      if (!doc || appliedRef.current) return;
+      appliedRef.current = true;
       const style = doc.createElement("style");
       style.id = "gd-login-presentation";
       style.textContent = PRESENTATION_CSS;
@@ -41,124 +98,103 @@ export default function SylvaLoginBg() {
       iframe.contentWindow?.dispatchEvent(new Event("resize"));
     };
 
-    const markReady = () => {
+    const checkReady = (): boolean => {
       const iframe = wrapper.querySelector("iframe");
       if (!iframe) return false;
       const doc = iframe.contentDocument;
-      const root = doc?.documentElement;
-      const scene = doc?.querySelector("#scene canvas");
-      if (root?.classList.contains("is-ready") && scene) {
-        setLoaded(true);
-        return true;
-      }
-      return false;
+      if (!doc) return false;
+      if (!appliedRef.current) applyPresentation(iframe);
+      // The authored page adds `is-ready` to <body> after first Three.js frame (line 2140)
+      // Check both body and htmlElement for maximum compatibility
+      return doc.body?.classList.contains("is-ready") || doc.documentElement.classList.contains("is-ready");
     };
 
-    let attempts = 0;
-    const maxAttempts = 40;
     const interval = setInterval(() => {
-      attempts++;
-      const iframe = wrapper.querySelector("iframe");
-      if (iframe) {
-        if (iframe.contentDocument?.readyState === "complete") {
-          applyPresentation(iframe);
-          if (markReady()) { clearInterval(interval); return; }
-        } else {
-          iframe.addEventListener("load", () => {
-            applyPresentation(iframe);
-            markReady();
-            setTimeout(markReady, 500);
-            setTimeout(markReady, 1500);
-          }, { once: true });
-        }
-        if (attempts >= 2) { clearInterval(interval); return; }
+      if (checkReady()) {
+        setLoaded(true);
+        clearInterval(interval);
       }
-      if (attempts >= maxAttempts) clearInterval(interval);
-    }, 100);
+    }, 200);
 
-    return () => clearInterval(interval);
+    const iframe = wrapper.querySelector("iframe");
+    if (iframe) {
+      iframe.addEventListener("load", () => {
+        applyPresentation(iframe);
+        if (checkReady()) {
+          setLoaded(true);
+          clearInterval(interval);
+        }
+      }, { once: true });
+    }
+
+    const fallback = window.setTimeout(() => {
+      setLoaded(true);
+      clearInterval(interval);
+    }, 4000);
+
+    return () => {
+      clearInterval(interval);
+      window.clearTimeout(fallback);
+    };
   }, []);
 
   return (
-    <>
-      {/* Primary: real Sylva Three.js scene via package component */}
-      <div
-        ref={wrapperRef}
-        style={{
-          position: "absolute", inset: 0, zIndex: 0,
-          background: "#060608",
-          opacity: loaded ? 1 : 0,
-          transition: "opacity 0.6s ease",
-        }}
-      >
-        <ThreeUISylvaHero
-          headingFont="lexend"
-          bodyFont="lexend"
-          headingWeight="300"
-          bodyWeight="300"
-          primaryColor="#ffffff"
-          headingSize={63}
-          bodySize={16.5}
-          headingLetterSpacing={-0.006}
-        />
-      </div>
-
-      {/* Fallback: CSS particles while the iframe loads or if WebGL fails */}
-      {!loaded && <CSSFallbackBg />}
-    </>
+    <div
+      ref={wrapperRef}
+      className="absolute inset-0"
+      style={{
+        zIndex: 0,
+        opacity: loaded ? 1 : 0,
+        transition: "opacity 0.6s ease",
+        background: "#060608",
+      }}
+    >
+      <ThreeUISylvaHero
+        headingFont="lexend"
+        bodyFont="lexend"
+        headingWeight="300"
+        bodyWeight="300"
+        primaryColor="#ffffff"
+        headingSize={63}
+        bodySize={16.5}
+        headingLetterSpacing={-0.006}
+      />
+    </div>
   );
 }
 
-/**
- * Pure CSS fallback — animated particles + gradient — visible while the
- * real Three.js scene loads, and provides a graceful fallback on devices
- * where WebGL doesn't work inside a sandboxed iframe.
- */
-function CSSFallbackBg() {
+/* ─── Main Component — pure background, no children wrapper ─── */
+export default function SylvaLoginBg() {
   return (
-    <div style={{
-      position: "absolute", inset: 0, zIndex: 0,
-      background: "#060608", overflow: "hidden",
-    }}>
-      {/* Radial gradient */}
-      <div style={{
-        position: "absolute", inset: 0,
-        background: "radial-gradient(ellipse at 30% 40%, rgba(132,204,22,0.08) 0%, transparent 55%)",
-      }} />
+    <>
+      {/* ─── ThreeUI Living Green 3D Background ─── */}
+      <Suspense fallback={<CSSFallbackBg />}>
+        <ThreeUIBackground />
+      </Suspense>
 
-      {/* Floating dots */}
-      {Array.from({ length: 24 }).map((_, i) => (
-        <div
-          key={i}
-          style={{
-            position: "absolute",
-            width: `${3 + (i % 4) * 2}px`,
-            height: `${3 + (i % 4) * 2}px`,
-            borderRadius: "50%",
-            background: i % 3 === 0 ? "#65a30d" : i % 3 === 1 ? "#84cc16" : "#4d7c0f",
-            opacity: 0.25 + (i % 5) * 0.08,
-            left: `${(i * 4.17) % 100}%`,
-            top: `${(i * 7.3) % 100}%`,
-            animation: `float-${i % 3} ${8 + (i % 5) * 2}s ease-in-out infinite`,
-            animationDelay: `${(i * 0.7) % 4}s`,
-          }}
-        />
-      ))}
+      {/* ─── Gradient overlays ─── */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          zIndex: 1,
+          background:
+            "linear-gradient(180deg, rgba(6,6,8,0.2) 0%, rgba(6,6,8,0.15) 30%, rgba(6,6,8,0.6) 70%, #060608 100%)",
+        }}
+      />
 
+      {/* ─── Float animation keyframes ─── */}
       <style>{`
-        @keyframes float-0 {
-          0%, 100% { transform: translateY(0) translateX(0); }
-          50% { transform: translateY(-20px) translateX(10px); }
-        }
-        @keyframes float-1 {
-          0%, 100% { transform: translateY(0) translateX(0); }
-          50% { transform: translateY(-30px) translateX(-8px); }
-        }
-        @keyframes float-2 {
-          0%, 100% { transform: translateY(0) translateX(0); }
-          50% { transform: translateY(-15px) translateX(15px); }
+        @keyframes floatUp {
+          0%, 100% {
+            transform: translateY(0) scale(1);
+            opacity: 0.3;
+          }
+          50% {
+            transform: translateY(-12px) scale(1.1);
+            opacity: 0.6;
+          }
         }
       `}</style>
-    </div>
+    </>
   );
 }
