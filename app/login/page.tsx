@@ -1,15 +1,18 @@
 "use client";
-import { useState, useEffect, useRef, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent, Suspense } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { currentNextPath, withNext } from "@/lib/utils";
 import type { AccountType } from "@/types";
 import {
-  ArrowRight, Lock, Mail, User as UserIcon, Sparkles, ShieldCheck, Globe, Server,
-  Building2, Handshake, Check
+  ArrowRight, Lock, Mail, User as UserIcon, Sparkles, Building2, Handshake, Check
 } from "lucide-react";
+
+/* The Three.js "Living Green" background — kept exactly as designed.
+   Rendered as a full-viewport layer behind the sign-in card. */
+const LoginBg = dynamic(() => import("@/components/auth/SylvaLoginBg"), { ssr: false });
 
 const ACCOUNT_TYPES: { value: AccountType; icon: typeof UserIcon; label: string; hint: string }[] = [
   { value: "client", icon: Building2, label: "Client / Company", hint: "Custom software & ERP" },
@@ -26,18 +29,16 @@ export default function LoginPage() {
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
 
-  // Ambient glow drift
+  // Ambient glow follows the pointer across the panel
   useEffect(() => {
-    if (!gridRef.current) return;
-    const el = gridRef.current;
+    const el = glowRef.current;
+    if (!el) return;
     const onMove = (e: MouseEvent) => {
       const r = el.getBoundingClientRect();
-      const x = ((e.clientX - r.left) / r.width) * 100;
-      const y = ((e.clientY - r.top) / r.height) * 100;
-      el.style.setProperty("--mx", x + "%");
-      el.style.setProperty("--my", y + "%");
+      el.style.setProperty("--mx", ((e.clientX - r.left) / r.width) * 100 + "%");
+      el.style.setProperty("--my", ((e.clientY - r.top) / r.height) * 100 + "%");
     };
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
@@ -49,15 +50,10 @@ export default function LoginPage() {
     if (!email.trim() || !password.trim()) { setError("Please fill in all fields."); return; }
     setLoading(true);
     try {
-      // Where to land after authenticating. Carried through the signup and
-      // verification steps too, so a visitor who clicks "Order" on the
-      // catalogue ends up back at their order rather than on a dashboard.
       const next = currentNextPath();
-
       if (mode === "signup") {
         if (!name.trim()) { setError("Please enter your name."); return; }
         if (!accountType) { setError("Please choose an account type."); return; }
-        // carry the chosen type + basic info into the detailed signup step
         router.push(
           withNext(
             `/auth/register?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&type=${accountType}`,
@@ -79,97 +75,59 @@ export default function LoginPage() {
     }
   };
 
-  const features = [
-    { icon: ShieldCheck, label: "You own the code" },
-    { icon: Globe, label: "ERP · MES · CRM" },
-    { icon: Server, label: "Cloud or on-premise" },
-  ];
-
   return (
-    <div className="grid min-h-screen lg:grid-cols-2 bg-gd-deepest">
-      {/* ── Left: brand panel ── */}
-      <div
-        ref={gridRef}
-        className="relative hidden lg:flex flex-col justify-between overflow-hidden p-12"
-        style={{ background: "radial-gradient(60rem 40rem at var(--mx, 30%) var(--my, 20%), rgba(212,160,23,0.08), transparent 60%), radial-gradient(40rem 30rem at 80% 90%, rgba(132,204,22,0.06), transparent 60%), #0b0b0f" }}
-      >
-        <div className="absolute inset-0 bg-grid opacity-20" />
-        <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-gd-accent-500/5 blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-gd-olive-500/5 blur-3xl" />
+    <div className="relative min-h-screen overflow-hidden bg-[#060608]">
+      {/* ── Three.js background (unchanged design) ── */}
+      <Suspense fallback={null}>
+        <LoginBg />
+      </Suspense>
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-[1]"
+        style={{ background: "linear-gradient(180deg, rgba(6,6,8,0.35) 0%, rgba(6,6,8,0.15) 30%, rgba(6,6,8,0.65) 72%, #060608 100%)" }} />
 
-        <div className="relative flex items-center gap-3">
-          <div className="relative h-12 w-12 overflow-hidden rounded-2xl bg-gd-card ring-1 ring-gd-border-strong">
-            <Image src="/logo.png" alt="GreenDuty" fill sizes="48px" className="object-contain p-1" />
-          </div>
-          <span className="text-2xl font-bold tracking-tight gradient-text">GreenDuty</span>
-        </div>
-
-        <div className="relative max-w-md">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-gd-accent-500/20 bg-gd-accent-500/5 px-4 py-1.5 text-sm text-gd-accent-300">
-            <Sparkles className="h-3.5 w-3.5" /> Software studio for industry
-          </div>
-          <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-gd-text-primary">
-            Custom software, built around{" "}
-            <span className="gradient-text">your process</span> &amp;{" "}
-            <span className="gradient-text">your rules</span>.
-          </h1>
-          <p className="mt-5 text-lg text-gd-text-secondary leading-relaxed">
-            Personalized ERP, MES and CRM systems for factories and industrial businesses — designed around how you
-            already work.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            {features.map((f, i) => (
-              <div key={i} className="flex items-center gap-2 rounded-xl border border-gd-border bg-gd-card/60 px-3.5 py-2 text-xs text-gd-text-secondary">
-                <f.icon className="h-3.5 w-3.5 text-gd-accent-400" /> {f.label}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <p className="relative text-xs text-gd-text-muted">
-          © 2026 GreenDuty · Custom ERP, MES &amp; CRM for industry
-        </p>
-      </div>
-
-      {/* ── Right: form panel ── */}
-      <div className="flex items-center justify-center px-6 py-12">
+      {/* ── Content on top of the scene ── */}
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="mb-8 flex items-center justify-center gap-3 lg:hidden">
-            <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-gd-card ring-1 ring-gd-border-strong">
-              <Image src="/logo.png" alt="GreenDuty" fill sizes="40px" className="object-contain p-0.5" />
+          {/* Brand */}
+          <div className="mb-8 flex flex-col items-center gap-3">
+            <div className="relative h-16 w-16 overflow-hidden rounded-2xl ring-1 ring-white/10"
+              style={{ boxShadow: "0 0 40px rgba(132,204,22,0.15), 0 8px 32px rgba(0,0,0,0.45)" }}>
+              <Image src="/logo.png" alt="GreenDuty" fill sizes="64px" className="object-contain p-1" priority />
             </div>
-            <span className="text-xl font-bold tracking-tight gradient-text">GreenDuty</span>
+            <span className="text-2xl font-bold tracking-tight gradient-text">GreenDuty</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-gd-accent-500/20 bg-gd-accent-500/5 px-3 py-1 text-[11px] text-gd-accent-300">
+              <Sparkles className="h-3 w-3" /> Software studio for industry
+            </span>
           </div>
 
-          <h2 className="text-2xl font-bold text-gd-text-primary tracking-tight">
-            {mode === "login" ? "Welcome back" : "Create your account"}
-          </h2>
-          <p className="mt-2 text-sm text-gd-text-secondary">
-            {mode === "login"
-              ? "Sign in to continue to your portal."
-              : "Choose your path — or continue with a quick login."}
-          </p>
+          {/* Glass card */}
+          <div className="rounded-3xl border border-white/[0.07] p-8 shadow-2xl shadow-black/50"
+            style={{ background: "rgba(19,19,24,0.55)", backdropFilter: "blur(24px) saturate(1.2)", WebkitBackdropFilter: "blur(24px) saturate(1.2)" }}>
+            <h2 className="text-2xl font-bold text-gd-text-primary tracking-tight">
+              {mode === "login" ? "Welcome back" : "Create your account"}
+            </h2>
+            <p className="mt-2 text-sm text-gd-text-secondary">
+              {mode === "login"
+                ? "Sign in to continue to your portal."
+                : "Choose your path — or continue with a quick login."}
+            </p>
 
-          {/* Toggle */}
-          <div className="mt-6 flex rounded-xl border border-gd-border bg-gd-card p-1">
-            {(["login", "signup"] as const).map(m => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setError(""); }}
-                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${
-                  mode === m ? "bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse shadow-sm" : "text-gd-text-secondary hover:text-gd-text-primary"
-                }`}
-              >
-                {m === "login" ? "Sign In" : "Sign Up"}
-              </button>
-            ))}
-          </div>
+            {/* Toggle */}
+            <div className="mt-6 flex rounded-xl border border-gd-border bg-gd-card/60 p-1">
+              {(["login", "signup"] as const).map(m => (
+                <button
+                  key={m}
+                  onClick={() => { setMode(m); setError(""); }}
+                  className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${
+                    mode === m ? "bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 text-gd-text-inverse shadow-sm" : "text-gd-text-secondary hover:text-gd-text-primary"
+                  }`}
+                >
+                  {m === "login" ? "Sign In" : "Sign Up"}
+                </button>
+              ))}
+            </div>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            {mode === "signup" && (
-              <>
-                {/* Account type selection */}
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              {mode === "signup" && (
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gd-text-muted">
                     I am creating an account as
@@ -185,7 +143,7 @@ export default function LoginPage() {
                           className={`relative flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all ${
                             active
                               ? "border-gd-accent-500/50 bg-gd-accent-500/10 glow-ring"
-                              : "border-gd-border bg-gd-card hover:border-gd-border-strong hover:bg-gd-elevated"
+                              : "border-gd-border bg-gd-card/70 hover:border-gd-border-strong hover:bg-gd-elevated"
                           }`}
                         >
                           <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border ${
@@ -215,70 +173,79 @@ export default function LoginPage() {
                     </p>
                   )}
                 </div>
-              </>
-            )}
-            {mode === "signup" && (
+              )}
+
+              {mode === "signup" && (
+                <div className="group relative">
+                  <UserIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gd-text-muted transition-colors group-focus-within:text-gd-accent-400" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="Full name"
+                    className="w-full rounded-xl border border-gd-border bg-gd-card/70 py-3 pl-10 pr-4 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none transition-colors focus:border-gd-accent-500/50 focus:ring-1 focus:ring-gd-accent-500/20"
+                  />
+                </div>
+              )}
+
               <div className="group relative">
-                <UserIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gd-text-muted transition-colors group-focus-within:text-gd-accent-400" />
+                <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gd-text-muted transition-colors group-focus-within:text-gd-accent-400" />
                 <input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="Full name"
-                  className="w-full rounded-xl border border-gd-border bg-gd-card py-3 pl-10 pr-4 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none transition-colors focus:border-gd-accent-500/50 focus:ring-1 focus:ring-gd-accent-500/20"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="Email address"
+                  className="w-full rounded-xl border border-gd-border bg-gd-card/70 py-3 pl-10 pr-4 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none transition-colors focus:border-gd-accent-500/50 focus:ring-1 focus:ring-gd-accent-500/20"
                 />
               </div>
-            )}
-            <div className="group relative">
-              <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gd-text-muted transition-colors group-focus-within:text-gd-accent-400" />
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="Email address"
-                className="w-full rounded-xl border border-gd-border bg-gd-card py-3 pl-10 pr-4 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none transition-colors focus:border-gd-accent-500/50 focus:ring-1 focus:ring-gd-accent-500/20"
-              />
-            </div>
-            <div className="group relative">
-              <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gd-text-muted transition-colors group-focus-within:text-gd-accent-400" />
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Password"
-                className="w-full rounded-xl border border-gd-border bg-gd-card py-3 pl-10 pr-4 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none transition-colors focus:border-gd-accent-500/50 focus:ring-1 focus:ring-gd-accent-500/20"
-              />
-            </div>
 
-            {error && (
-              <p className="rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">
-                {error}
-              </p>
-            )}
+              <div className="group relative">
+                <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gd-text-muted transition-colors group-focus-within:text-gd-accent-400" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="w-full rounded-xl border border-gd-border bg-gd-card/70 py-3 pl-10 pr-4 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none transition-colors focus:border-gd-accent-500/50 focus:ring-1 focus:ring-gd-accent-500/20"
+                />
+              </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-3 text-sm font-semibold text-gd-text-inverse shadow-lg shadow-gd-accent-500/20 transition-all hover:shadow-gd-accent-500/40 hover:brightness-110 disabled:opacity-50"
-            >
-              {loading ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-gd-text-inverse/40 border-t-gd-text-inverse" />
-              ) : (
-                <>
-                  {mode === "login" ? "Sign In" : "Continue"}
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </>
+              {error && (
+                <p className="rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">
+                  {error}
+                </p>
               )}
-            </button>
-          </form>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-3 text-sm font-semibold text-gd-text-inverse shadow-lg shadow-gd-accent-500/20 transition-all hover:shadow-gd-accent-500/40 hover:brightness-110 disabled:opacity-50"
+              >
+                {loading ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-gd-text-inverse/40 border-t-gd-text-inverse" />
+                ) : (
+                  <>
+                    {mode === "login" ? "Sign In" : "Continue"}
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <p className="mt-6 text-center text-xs text-gd-text-muted">
+              By continuing you agree to GreenDuty&apos;s{" "}
+              <span className="text-gd-accent-400 cursor-pointer hover:underline">Terms</span> &amp;{" "}
+              <span className="text-gd-accent-400 cursor-pointer hover:underline">Privacy Policy</span>.
+            </p>
+          </div>
 
           <p className="mt-6 text-center text-xs text-gd-text-muted">
-            By continuing you agree to GreenDuty's{" "}
-            <span className="text-gd-accent-400 cursor-pointer hover:underline">Terms</span> &amp;{" "}
-            <span className="text-gd-accent-400 cursor-pointer hover:underline">Privacy Policy</span>.
+            © 2026 GreenDuty · Custom ERP, MES &amp; CRM for industry
           </p>
         </div>
       </div>
+
+      <div ref={glowRef} className="pointer-events-none absolute inset-0 z-[2]" style={{ background: "radial-gradient(45rem 30rem at var(--mx, 50%) var(--my, 40%), rgba(132,204,22,0.05), transparent 65%)" }} />
     </div>
   );
 }

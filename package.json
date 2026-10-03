@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@designcodeio/threeui": "1.1.0",
     "@libsql/client": "^0.17.4",
     "@prisma/client": "^7.9.1",
     "animejs": "^3.2.2",
@@ -21,7 +22,8 @@
     "react-dom": "19.2.4",
     "react-leaflet": "^5.0.0",
     "resend": "^6.18.1",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "three": "0.185.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -29,6 +31,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "0.185.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
