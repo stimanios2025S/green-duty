@@ -24,7 +24,7 @@ export const CLIENT_TABS: NavItem[] = [
  * Every account type resolves to the client navigation.
  *
  * Accounts created before the agency pivot still carry legacy values
- * (guest, buyer, seller, driver, business, farmer). They all map here so an
+ * (guest, buyer, seller, driver, business, and the old farmer value). They all map here so an
  * existing account never lands on an empty sidebar.
  */
 export const TABS_BY_ROLE: Record<AnyAccountType, NavItem[]> = {

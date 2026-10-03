@@ -2,7 +2,7 @@ import { Resend } from "resend";
 
 const API_KEY = process.env.RESEND_API_KEY;
 const FROM = process.env.EMAIL_FROM || "GreenDuty <onboarding@resend.dev>";
-/** Organizer's inbox — new cleanup participants & donation contacts land here */
+/** Studio inbox — quote requests and client notifications land here */
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
 
 export type EmailMode = "email" | "console" | "failed";
@@ -78,11 +78,10 @@ export async function sendVerificationEmail(to: string, code: string): Promise<E
   }
 }
 
-/* ─────────────────────────────────────────────────────────────
- * Cleanup participant notification → sent to the organizer
- * (ADMIN_EMAIL env) every time someone fills the participation
- * form. Never throws — notification must never block signup.
- * ───────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────
+ * Quote / enquiry notification → sent to the studio inbox
+ * (ADMIN_EMAIL env). Never throws.
+ * ───────────────────────────────────────────── */
 export interface ParticipantDetails {
   eventTitle: string;
   firstName: string;
@@ -162,7 +161,7 @@ export async function sendParticipantNotification(details: ParticipantDetails): 
   }
 }
 
-/** Contact info exposed to the client for donations (WhatsApp + email). */
+/** Contact channels exposed to the client (WhatsApp + email). */
 export function getContactInfo(): { whatsapp: string | null; email: string | null } {
   return {
     whatsapp: process.env.WHATSAPP_NUMBER || null,

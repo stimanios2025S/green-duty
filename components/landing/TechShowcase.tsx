@@ -61,7 +61,7 @@ function BarsVisual() {
           </div>
         </div>
       ))}
-      <p className="mt-1 text-[10px] font-medium text-gd-text-muted">NPK · pH · Moisture</p>
+      <p className="mt-1 text-[10px] font-medium text-gd-text-muted">OEE · Downtime · Scrap</p>
     </div>
   );
 }

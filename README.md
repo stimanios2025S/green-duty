@@ -1,53 +1,48 @@
-# 🌿 GreenDuty — Agri-Tech & Environmental Platform
+# GreenDuty — Custom Software for Industry
 
-Uniting agriculture, technology, and environmental action for a sustainable future.
+We build personalized software for factories and industrial businesses: **ERP, MES and CRM** systems shaped around each client's exact processes, terminology and rules — plus custom web and mobile applications and integrations.
 
-## ✨ Features
+## What we build
 
-- **🔐 Real Authentication** — SQLite database (`node:sqlite`), bcrypt password hashing, email verification via Resend (6-digit code, 10-min expiry)
-- **👥 Role-based accounts** — Guest/Citizen, Buyer, Seller, Driver, Business
-  - Buyers & Drivers verify with ID Card / Driver's License / Passport
-  - Businesses provide company name & address
-- **🎛️ Role-specific portals** — each account type sees only its relevant dashboard & tabs
-- **📸 Instagram-style Knowledge Feed** — stories row, post cards with like/save/comment
-- **🗺️ Eco Action Map** — report pollution hotspots, join cleanups, sponsors, leaderboard
-- **🛒 Agri-Tech Marketplace** — quality-assured products with category filters
-- **🌳 Tree Tracker** — reforestation progress, planting events, tree sponsorship
-- **🏢 B2B Engineering** — agri-tech services, live greenhouse demo
-- **🐦 Scroll-companion bird** — anime.js animated bird that flies between landing sections
-- **🎨 Moody dark theme** — amber→green monochrome palette with glass morphism & glow effects
+- **Personalized ERP** — production, procurement, stock, costing and payroll, modelled on your real process
+- **MES** — live shop-floor capture of output, downtime, scrap and quality
+- **CRM** — leads, quotations and customer history connected to the orders and invoices that follow
+- **Custom web & mobile apps** and **integrations** with the systems you already run
 
-## 🚀 Getting Started
+## The platform
+
+| Area | Route | Purpose |
+|---|---|---|
+| Marketing site | `/`, `/catalogue`, `/partners`, `/b2b` | What we build, the catalogue, partners, contact |
+| Ordering | `/order/new` | A client picks an offering, picks a design direction, describes the project |
+| Client portal | `/portal` | The client's own projects, roadmap, specification, invoices and payments |
+| Owner dashboard | `/dashboard` | Orders, clients, projects, finance and partners |
+
+## Stack
+
+Next.js 16 · React 19 · TypeScript · Tailwind CSS v4 · anime.js · libSQL/Turso · bcryptjs · Resend · three.js (login scene)
+
+## Getting started
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## Environment variables
 
-## 🔑 Environment Variables
+Copy `.env.example` to `.env.local` and fill in:
 
-Copy `.env.example` to `.env.local`:
+| Variable | Purpose |
+|---|---|
+| `SESSION_SECRET` | Signs the session cookie. **Required in production** (16+ characters). |
+| `OWNER_EMAIL` | The account that gets the owner dashboard. Case-insensitive. |
+| `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` | Hosted database. When unset, a local SQLite file in `data/` is used. |
+| `RESEND_API_KEY` / `EMAIL_FROM` | Verification emails. |
+| `SALES_EMAIL` / `WHATSAPP_NUMBER` | Contact options on the ordering page (hidden when unset). |
 
-| Variable | Required | Description |
-|---|---|---|
-| `RESEND_API_KEY` | For real emails | Get a free key at [resend.com/api-keys](https://resend.com/api-keys) |
-| `EMAIL_FROM` | No | Sender address (default: `GreenDuty <onboarding@resend.dev>`) |
+> **Database:** production uses Turso/libSQL and persists across deploys. Local development uses a SQLite file — it is not the same data.
 
-> **Email note:** Resend's sandbox sender only delivers to the email registered on your Resend account. To send verification codes to **everyone**, verify a domain in Resend (Dashboard → Domains → Add → DNS records) and set `EMAIL_FROM` to that domain.
+## Deploy
 
-> **Database note:** Local dev uses a SQLite file at `data/greenduty.db` (gitignored, auto-created).
-
-## ☁️ Deploy to Vercel
-
-1. Push this repo to GitHub (done)
-2. In Vercel: **Import Project** → select `green-duty` → **Deploy**
-3. Add env vars in Vercel → Project → Settings → Environment Variables:
-   - `RESEND_API_KEY` (your Resend key — never commit it)
-   - `EMAIL_FROM` (optional)
-4. **Important:** Vercel's serverless filesystem is ephemeral — the local SQLite file won't persist across redeploys. For production, switch the DB layer to a hosted option (Turso / Supabase / Vercel Postgres). The schema lives in `lib/db.ts`.
-
-## 🧱 Tech Stack
-
-Next.js 16 · React 19 · TypeScript · Tailwind CSS v4 · anime.js · node:sqlite · bcryptjs · Resend · lucide-react
+Deployed on Vercel. Pushing to the connected branch triggers a production deployment.
