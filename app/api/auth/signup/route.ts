@@ -4,12 +4,12 @@ import { getDb } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/email";
 import { generateCode, generateId } from "@/lib/auth-helpers";
 
-const VALID_TYPES = ["guest", "buyer", "seller", "driver", "business"];
+const VALID_TYPES = ["client", "partner"];
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, password, accountType, businessName, businessAddress, idType, idNumber } = body;
+    const { name, email, password, accountType, businessName, businessAddress } = body;
 
     // ── Validation ──
     if (!name?.trim() || !email?.trim() || !password?.trim()) {
@@ -21,12 +21,7 @@ export async function POST(req: Request) {
     if (password.length < 6) {
       return NextResponse.json({ error: "Password must be at least 6 characters." }, { status: 400 });
     }
-    if (accountType === "business" && (!businessName?.trim() || !businessAddress?.trim())) {
-      return NextResponse.json({ error: "Please provide your business name and address." }, { status: 400 });
-    }
-    if ((accountType === "buyer" || accountType === "driver") && !idNumber?.trim()) {
-      return NextResponse.json({ error: "Please provide your ID document number." }, { status: 400 });
-    }
+    // Company details are optional for both account types.
 
     const db = await getDb();
     const normalizedEmail = email.trim().toLowerCase();
@@ -43,11 +38,14 @@ export async function POST(req: Request) {
     const code = generateCode();
     const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
 
+    // `id_type` / `id_number` are deliberately left unwritten: those columns
+    // still exist for accounts created before the agency pivot, but no
+    // identity documents are collected at signup any more.
     await db.prepare(`
       INSERT INTO users
         (id, name, email, password, account_type, business_name, business_address,
-         id_type, id_number, points, verified, verification_code, verification_expires, created_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?,?)
+         points, verified, verification_code, verification_expires, created_at)
+      VALUES (?,?,?,?,?,?,?,0,0,?,?,?)
     `).run(
       id,
       name.trim(),
@@ -56,9 +54,6 @@ export async function POST(req: Request) {
       accountType,
       businessName?.trim() ?? null,
       businessAddress?.trim() ?? null,
-      idType ?? null,
-      idNumber?.trim() ?? null,
-      accountType === "guest" ? 100 : 0,
       code,
       expires,
       new Date().toISOString()

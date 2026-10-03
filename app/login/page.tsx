@@ -4,18 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { currentNextPath, withNext } from "@/lib/utils";
 import type { AccountType } from "@/types";
 import {
-  ArrowRight, Lock, Mail, User as UserIcon, Sparkles, ShieldCheck, Globe, ShoppingBag,
-  Building2, ShoppingCart, Truck, Check
+  ArrowRight, Lock, Mail, User as UserIcon, Sparkles, ShieldCheck, Globe, Server,
+  Building2, Handshake, Check
 } from "lucide-react";
 
 const ACCOUNT_TYPES: { value: AccountType; icon: typeof UserIcon; label: string; hint: string }[] = [
-  { value: "guest", icon: UserIcon, label: "Guest / Citizen", hint: "Report, learn, donate" },
-  { value: "buyer", icon: ShoppingCart, label: "Buyer", hint: "Shop verified goods" },
-  { value: "seller", icon: Building2, label: "Seller", hint: "Sell on the marketplace" },
-  { value: "driver", icon: Truck, label: "Driver", hint: "Deliver orders" },
-  { value: "business", icon: Building2, label: "Business", hint: "B2B + CSR" },
+  { value: "client", icon: Building2, label: "Client / Company", hint: "Custom software & ERP" },
+  { value: "partner", icon: Handshake, label: "Partner", hint: "Collaborate & resell" },
 ];
 
 export default function LoginPage() {
@@ -51,17 +49,27 @@ export default function LoginPage() {
     if (!email.trim() || !password.trim()) { setError("Please fill in all fields."); return; }
     setLoading(true);
     try {
+      // Where to land after authenticating. Carried through the signup and
+      // verification steps too, so a visitor who clicks "Order" on the
+      // catalogue ends up back at their order rather than on a dashboard.
+      const next = currentNextPath();
+
       if (mode === "signup") {
         if (!name.trim()) { setError("Please enter your name."); return; }
         if (!accountType) { setError("Please choose an account type."); return; }
         // carry the chosen type + basic info into the detailed signup step
-        router.push(`/auth/register?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&type=${accountType}`);
+        router.push(
+          withNext(
+            `/auth/register?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&type=${accountType}`,
+            next
+          )
+        );
       } else {
         const result = await login(email, password);
         if (result.ok) {
-          router.push("/dashboard");
+          router.push(next || "/dashboard");
         } else if (result.needsVerification) {
-          router.push("/auth/verify");
+          router.push(withNext("/auth/verify", next));
         } else {
           setError(result.error || "Login failed.");
         }
@@ -72,9 +80,9 @@ export default function LoginPage() {
   };
 
   const features = [
-    { icon: ShieldCheck, label: "Verified identity" },
-    { icon: Globe, label: "Eco-action network" },
-    { icon: ShoppingBag, label: "Agri marketplace" },
+    { icon: ShieldCheck, label: "You own the code" },
+    { icon: Globe, label: "ERP · MES · CRM" },
+    { icon: Server, label: "Cloud or on-premise" },
   ];
 
   return (
@@ -98,15 +106,16 @@ export default function LoginPage() {
 
         <div className="relative max-w-md">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-gd-accent-500/20 bg-gd-accent-500/5 px-4 py-1.5 text-sm text-gd-accent-300">
-            <Sparkles className="h-3.5 w-3.5" /> Welcome to the future of agri-tech
+            <Sparkles className="h-3.5 w-3.5" /> Software studio for industry
           </div>
           <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-gd-text-primary">
-            One platform for agriculture,{" "}
-            <span className="gradient-text">sustainability</span> &amp;{" "}
-            <span className="gradient-text">commerce</span>.
+            Custom software, built around{" "}
+            <span className="gradient-text">your process</span> &amp;{" "}
+            <span className="gradient-text">your rules</span>.
           </h1>
           <p className="mt-5 text-lg text-gd-text-secondary leading-relaxed">
-            Report pollution, buy farm goods, sponsor trees, and grow your business — all in one place.
+            Personalized ERP, MES and CRM systems for factories and industrial businesses — designed around how you
+            already work.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             {features.map((f, i) => (
@@ -118,7 +127,7 @@ export default function LoginPage() {
         </div>
 
         <p className="relative text-xs text-gd-text-muted">
-          © 2026 GreenDuty Platform · Uniting Agriculture, Technology &amp; Environmental Action
+          © 2026 GreenDuty · Custom ERP, MES &amp; CRM for industry
         </p>
       </div>
 
@@ -195,14 +204,14 @@ export default function LoginPage() {
                       );
                     })}
                   </div>
-                  {accountType === "business" && (
+                  {accountType === "client" && (
                     <p className="mt-2 text-[11px] text-gd-text-muted">
-                      🏢 Business accounts will be asked for their business name &amp; address in the next step.
+                      🏢 You can add your company name &amp; address in the next step.
                     </p>
                   )}
-                  {(accountType === "buyer" || accountType === "driver") && (
+                  {accountType === "partner" && (
                     <p className="mt-2 text-[11px] text-gd-text-muted">
-                      🪪 {accountType === "buyer" ? "Buyer" : "Driver"} accounts will verify with an ID card, driver's license, or passport in the next step.
+                      🤝 Partner accounts work with us on client projects — company details come next.
                     </p>
                   )}
                 </div>

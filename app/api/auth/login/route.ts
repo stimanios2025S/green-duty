@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getDb } from "@/lib/db";
 import { publicUser } from "@/lib/auth-helpers";
+import { setSessionCookie } from "@/lib/session";
 
 export async function POST(req: Request) {
   try {
@@ -29,6 +30,10 @@ export async function POST(req: Request) {
         { status: 403 }
       );
     }
+
+    // Establish the server-side session. From here on the server trusts this
+    // cookie — not the `userId` the client sends up.
+    await setSessionCookie({ id: user.id, email: user.email });
 
     return NextResponse.json({ user: publicUser(user) });
   } catch (err) {

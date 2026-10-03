@@ -1,10 +1,10 @@
 "use client";
-import { Cpu, Droplets, Waves, ScanLine, LineChart, Gauge, Radio } from "lucide-react";
+import { Cpu, Factory, Gauge, TrendingUp, BrainCircuit } from "lucide-react";
 import { ScrollReveal } from "@/components/landing/ScrollReveal";
 
 /**
- * High-tech / agro-tech showcase — the "engineering" face of the platform.
- * Animated radar, pipeline and sensor visuals match the moody orange↔green theme.
+ * Engineering showcase — the four capabilities the agency is built around.
+ * Animated radar, pipeline and chart visuals match the moody orange↔green theme.
  */
 
 function RadarVisual() {
@@ -47,7 +47,7 @@ function PipelineVisual() {
   );
 }
 
-function SoilVisual() {
+function BarsVisual() {
   return (
     <div className="flex h-28 flex-col items-center justify-center gap-1.5">
       {[
@@ -85,32 +85,32 @@ function ForecastVisual() {
 
 const TECH = [
   {
-    icon: Droplets,
-    title: "Smart Irrigation",
-    desc: "Weather-aware drip control with zone scheduling, flow telemetry, and automatic drought response.",
+    icon: Factory,
+    title: "ERP & Business Automation",
+    desc: "Production, procurement, stock, costing and payroll in one system shaped to your real process — not a generic template.",
     visual: <PipelineVisual />,
-    tags: ["Flow telemetry", "Zone control", "Drought alerts"],
+    tags: ["Custom workflows", "Costing", "Approval chains"],
   },
   {
-    icon: Waves,
-    title: "Soil Intelligence",
-    desc: "In-field NPK, pH and moisture sensors stream live readings to guide precise fertilization.",
-    visual: <SoilVisual />,
-    tags: ["NPK sensing", "pH mapping", "Moisture grid"],
+    icon: Gauge,
+    title: "MES & Production Tracking",
+    desc: "Live shop-floor capture of output, downtime, scrap and quality, turned into figures your supervisors act on the same shift.",
+    visual: <BarsVisual />,
+    tags: ["OEE", "Traceability", "Downtime codes"],
   },
   {
-    icon: ScanLine,
-    title: "Drone Surveying",
-    desc: "Multispectral aerial scans detect crop stress, pest pressure, and irrigation leaks early.",
+    icon: TrendingUp,
+    title: "CRM & Sales Pipelines",
+    desc: "Leads, quotations and customer history connected to the orders and invoices that follow — one record, not four spreadsheets.",
     visual: <RadarVisual />,
-    tags: ["Multispectral", "Stress detection", "Field mapping"],
+    tags: ["Pipeline", "Quotations", "After-sales"],
   },
   {
-    icon: LineChart,
-    title: "Predictive Analytics",
-    desc: "Machine-learning models forecast yields, disease risk, and market prices from real farm data.",
+    icon: BrainCircuit,
+    title: "AI-Personalized Systems",
+    desc: "We read your own data to adapt terminology, surface exceptions and forecast demand and maintenance before they bite.",
     visual: <ForecastVisual />,
-    tags: ["Yield forecast", "Risk scoring", "Price models"],
+    tags: ["Process mining", "Forecasting", "Anomaly alerts"],
   },
 ];
 
@@ -121,13 +121,14 @@ export function TechShowcase() {
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="mb-14 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-gd-olive-500/15 bg-gd-olive-500/5 px-3 py-1 text-xs font-medium text-gd-olive-400 mb-4">
-            <Cpu className="h-3 w-3" /> Agro-Tech Engine
+            <Cpu className="h-3 w-3" /> Engineering Capabilities
           </div>
           <h2 className="text-3xl font-bold text-gd-text-primary tracking-tight sm:text-4xl">
-            Built for the <span className="gradient-text">farms of tomorrow</span>
+            Four disciplines, <span className="gradient-text">one system</span>
           </h2>
           <p className="mt-3 text-gd-text-secondary max-w-2xl mx-auto leading-relaxed">
-            Four engineering pillars power GreenDuty&apos;s smart-farming layer — every one integrated with the marketplace, eco-map, and community network.
+            Every engagement draws on the same four capabilities — and they share one database, so the shop floor,
+            the sales desk and the finance office are never looking at different numbers.
           </p>
         </div>
 
@@ -159,9 +160,9 @@ export function TechShowcase() {
         {/* Telemetry strip */}
         <div className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 rounded-2xl border border-gd-border-soft bg-gd-deepest/60 px-6 py-4 backdrop-blur-sm">
           {[
-            { icon: Gauge, label: "12ms sensor latency", color: "text-gd-accent-400" },
-            { icon: Radio, label: "IoT mesh online", color: "text-gd-olive-500" },
-            { icon: Cpu, label: "Auto-pilot v2.4", color: "text-gd-ember-500" },
+            { icon: Gauge, label: "Sub-second response times", color: "text-gd-accent-400" },
+            { icon: Factory, label: "Built for the shop floor", color: "text-gd-olive-500" },
+            { icon: Cpu, label: "Cloud or on-premise", color: "text-gd-ember-500" },
           ].map((s, i) => (
             <div key={i} className="flex items-center gap-2 text-xs font-medium text-gd-text-secondary">
               <s.icon className={`h-4 w-4 ${s.color}`} /> {s.label}

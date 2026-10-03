@@ -9,8 +9,6 @@ export interface SignupData {
   accountType: AccountType;
   businessName?: string;
   businessAddress?: string;
-  idType?: "identity_card" | "drivers_license" | "passport";
-  idNumber?: string;
 }
 
 interface AuthContextValue {
@@ -95,7 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!pendingEmail) return { ok: false, error: "No pending verification." };
     const { res, json } = await postJson("/api/auth/verify", { email: pendingEmail, code });
     if (!res.ok) return { ok: false, error: json.error || "Verification failed." };
-    persist(json.user);
+    // The already-verified branch deliberately returns no profile unless the
+    // caller already holds this account's session, so `json.user` may be absent.
+    if (json.user) persist(json.user);
     setPendingEmail(null);
     setVerifyMode(null);
     setFallbackCode(null);
@@ -145,7 +145,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const logout = useCallback(() => persist(null), [persist]);
+  const logout = useCallback(() => {
+    // The session cookie is HttpOnly, so the browser cannot clear it — the
+    // server has to. Local state is dropped either way.
+    void fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    persist(null);
+  }, [persist]);
 
   return (
     <AuthContext.Provider value={{ user, isLoading, pendingEmail, verifyMode, fallbackCode, signup, verify, resendCode, login, updateUser, logout }}>

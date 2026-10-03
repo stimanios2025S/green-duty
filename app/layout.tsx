@@ -7,8 +7,9 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "GreenDuty — Agri-Tech & Environmental Platform",
-  description: "Uniting agriculture, technology, and environmental action for a sustainable future.",
+  title: "GreenDuty — Custom ERP, MES & CRM for Industry",
+  description:
+    "GreenDuty builds personalized ERP, MES and CRM systems for factories and industrial businesses — plus custom web and mobile applications, shaped around your exact processes, workflows and terminology.",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",

@@ -1,55 +1,64 @@
 "use client";
-import { ReactNode, useEffect, useState } from "react";
-import Link from "next/link";
+import { ReactNode, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Home, Search, PlusSquare, Send, User as UserIcon } from "lucide-react";
+import Link from "next/link";
+import { LayoutDashboard, Package, Handshake, Briefcase } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
-import { SearchModal } from "@/components/instagro/SearchModal";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { cn } from "@/lib/utils";
 
+/** Prefix-matched public routes (the auth flow). */
 const PUBLIC_PATHS = ["/login", "/auth/register", "/auth/verify"];
 
+/**
+ * Exactly-matched public routes — the client-facing marketing pages.
+ *
+ * These must be exact rather than prefix matches: "/" as a prefix would match
+ * every path in the app and silently open the whole thing to visitors.
+ */
+const PUBLIC_EXACT = ["/", "/catalogue", "/partners", "/b2b", "/order/new"];
+
+/** Mobile bottom nav — the same destinations as the desktop sidebar. */
 function MobileNav() {
   const { user } = useAuth();
   const pathname = usePathname();
-  const myUsername = user?.name?.toLowerCase().replace(/\s+/g, ".") || "you";
-  const isFeed = pathname === "/feed" || pathname?.startsWith("/feed/");
 
   const items = [
-    { href: "/feed", icon: Home, active: isFeed && pathname === "/feed" },
-    { href: "/feed", icon: Search, active: false, search: true },
-    { href: "/feed", icon: PlusSquare, active: false, create: true },
-    { href: "/feed/messages", icon: Send, active: pathname?.startsWith("/feed/messages") },
-    { href: `/feed/${myUsername}`, icon: UserIcon, active: pathname === `/feed/${myUsername}` },
+    { href: "/portal", label: "Portal", icon: LayoutDashboard },
+    { href: "/catalogue", label: "Catalogue", icon: Package },
+    { href: "/partners", label: "Partners", icon: Handshake },
+    { href: "/b2b", label: "Start", icon: Briefcase },
   ];
 
-  const openSearch = () => window.dispatchEvent(new CustomEvent("gd:open-search"));
-  const openCreate = () => window.dispatchEvent(new CustomEvent("gd:open-create"));
+  const ownerItems = [
+    { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+    { href: "/dashboard/orders", label: "Orders", icon: Package },
+    { href: "/dashboard/projects", label: "Projects", icon: Briefcase },
+    { href: "/dashboard/finance", label: "Finance", icon: Handshake },
+  ];
+
+  const links = user?.isOwner ? ownerItems : items;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gd-border bg-gd-deepest/95 backdrop-blur-xl md:hidden pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto flex max-w-lg items-center justify-around py-2">
-        {items.map((item, i) =>
-          item.create ? (
-            <button key={i} onClick={openCreate} className="text-gd-text-secondary hover:text-gd-text-primary transition-colors" title="Create">
-              <PlusSquare className="h-7 w-7" />
-            </button>
-          ) : item.search ? (
-            <button key={i} onClick={openSearch} className="text-gd-text-muted hover:text-gd-text-secondary transition-colors" title="Search">
-              <Search className="h-7 w-7" />
-            </button>
-          ) : (
+        {links.map((item) => {
+          const active = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
+          return (
             <Link
-              key={i}
+              key={item.href}
               href={item.href}
-              className={`${item.active ? "text-gd-text-primary" : "text-gd-text-muted hover:text-gd-text-secondary"} transition-colors`}
-              title={item.href}
+              className={cn(
+                "flex flex-col items-center gap-1 px-3 py-1 text-[10px] font-medium transition-colors",
+                active ? "text-gd-accent-400" : "text-gd-text-muted hover:text-gd-text-secondary"
+              )}
             >
-              <item.icon className="h-7 w-7" />
+              <item.icon className="h-5 w-5" />
+              {item.label}
             </Link>
-          )
-        )}
+          );
+        })}
       </div>
     </nav>
   );
@@ -59,15 +68,7 @@ function Shell({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const isPublic = PUBLIC_PATHS.some(p => pathname?.startsWith(p));
-  const [showSearch, setShowSearch] = useState(false);
-
-  // Global search — works from the header search box & mobile nav on ANY page
-  useEffect(() => {
-    const onSearch = () => setShowSearch(true);
-    window.addEventListener("gd:open-search", onSearch);
-    return () => window.removeEventListener("gd:open-search", onSearch);
-  }, []);
+  const isPublic = PUBLIC_EXACT.includes(pathname || "") || PUBLIC_PATHS.some(p => pathname?.startsWith(p));
 
   // Gate: not logged in + not on a public page → login
   useEffect(() => {
@@ -88,22 +89,7 @@ function Shell({ children }: { children: ReactNode }) {
     );
   }
 
-  // InstaGro pages (feed + all /feed/*) render full-width with the mobile nav —
-  // the IG-style pages manage their own top nav.
-  const isInstaGro = pathname?.startsWith("/feed");
-  // Landing page renders full-bleed (hero sections span edge-to-edge)
-  const isLanding = pathname === "/";
-
-  if (isInstaGro) {
-    return (
-      <div className="flex min-h-screen flex-col bg-gd-deepest pb-16 md:pb-0">
-        <main className="flex-1">{children}</main>
-        <MobileNav />
-      </div>
-    );
-  }
-
-  // Other app pages: sidebar + header (desktop), mobile nav (mobile)
+  // App pages: sidebar + header (desktop), mobile nav (mobile)
   return (
     <div className="flex h-screen overflow-hidden bg-gd-deepest">
       <div className="hidden md:flex">
@@ -111,10 +97,9 @@ function Shell({ children }: { children: ReactNode }) {
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
-        <main className={`flex-1 overflow-y-auto bg-gd-base ${isLanding ? "" : "p-6 pb-20 md:pb-6"}`}>{children}</main>
+        <main className="flex-1 overflow-y-auto bg-gd-base p-6 pb-20 md:pb-6">{children}</main>
         <MobileNav />
       </div>
-      <SearchModal isOpen={showSearch} onClose={() => setShowSearch(false)} />
     </div>
   );
 }

@@ -63,133 +63,16 @@ const SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
-  CREATE TABLE IF NOT EXISTS posts (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    type TEXT NOT NULL,
-    title TEXT,
-    excerpt TEXT,
-    content TEXT,
-    tags TEXT,
-    cover_emoji TEXT,
-    cover_gradient TEXT,
-    video_url TEXT,
-    media_url TEXT,
-    duration TEXT,
-    views INTEGER NOT NULL DEFAULT 0,
-    caption TEXT,
-    location TEXT,
-    likes_hidden INTEGER NOT NULL DEFAULT 0,
-    comments_disabled INTEGER NOT NULL DEFAULT 0,
-    music_id TEXT,
-    music_url TEXT,
-    music_name TEXT,
-    created_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id);
 
-  CREATE TABLE IF NOT EXISTS post_likes (
-    post_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    PRIMARY KEY (post_id, user_id)
-  );
 
-  CREATE TABLE IF NOT EXISTS comments (
-    id TEXT PRIMARY KEY,
-    post_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    text TEXT NOT NULL,
-    created_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
 
-  CREATE TABLE IF NOT EXISTS follows (
-    follower_id TEXT NOT NULL,
-    following_id TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    PRIMARY KEY (follower_id, following_id)
-  );
 
-  CREATE TABLE IF NOT EXISTS stories (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    emoji TEXT,
-    gradient TEXT,
-    caption TEXT,
-    media_url TEXT,
-    music_id TEXT,
-    music_url TEXT,
-    music_name TEXT,
-    texts TEXT,
-    created_at TEXT NOT NULL
-  );
 
-  CREATE TABLE IF NOT EXISTS story_views (
-    story_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    PRIMARY KEY (story_id, user_id)
-  );
 
-  CREATE TABLE IF NOT EXISTS orders (
-    id TEXT PRIMARY KEY,
-    buyer_id TEXT NOT NULL,
-    product_id TEXT NOT NULL,
-    product_name TEXT NOT NULL,
-    quantity INTEGER NOT NULL,
-    total_price REAL NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at TEXT NOT NULL
-  );
 
-  CREATE TABLE IF NOT EXISTS hotspot_reports (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    pollution_type TEXT NOT NULL,
-    severity TEXT NOT NULL,
-    address TEXT,
-    lat REAL,
-    lng REAL,
-    reporter_id TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'reported',
-    upvotes INTEGER NOT NULL DEFAULT 0,
-    media_url TEXT,
-    created_at TEXT NOT NULL
-  );
 
-  CREATE TABLE IF NOT EXISTS cleanup_events (
-    id TEXT PRIMARY KEY,
-    hotspot_id TEXT,
-    title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    lat REAL,
-    lng REAL,
-    date TEXT NOT NULL,
-    max_volunteers INTEGER NOT NULL DEFAULT 25,
-    reward_points INTEGER NOT NULL DEFAULT 100,
-    organizer_id TEXT,
-    created_at TEXT NOT NULL
-  );
 
-  CREATE TABLE IF NOT EXISTS cleanup_signups (
-    event_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    first_name TEXT,
-    last_name TEXT,
-    phone TEXT,
-    email TEXT,
-    message TEXT,
-    joined_at TEXT,
-    PRIMARY KEY (event_id, user_id)
-  );
 
-  CREATE TABLE IF NOT EXISTS tree_donations (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    amount REAL NOT NULL,
-    trees INTEGER NOT NULL,
-    created_at TEXT NOT NULL
-  );
 
   CREATE TABLE IF NOT EXISTS b2b_inquiries (
     id TEXT PRIMARY KEY,
@@ -212,70 +95,231 @@ const SCHEMA = `
     created_at TEXT NOT NULL
   );
 
-  CREATE TABLE IF NOT EXISTS conversations (
-    id TEXT PRIMARY KEY,
-    user_a TEXT,
-    user_b TEXT,
-    type TEXT NOT NULL DEFAULT 'direct',
-    name TEXT,
-    vanish INTEGER NOT NULL DEFAULT 0,
-    streak INTEGER NOT NULL DEFAULT 0,
-    streak_last TEXT,
-    streak_trees INTEGER NOT NULL DEFAULT 0,
-    updated_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_conversations_users ON conversations(user_a, user_b);
 
-  CREATE TABLE IF NOT EXISTS conversation_members (
-    conversation_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    joined_at TEXT NOT NULL,
-    PRIMARY KEY (conversation_id, user_id)
-  );
 
-  CREATE TABLE IF NOT EXISTS messages (
+
+
+
+
+  /* ── Agency: B2B clients ── */
+  CREATE TABLE IF NOT EXISTS clients (
     id TEXT PRIMARY KEY,
-    conversation_id TEXT NOT NULL,
-    sender_id TEXT NOT NULL,
-    text TEXT,
-    media_url TEXT,
-    media_type TEXT,
-    reply_to TEXT,
-    reactions TEXT,
-    vanish INTEGER NOT NULL DEFAULT 0,
-    read INTEGER NOT NULL DEFAULT 0,
+    company_name TEXT NOT NULL,
+    contact_name TEXT,
+    email TEXT,
+    phone TEXT,
+    industry TEXT,
+    country TEXT,
+    notes TEXT,
+    status TEXT NOT NULL DEFAULT 'lead',
     created_at TEXT NOT NULL
   );
-  CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+  CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status);
 
-  CREATE TABLE IF NOT EXISTS calls (
+  /* ── Agency: software projects / orders ── */
+  CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY,
-    conversation_id TEXT NOT NULL,
-    caller_id TEXT NOT NULL,
-    callee_id TEXT NOT NULL,
-    type TEXT NOT NULL DEFAULT 'audio',
-    status TEXT NOT NULL DEFAULT 'ringing',
-    sdp_offer TEXT,
-    sdp_answer TEXT,
+    client_id TEXT REFERENCES clients(id),
+    title TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'other',
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'lead',
+    total_amount REAL NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'DZD',
+    deposit_amount REAL NOT NULL DEFAULT 0,
+    start_date TEXT,
+    due_date TEXT,
+    progress INTEGER NOT NULL DEFAULT 0,
+    delivery_target TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_projects_client ON projects(client_id);
+  CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+
+  /* ── Agency: invoices ── */
+  CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    project_id TEXT REFERENCES projects(id),
+    invoice_number TEXT NOT NULL UNIQUE,
+    amount REAL NOT NULL DEFAULT 0,
+    deposit_received REAL NOT NULL DEFAULT 0,
+    amount_paid REAL NOT NULL DEFAULT 0,
+    balance_due REAL NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'draft',
+    due_date TEXT,
+    issued_at TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_invoices_project ON invoices(project_id);
+  CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+
+  /* ── Agency: payments & deposits ── */
+  CREATE TABLE IF NOT EXISTS payments (
+    id TEXT PRIMARY KEY,
+    invoice_id TEXT REFERENCES invoices(id),
+    project_id TEXT REFERENCES projects(id),
+    amount REAL NOT NULL DEFAULT 0,
+    method TEXT NOT NULL DEFAULT 'bank_transfer',
+    reference TEXT,
+    received_at TEXT NOT NULL,
+    notes TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(invoice_id);
+  CREATE INDEX IF NOT EXISTS idx_payments_project ON payments(project_id);
+
+  /* ── Agency: partners ── */
+  CREATE TABLE IF NOT EXISTS partners (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    logo_url TEXT,
+    category TEXT NOT NULL DEFAULT 'technology',
+    website TEXT,
+    contact_name TEXT,
+    email TEXT,
+    collaboration_type TEXT,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    since TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_partners_status ON partners(status);
+
+  /* ── Design references ──
+     A client pastes a link to a design they like (typically Dribbble) plus
+     notes on what appeals to them. We store the URL and the notes ONLY —
+     the referenced image is never fetched, proxied, cached or embedded.
+     See app/api/design-references/route.ts for the validation rules. */
+  CREATE TABLE IF NOT EXISTS design_references (
+    id TEXT PRIMARY KEY,
+    project_id TEXT REFERENCES projects(id),
+    title TEXT,
+    reference_url TEXT NOT NULL,
+    client_notes TEXT,
+    owner_notes TEXT,
+    status TEXT NOT NULL DEFAULT 'suggested',
+    created_by TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_design_references_project ON design_references(project_id);
+
+  /* ── Project orders ──
+     An order placed from the catalogue, before it becomes a projects row.
+     Distinct from the marketplace orders table, which is untouched.
+     client_id is nullable because an order can be started before the
+     visitor has an account (§3.2). */
+  CREATE TABLE IF NOT EXISTS project_orders (
+    id TEXT PRIMARY KEY,
+    offering_id TEXT,
+    offering_name TEXT,
+    category TEXT,
+    client_id TEXT REFERENCES clients(id),
+    status TEXT NOT NULL DEFAULT 'draft',
+    budget_range TEXT,
+    currency TEXT NOT NULL DEFAULT 'DZD',
+    contact_preference TEXT,
+    design_style TEXT,
+    owner_notes TEXT,
+    project_id TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
-  CREATE INDEX IF NOT EXISTS idx_calls_callee ON calls(callee_id, status);
+  CREATE INDEX IF NOT EXISTS idx_project_orders_client ON project_orders(client_id);
+  CREATE INDEX IF NOT EXISTS idx_project_orders_status ON project_orders(status);
 
-  CREATE TABLE IF NOT EXISTS call_candidates (
-    call_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    candidate TEXT NOT NULL,
+  /* ── Project specifications ──
+     The structured brief, however it was produced (AI interview, written
+     form, or the owner typing it up from a phone call). */
+  CREATE TABLE IF NOT EXISTS project_specs (
+    id TEXT PRIMARY KEY,
+    order_id TEXT REFERENCES project_orders(id),
+    project_id TEXT REFERENCES projects(id),
+    created_by TEXT NOT NULL DEFAULT 'client_form',
+    project_name TEXT,
+    business_type TEXT,
+    industry TEXT,
+    company_size TEXT,
+    current_process TEXT,
+    pain_points TEXT,
+    required_modules TEXT,
+    roles TEXT,
+    data_migration TEXT,
+    integrations TEXT,
+    languages TEXT,
+    reporting_needs TEXT,
+    hardware_requirements TEXT,
+    security_requirements TEXT,
+    deadline TEXT,
+    budget_range TEXT,
+    definition_of_done TEXT,
+    full_summary TEXT,
+    status TEXT NOT NULL DEFAULT 'draft',
+    confirmed_at TEXT,
     created_at TEXT NOT NULL
   );
-  CREATE INDEX IF NOT EXISTS idx_call_candidates ON call_candidates(call_id, user_id);
+  CREATE INDEX IF NOT EXISTS idx_project_specs_order ON project_specs(order_id);
+  CREATE INDEX IF NOT EXISTS idx_project_specs_project ON project_specs(project_id);
 
-  CREATE TABLE IF NOT EXISTS typing_status (
-    conversation_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    typing_at TEXT NOT NULL,
-    PRIMARY KEY (conversation_id, user_id)
+  /* ── AI interview transcript (optional, owner-readable) ── */
+  CREATE TABLE IF NOT EXISTS ai_messages (
+    id TEXT PRIMARY KEY,
+    order_id TEXT REFERENCES project_orders(id),
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL
   );
+  CREATE INDEX IF NOT EXISTS idx_ai_messages_order ON ai_messages(order_id);
+
+  /* ── Generated specification PDFs ──
+     Bytes live in the database: Vercel's filesystem is ephemeral, so nothing
+     is written to disk. Rows are versioned and never overwritten. */
+  CREATE TABLE IF NOT EXISTS spec_documents (
+    id TEXT PRIMARY KEY,
+    spec_id TEXT REFERENCES project_specs(id),
+    project_id TEXT REFERENCES projects(id),
+    version INTEGER NOT NULL DEFAULT 1,
+    filename TEXT NOT NULL,
+    mime TEXT NOT NULL DEFAULT 'application/pdf',
+    bytes BLOB,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_spec_documents_spec ON spec_documents(spec_id);
+  CREATE INDEX IF NOT EXISTS idx_spec_documents_project ON spec_documents(project_id);
+
+  /* ── Project roadmap ── */
+  CREATE TABLE IF NOT EXISTS project_milestones (
+    id TEXT PRIMARY KEY,
+    project_id TEXT REFERENCES projects(id),
+    title TEXT NOT NULL,
+    description TEXT,
+    phase TEXT NOT NULL DEFAULT 'discovery',
+    order_index INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending',
+    due_date TEXT,
+    progress INTEGER NOT NULL DEFAULT 0,
+    owner_note TEXT,
+    client_visible INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_project_milestones_project ON project_milestones(project_id, order_index);
+
+  CREATE TABLE IF NOT EXISTS project_deliverables (
+    id TEXT PRIMARY KEY,
+    milestone_id TEXT REFERENCES project_milestones(id),
+    project_id TEXT REFERENCES projects(id),
+    title TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'document',
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    due_date TEXT,
+    completed_at TEXT,
+    amount REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_project_deliverables_project ON project_deliverables(project_id);
+  CREATE INDEX IF NOT EXISTS idx_project_deliverables_milestone ON project_deliverables(milestone_id);
 `;
 
 /** Split a multi-statement SQL string into individual statements */
@@ -343,40 +387,16 @@ function createLocalDb(): Db {
 /** Run idempotent migrations for tables created before a schema change */
 async function migrate(db: Db): Promise<void> {
   const migrations: [string, string][] = [
-    ["posts.media_url", "ALTER TABLE posts ADD COLUMN media_url TEXT"],
     ["users.username", "ALTER TABLE users ADD COLUMN username TEXT"],
     ["users.bio", "ALTER TABLE users ADD COLUMN bio TEXT"],
     ["users.emoji", "ALTER TABLE users ADD COLUMN emoji TEXT"],
     ["users.gradient", "ALTER TABLE users ADD COLUMN gradient TEXT"],
-    ["stories.media_url", "ALTER TABLE stories ADD COLUMN media_url TEXT"],
-    ["stories.music_id", "ALTER TABLE stories ADD COLUMN music_id TEXT"],
-    ["stories.texts", "ALTER TABLE stories ADD COLUMN texts TEXT"],
-    ["stories.music_url", "ALTER TABLE stories ADD COLUMN music_url TEXT"],
-    ["stories.music_name", "ALTER TABLE stories ADD COLUMN music_name TEXT"],
-    ["conversations.type", "ALTER TABLE conversations ADD COLUMN type TEXT NOT NULL DEFAULT 'direct'"],
-    ["conversations.name", "ALTER TABLE conversations ADD COLUMN name TEXT"],
-    ["conversations.vanish", "ALTER TABLE conversations ADD COLUMN vanish INTEGER NOT NULL DEFAULT 0"],
-    ["conversations.streak", "ALTER TABLE conversations ADD COLUMN streak INTEGER NOT NULL DEFAULT 0"],
-    ["conversations.streak_last", "ALTER TABLE conversations ADD COLUMN streak_last TEXT"],
-    ["conversations.streak_trees", "ALTER TABLE conversations ADD COLUMN streak_trees INTEGER NOT NULL DEFAULT 0"],
-    ["messages.media_url", "ALTER TABLE messages ADD COLUMN media_url TEXT"],
-    ["messages.media_type", "ALTER TABLE messages ADD COLUMN media_type TEXT"],
-    ["messages.reply_to", "ALTER TABLE messages ADD COLUMN reply_to TEXT"],
-    ["messages.reactions", "ALTER TABLE messages ADD COLUMN reactions TEXT"],
-    ["messages.vanish", "ALTER TABLE messages ADD COLUMN vanish INTEGER NOT NULL DEFAULT 0"],
-    ["posts.likes_hidden", "ALTER TABLE posts ADD COLUMN likes_hidden INTEGER NOT NULL DEFAULT 0"],
-    ["posts.comments_disabled", "ALTER TABLE posts ADD COLUMN comments_disabled INTEGER NOT NULL DEFAULT 0"],
-    ["posts.music_id", "ALTER TABLE posts ADD COLUMN music_id TEXT"],
-    ["posts.music_url", "ALTER TABLE posts ADD COLUMN music_url TEXT"],
-    ["posts.music_name", "ALTER TABLE posts ADD COLUMN music_name TEXT"],
     ["users.avatar_media", "ALTER TABLE users ADD COLUMN avatar_media TEXT"],
-    ["hotspot_reports.media_url", "ALTER TABLE hotspot_reports ADD COLUMN media_url TEXT"],
-    ["cleanup_signups.first_name", "ALTER TABLE cleanup_signups ADD COLUMN first_name TEXT"],
-    ["cleanup_signups.last_name", "ALTER TABLE cleanup_signups ADD COLUMN last_name TEXT"],
-    ["cleanup_signups.phone", "ALTER TABLE cleanup_signups ADD COLUMN phone TEXT"],
-    ["cleanup_signups.email", "ALTER TABLE cleanup_signups ADD COLUMN email TEXT"],
-    ["cleanup_signups.message", "ALTER TABLE cleanup_signups ADD COLUMN message TEXT"],
-    ["cleanup_signups.joined_at", "ALTER TABLE cleanup_signups ADD COLUMN joined_at TEXT"],
+    ["projects.delivery_target", "ALTER TABLE projects ADD COLUMN delivery_target TEXT"],
+    ["project_orders.owner_notes", "ALTER TABLE project_orders ADD COLUMN owner_notes TEXT"],
+    ["project_specs.project_name", "ALTER TABLE project_specs ADD COLUMN project_name TEXT"],
+    ["project_orders.project_id", "ALTER TABLE project_orders ADD COLUMN project_id TEXT"],
+    ["design_references.created_by", "ALTER TABLE design_references ADD COLUMN created_by TEXT"],
   ];
   for (const [name, sql] of migrations) {
     try {

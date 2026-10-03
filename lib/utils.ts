@@ -31,3 +31,32 @@ export function statusColor(status: string): string {
 }
 export function statusLabel(status: string): string { return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
 export function randomId(): string { return Math.random().toString(36).substring(2, 15); }
+
+/**
+ * Validate a `next` redirect target coming from a URL query parameter.
+ *
+ * Returns a same-origin path, or null. Rejects absolute URLs and the
+ * protocol-relative `//evil.example` form, either of which would turn a
+ * login link into an open redirect.
+ */
+export function safeNextPath(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const path = value.trim();
+  if (!path.startsWith("/")) return null;
+  if (path.startsWith("//")) return null;
+  if (path.startsWith("/\\")) return null;
+  return path;
+}
+
+/** Read ?next= from the current URL. Client-side only. */
+export function currentNextPath(): string | null {
+  if (typeof window === "undefined") return null;
+  return safeNextPath(new URLSearchParams(window.location.search).get("next"));
+}
+
+/** Append ?next= to an auth URL so the intent survives the whole flow. */
+export function withNext(url: string, next: string | null): string {
+  if (!next) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}next=${encodeURIComponent(next)}`;
+}

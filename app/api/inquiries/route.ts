@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { genId } from "@/lib/instagro-api";
+import { genId } from "@/lib/agency";
 
 // POST /api/inquiries → B2B quote request
 export async function POST(req: Request) {

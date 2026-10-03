@@ -4,40 +4,52 @@ import anime from "animejs";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { b2bServices } from "@/lib/mock-data";
-import { Check, Send, Thermometer, Droplets as WaterDroplets, Sun, Wind, Loader2, CheckCircle2 } from "lucide-react";
+import { BadgeCheck, Clock, Loader2, Send } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { PublicNav, SiteFooter } from "@/components/layout/PublicChrome";
+import { OfferingIcon } from "@/components/catalog/OfferingIcon";
+import {
+  CATALOG_CATEGORY_LABEL,
+  CATALOG_CATEGORY_VARIANT,
+  CATALOG_OFFERINGS,
+} from "@/lib/catalog-data";
 
-const sensorMeta = [
-  { icon: Thermometer, label: "Temp", unit: "°C", color: "text-gd-ember-400", fmt: (v: number) => v.toFixed(1) },
-  { icon: WaterDroplets, label: "Humidity", unit: "%", color: "text-blue-400", fmt: (v: number) => Math.round(v).toString() },
-  { icon: Sun, label: "Light", unit: " lux", color: "text-gd-accent-400", fmt: (v: number) => Math.round(v).toLocaleString() },
-  { icon: Wind, label: "CO₂", unit: " ppm", color: "text-gd-olive-400", fmt: (v: number) => Math.round(v).toString() },
-];
-
+/**
+ * Contact / start-a-project page. Public — a prospective client must be able
+ * to reach this without an account.
+ *
+ * Submits to the real /api/inquiries endpoint, which stores the enquiry in
+ * the b2b_inquiries table for the owner to follow up.
+ */
 export default function B2BPage() {
   const { user } = useAuth();
   const titleRef = useRef<HTMLDivElement>(null);
-  const [form, setForm] = useState({ company: user?.businessProfile?.businessName || "", email: user?.email || "", phone: "", service: "Custom Farm Dashboard", message: "" });
+  const [form, setForm] = useState({
+    company: "",
+    email: "",
+    phone: "",
+    service: CATALOG_OFFERINGS[0]?.name || "Personalized ERP",
+    message: "",
+  });
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
-  // Live greenhouse readings (simulated real-time telemetry stream)
-  const [sensors, setSensors] = useState([
-    { v: 24.5 }, { v: 68 }, { v: 45000 }, { v: 420 },
-  ]);
+
+  // Prefill from the signed-in account when there is one, without
+  // clobbering anything the visitor has already typed.
   useEffect(() => {
-    const t = setInterval(() => {
-      setSensors(s => s.map((s2, i) => {
-        const base = [24.5, 68, 45000, 420][i];
-        const drift = i === 0 ? 0.4 : i === 1 ? 1.5 : i === 2 ? 1200 : 6;
-        const v = Math.max(0, base + (Math.random() - 0.5) * drift);
-        return { v };
-      }));
-    }, 3500);
-    return () => clearInterval(t);
+    if (!user) return;
+    setForm(prev => ({
+      ...prev,
+      company: prev.company || user.businessProfile?.businessName || "",
+      email: prev.email || user.email || "",
+    }));
+  }, [user]);
+
+  useEffect(() => {
+    if (titleRef.current)
+      anime({ targets: titleRef.current, opacity: [0, 1], translateY: [20, 0], duration: 600, easing: "easeOutCubic" });
   }, []);
-  useEffect(() => { if (titleRef.current) anime({ targets: titleRef.current, opacity: [0, 1], translateY: [20, 0], duration: 600, easing: "easeOutCubic" }); }, []);
 
   const sendInquiry = async () => {
     setError("");
@@ -61,109 +73,152 @@ export default function B2BPage() {
       });
       if (!res.ok) throw new Error();
       setDone(true);
-      setTimeout(() => { setDone(false); setForm(f => ({ ...f, message: "" })); }, 2200);
+      setForm(f => ({ ...f, message: "" }));
     } catch {
-      setError("Failed to send inquiry. Please try again.");
+      setError("We couldn't send that. Please try again, or email us directly.");
     } finally {
       setSending(false);
     }
   };
 
-  return (
-    <div className="space-y-8">
-      <AnimeWrapper animate="fadeIn">
-        <div ref={titleRef} className="text-center py-8">
-          <Badge variant="purple" className="mb-4">B2B Engineering Agency</Badge>
-          <h1 className="text-3xl font-bold text-gd-text-primary tracking-tight">Agri-Tech Engineering Services</h1>
-          <p className="mt-3 text-gd-text-secondary max-w-2xl mx-auto leading-relaxed">
-            Custom web development, IoT greenhouse integration, automated irrigation, and smart farm dashboards.
-          </p>
-        </div>
-      </AnimeWrapper>
+  const chooseOffering = (name: string) => {
+    setForm(f => ({ ...f, service: name }));
+    document.getElementById("quote-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
-      {/* Services grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {b2bServices.map(svc => (
-          <Card key={svc.id} hover>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-gd-accent-500/15 to-gd-olive-500/10 text-gd-accent-400 border border-gd-accent-500/10 text-lg font-bold">
-              {svc.name[0]}
-            </div>
-            <h3 className="mt-5 font-semibold text-gd-text-primary text-lg">{svc.name}</h3>
-            <p className="mt-2 text-sm text-gd-text-secondary leading-relaxed">{svc.description}</p>
-            <div className="mt-4 space-y-1.5">
-              {svc.features.map((f, j) => (
-                <div key={j} className="flex items-center gap-2 text-xs text-gd-text-secondary">
-                  <Check className="h-3 w-3 text-gd-olive-500 flex-shrink-0" />{f}
+  const inputClass =
+    "rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors";
+
+  return (
+    <div className="min-h-screen bg-gd-deepest">
+      <PublicNav />
+
+      <div className="mx-auto max-w-7xl px-6 py-14">
+        <AnimeWrapper animate="fadeIn">
+          <div ref={titleRef} className="text-center">
+            <Badge variant="success" className="mb-4">Software Agency</Badge>
+            <h1 className="text-3xl font-bold tracking-tight text-gd-text-primary sm:text-4xl">
+              Tell us what you need <span className="gradient-text">built</span>
+            </h1>
+            <p className="mx-auto mt-3 max-w-2xl leading-relaxed text-gd-text-secondary">
+              Describe your process — the systems you have, what breaks, and what you wish existed. We&apos;ll come
+              back with a plan and a realistic timeline.
+            </p>
+          </div>
+        </AnimeWrapper>
+
+        {/* What we build — pick one to prefill the form */}
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {CATALOG_OFFERINGS.map(offering => (
+            <Card key={offering.id} hover className="flex flex-col">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-gd-accent-500/10 bg-gradient-to-br from-gd-accent-500/15 to-gd-olive-500/10 text-gd-accent-400">
+                  <OfferingIcon icon={offering.icon} className="h-5 w-5" />
                 </div>
-              ))}
-            </div>
-            <div className="mt-5 flex items-center justify-between pt-4 border-t border-gd-border">
-              <span className="text-sm font-semibold text-gd-accent-400">{svc.priceRange}</span>
-              <span className="text-[10px] text-gd-text-muted">{svc.deliveryTime}</span>
-            </div>
-            <button
-              onClick={() => { setForm(f => ({ ...f, service: svc.name })); document.getElementById("quote-form")?.scrollIntoView({ behavior: "smooth" }); }}
-              className="mt-4 w-full rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 py-2.5 text-sm font-semibold text-gd-text-inverse hover:brightness-110 transition-all shadow-sm shadow-gd-accent-500/10"
+                <Badge variant={CATALOG_CATEGORY_VARIANT[offering.category]}>
+                  {CATALOG_CATEGORY_LABEL[offering.category]}
+                </Badge>
+              </div>
+              <h3 className="mt-4 font-semibold text-gd-text-primary">{offering.name}</h3>
+              <p className="mt-1 text-xs font-medium text-gd-accent-400">{offering.tagline}</p>
+              <p className="mt-2 flex-1 text-sm leading-relaxed text-gd-text-secondary">{offering.description}</p>
+              <div className="mt-4 flex items-center justify-between border-t border-gd-border pt-3">
+                <span className="flex items-center gap-1.5 text-[11px] text-gd-text-muted">
+                  <Clock className="h-3 w-3" /> {offering.timeline}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => chooseOffering(offering.name)}
+                  className="text-xs font-semibold text-gd-accent-400 transition-colors hover:text-gd-accent-300"
+                >
+                  Select
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Inquiry form */}
+        <Card id="quote-form" className="mt-12 scroll-mt-24">
+          <h2 className="mb-1 text-xl font-bold text-gd-text-primary">Request a quote</h2>
+          <p className="mb-5 text-sm text-gd-text-muted">
+            We reply to every enquiry. There is no obligation and no sales sequence.
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <input
+              value={form.company}
+              onChange={e => setForm({ ...form, company: e.target.value })}
+              placeholder="Company name"
+              className={inputClass}
+            />
+            <input
+              value={form.email}
+              onChange={e => setForm({ ...form, email: e.target.value })}
+              type="email"
+              placeholder="Email"
+              className={inputClass}
+            />
+            <input
+              value={form.phone}
+              onChange={e => setForm({ ...form, phone: e.target.value })}
+              placeholder="Phone (optional)"
+              className={inputClass}
+            />
+            <select
+              value={form.service}
+              onChange={e => setForm({ ...form, service: e.target.value })}
+              className={`${inputClass} bg-gd-elevated`}
+              aria-label="What you need"
             >
-              Book Consultation
-            </button>
-          </Card>
-        ))}
+              {CATALOG_OFFERINGS.map(o => (
+                <option key={o.id} value={o.name} className="bg-gd-card">
+                  {o.name}
+                </option>
+              ))}
+              <option value="Something else" className="bg-gd-card">
+                Something else
+              </option>
+            </select>
+            <textarea
+              value={form.message}
+              onChange={e => setForm({ ...form, message: e.target.value })}
+              placeholder="Describe your process, the systems you use today, and what you'd like to change…"
+              rows={4}
+              className={`${inputClass} resize-none sm:col-span-2`}
+            />
+          </div>
+
+          {error && (
+            <p className="mt-3 rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">
+              {error}
+            </p>
+          )}
+          {done && (
+            <p className="mt-3 flex items-center gap-2 rounded-xl border border-gd-success/20 bg-gd-success/5 px-4 py-2.5 text-xs text-gd-success">
+              <BadgeCheck className="h-4 w-4" /> Thanks — your enquiry is with us. We&apos;ll be in touch shortly.
+            </p>
+          )}
+
+          <button
+            onClick={sendInquiry}
+            disabled={sending}
+            className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-6 py-2.5 text-sm font-semibold text-gd-text-inverse shadow-sm shadow-gd-accent-500/10 transition-all hover:brightness-110 disabled:opacity-50"
+          >
+            {sending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" /> Send inquiry
+              </>
+            )}
+          </button>
+        </Card>
       </div>
 
-      {/* Greenhouse demo */}
-      <Card className="!bg-gradient-to-br !from-gd-overlay !to-gd-card !border-gd-border-strong overflow-hidden relative">
-        <div className="absolute top-0 right-0 h-32 w-32 bg-gd-olive-500/10 rounded-full blur-3xl" />
-        <div className="relative">
-          <h2 className="text-2xl font-bold text-gd-text-primary mb-1">Live Greenhouse Demo</h2>
-          <p className="text-sm text-gd-text-muted mb-6">Real-time sensor data from a connected smart greenhouse</p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {sensorMeta.map((s, i) => (
-              <div key={i} className="rounded-xl bg-gd-accent-500/3 border border-gd-accent-500/8 p-4 text-center backdrop-blur-sm">
-                <s.icon className={`mx-auto h-6 w-6 ${s.color}`} />
-                <p className="mt-2 text-lg font-bold text-gd-text-primary tabular-nums">{s.fmt(sensors[i]?.v ?? 0)}{s.unit}</p>
-                <p className="text-xs text-gd-text-muted mt-0.5">{s.label}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 rounded-xl bg-gd-olive-500/5 border border-gd-olive-500/10 p-4 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-3 w-3 rounded-full bg-gd-olive-500 animate-pulse shadow-[0_0_8px_rgba(132,204,22,0.4)]" />
-                <span className="text-sm text-gd-text-primary">Smart Greenhouse System — Operational</span>
-              </div>
-              <span className="text-xs text-gd-text-muted">Auto-pilot mode · v2.4</span>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Quote form */}
-      <Card id="quote-form">
-        <h2 className="text-xl font-bold text-gd-text-primary mb-5">Get a Custom Quote</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <input value={form.company} onChange={e => setForm({...form, company: e.target.value})} placeholder="Company Name" className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-          <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} type="email" placeholder="Email" className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-          <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="Phone" className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-          <select value={form.service} onChange={e => setForm({...form, service: e.target.value})} className="rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary outline-none focus:border-gd-accent-500/40 transition-colors">
-            {b2bServices.map(s => <option key={s.id} className="bg-gd-card">{s.name}</option>)}
-          </select>
-          <textarea value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder="Describe your project..." rows={3} className="sm:col-span-2 rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors resize-none" />
-        </div>
-        {error && <p className="mt-3 rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">{error}</p>}
-        {done && (
-          <p className="mt-3 flex items-center gap-2 rounded-xl border border-gd-success/20 bg-gd-success/5 px-4 py-2.5 text-xs text-gd-success">
-            <CheckCircle2 className="h-4 w-4" /> Inquiry sent! Our team will reach out within 24h.
-          </p>
-        )}
-        <button
-          onClick={sendInquiry}
-          disabled={sending}
-          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-6 py-2.5 text-sm font-semibold text-gd-text-inverse hover:brightness-110 transition-all shadow-sm shadow-gd-accent-500/10 disabled:opacity-50"
-        >
-          {sending ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</> : <><Send className="h-4 w-4" /> Send Inquiry</>}
-        </button>
-      </Card>
+      <SiteFooter />
     </div>
   );
 }

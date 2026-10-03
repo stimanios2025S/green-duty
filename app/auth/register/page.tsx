@@ -4,13 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { safeNextPath, withNext } from "@/lib/utils";
 import type { AccountType } from "@/types";
 import {
-  ArrowLeft, ArrowRight, Building2, ShoppingCart, Truck, User as UserIcon,
-  BadgeCheck, MapPin, FileText, CreditCard, IdCard, Car, ShieldCheck, Check
+  ArrowLeft, ArrowRight, Building2, Handshake, User as UserIcon,
+  BadgeCheck, MapPin, Check
 } from "lucide-react";
-
-type IdType = "identity_card" | "drivers_license" | "passport";
 
 const ROLE_OPTIONS: {
   value: AccountType;
@@ -19,11 +18,20 @@ const ROLE_OPTIONS: {
   desc: string;
   needs: string;
 }[] = [
-  { value: "guest", icon: UserIcon, title: "Guest / Citizen", desc: "Report pollution, join cleanups, sponsor trees, learn.", needs: "Standard account" },
-  { value: "buyer", icon: ShoppingCart, title: "Buyer", desc: "Shop the agri marketplace with verified identity.", needs: "ID Card · Driver's License · Passport" },
-  { value: "seller", icon: Building2, title: "Seller", desc: "List products on the marketplace.", needs: "Standard account" },
-  { value: "driver", icon: Truck, title: "Driver", desc: "Deliver marketplace orders.", needs: "ID Card · Driver's License · Passport" },
-  { value: "business", icon: Building2, title: "Business", desc: "B2B services, corporate CSR, fleet management.", needs: "Business name & address" },
+  {
+    value: "client",
+    icon: Building2,
+    title: "Client / Company",
+    desc: "Custom ERP, MES, CRM, web and mobile applications built around your processes, language and terminology.",
+    needs: "Commission software",
+  },
+  {
+    value: "partner",
+    icon: Handshake,
+    title: "Partner",
+    desc: "Technology, integration, logistics or reseller partners who work with us on client projects.",
+    needs: "Collaborate & resell",
+  },
 ];
 
 export default function RegisterPage() {
@@ -46,21 +54,14 @@ function RegisterInner() {
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
-  const [idType, setIdType] = useState<IdType>("identity_card");
-  const [idNumber, setIdNumber] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const needsId = accountType === "buyer" || accountType === "driver";
-  const needsBusiness = accountType === "business";
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     if (!accountType) { setError("Please select an account type."); return; }
     if (!name.trim() || !email.trim() || !password.trim()) { setError("Please fill in all fields."); return; }
-    if (needsBusiness && (!businessName.trim() || !businessAddress.trim())) { setError("Please provide your business name and address."); return; }
-    if (needsId && !idNumber.trim()) { setError("Please provide your ID document number."); return; }
 
     setLoading(true);
     try {
@@ -71,10 +72,8 @@ function RegisterInner() {
         accountType,
         businessName: businessName.trim(),
         businessAddress: businessAddress.trim(),
-        idType,
-        idNumber: idNumber.trim(),
       });
-      router.push("/auth/verify");
+      router.push(withNext("/auth/verify", safeNextPath(params.get("next"))));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed. Please try again.");
     } finally {
@@ -116,8 +115,8 @@ function RegisterInner() {
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Step 1: role selection */}
           <div>
-            <h1 className="text-2xl font-bold text-gd-text-primary tracking-tight">What brings you to GreenDuty?</h1>
-            <p className="mt-2 text-sm text-gd-text-secondary">Select the account type that fits you best.</p>
+            <h1 className="text-2xl font-bold text-gd-text-primary tracking-tight">How will you work with us?</h1>
+            <p className="mt-2 text-sm text-gd-text-secondary">Choose the account type that fits you — you can add company details in the next step.</p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {ROLE_OPTIONS.map(opt => {
@@ -179,58 +178,21 @@ function RegisterInner() {
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password" className="mt-1.5 w-full rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
               </div>
 
-              {/* Business fields */}
-              {needsBusiness && (
-                <div className="space-y-4 rounded-xl border border-gd-accent-500/15 bg-gd-accent-500/3 p-4">
-                  <p className="text-sm font-medium text-gd-accent-400 flex items-center gap-2">
-                    <Building2 className="h-4 w-4" /> Business details
-                  </p>
-                  <div>
-                    <label className="text-xs font-medium text-gd-text-secondary flex items-center gap-1.5"><Building2 className="h-3 w-3" /> Business name</label>
-                    <input value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="e.g. GreenField Organics LLC" className="mt-1.5 w-full rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gd-text-secondary flex items-center gap-1.5"><MapPin className="h-3 w-3" /> Business address</label>
-                    <input value={businessAddress} onChange={e => setBusinessAddress(e.target.value)} placeholder="Street, city, country" className="mt-1.5 w-full rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-                  </div>
+              {/* Company details — optional for both account types */}
+              <div className="space-y-4 rounded-xl border border-gd-accent-500/15 bg-gd-accent-500/3 p-4">
+                <p className="text-sm font-medium text-gd-accent-400 flex items-center gap-2">
+                  <Building2 className="h-4 w-4" /> Company details
+                  <span className="text-[11px] font-normal text-gd-text-muted">optional</span>
+                </p>
+                <div>
+                  <label className="text-xs font-medium text-gd-text-secondary flex items-center gap-1.5"><Building2 className="h-3 w-3" /> Company name</label>
+                  <input value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="e.g. Tlemcen Foods SPA" className="mt-1.5 w-full rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
                 </div>
-              )}
-
-              {/* ID document fields */}
-              {needsId && (
-                <div className="space-y-4 rounded-xl border border-gd-accent-500/15 bg-gd-accent-500/3 p-4">
-                  <p className="text-sm font-medium text-gd-accent-400 flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4" /> Identity verification
-                  </p>
-                  <div>
-                    <label className="text-xs font-medium text-gd-text-secondary">Document type</label>
-                    <div className="mt-1.5 grid gap-2 sm:grid-cols-3">
-                      {([
-                        { value: "identity_card", icon: IdCard, label: "ID Card" },
-                        { value: "drivers_license", icon: Car, label: "Driver's License" },
-                        { value: "passport", icon: FileText, label: "Passport" },
-                      ] as const).map(doc => (
-                        <button
-                          key={doc.value}
-                          type="button"
-                          onClick={() => setIdType(doc.value)}
-                          className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-medium transition-all ${
-                            idType === doc.value
-                              ? "border-gd-accent-500/50 bg-gd-accent-500/10 text-gd-accent-400"
-                              : "border-gd-border bg-gd-elevated text-gd-text-secondary hover:border-gd-border-strong"
-                          }`}
-                        >
-                          <doc.icon className="h-4 w-4" /> {doc.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gd-text-secondary flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Document number</label>
-                    <input value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="Enter your ID number" className="mt-1.5 w-full rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
-                  </div>
+                <div>
+                  <label className="text-xs font-medium text-gd-text-secondary flex items-center gap-1.5"><MapPin className="h-3 w-3" /> Company address</label>
+                  <input value={businessAddress} onChange={e => setBusinessAddress(e.target.value)} placeholder="Street, city, country" className="mt-1.5 w-full rounded-xl border border-gd-border bg-gd-elevated px-3.5 py-2.5 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none focus:border-gd-accent-500/40 transition-colors" />
                 </div>
-              )}
+              </div>
 
               {error && (
                 <p className="rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">{error}</p>

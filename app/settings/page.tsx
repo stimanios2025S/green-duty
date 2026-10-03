@@ -1,21 +1,20 @@
 "use client";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import anime from "animejs";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { AnimeWrapper } from "@/components/ui/AnimeWrapper";
-import { ProfileEditor } from "@/components/instagro/ProfileEditor";
 import { useAuth } from "@/lib/auth-context";
-import { ROLE_LABEL } from "@/lib/nav-config";
+import { roleLabelFor } from "@/lib/nav-config";
 import {
-  User as UserIcon, Mail, ShieldCheck, Leaf, Pencil, Globe, Bell,
-  Sparkles, ArrowRight, CalendarDays, Award, MessageCircle, ExternalLink
+  User as UserIcon, Mail, ShieldCheck, ArrowRight, CalendarDays, LogOut, FolderKanban, MessageCircle
 } from "lucide-react";
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const router = useRouter();
   const titleRef = useRef<HTMLDivElement>(null);
-  const [showEditor, setShowEditor] = useState(false);
 
   useEffect(() => {
     if (titleRef.current) anime({ targets: titleRef.current, opacity: [0, 1], translateY: [20, 0], duration: 600, easing: "easeOutCubic" });
@@ -23,10 +22,14 @@ export default function SettingsPage() {
 
   if (!user) return null;
 
-  const type = user.accountType || "guest";
-  const roleLabel = ROLE_LABEL[type] || "Guest";
+  const type = user.accountType || "client";
+  const roleLabel = roleLabelFor(type);
   const joined = user.joinedAt ? new Date(user.joinedAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "—";
-  const myUsername = user.username || user.name?.toLowerCase().replace(/\s+/g, ".") || "you";
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
 
   const infoRow = (icon: React.ReactNode, label: string, value: string) => (
     <div className="flex items-start gap-3 rounded-xl border border-gd-border bg-gd-elevated/40 px-3.5 py-3">
@@ -44,10 +47,10 @@ export default function SettingsPage() {
         <div ref={titleRef} className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gd-text-primary tracking-tight">Settings</h1>
-            <p className="text-sm text-gd-text-secondary mt-1">Manage your account, profile and preferences</p>
+            <p className="text-sm text-gd-text-secondary mt-1">Your account details and workspace</p>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-gd-olive-500/20 bg-gd-olive-500/5 px-3 py-1 text-xs font-medium text-gd-olive-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-gd-olive-500 animate-pulse" /> {roleLabel}
+            <span className="h-1.5 w-1.5 rounded-full bg-gd-olive-500 animate-pulse" /> {user.isOwner ? "Agency" : roleLabel}
           </span>
         </div>
       </AnimeWrapper>
@@ -56,30 +59,17 @@ export default function SettingsPage() {
       <Card>
         <div className="flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-gd-accent-500 to-gd-ember-500 text-gd-text-inverse text-xl font-bold shadow-lg shadow-gd-accent-500/20">
-            {user.avatarUrl && user.avatarUrl !== "/logo.png" ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.avatarUrl} alt={user.name} className="h-full w-full object-cover" />
-            ) : (
-              user.name?.charAt(0)?.toUpperCase() || "G"
-            )}
+            {user.name?.charAt(0)?.toUpperCase() || "G"}
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-lg font-bold text-gd-text-primary">{user.name}</h2>
-            <p className="truncate text-sm text-gd-text-muted">@{myUsername}</p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full border border-gd-accent-500/25 bg-gd-accent-500/10 px-2 py-0.5 text-[11px] font-semibold text-gd-accent-400">
-                <Sparkles className="h-3 w-3" /> {(user.points || 0).toLocaleString()} eco points
-              </span>
-              {(user.badges || []).slice(0, 3).map(b => (
-                <span key={b} className="rounded-full border border-gd-border bg-gd-elevated px-2 py-0.5 text-[11px] font-medium text-gd-text-secondary">{b}</span>
-              ))}
-            </div>
+            <p className="truncate text-sm text-gd-text-muted">{user.email}</p>
           </div>
           <button
-            onClick={() => setShowEditor(true)}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-4 py-2.5 text-sm font-semibold text-gd-text-inverse shadow-lg shadow-gd-accent-500/20 hover:brightness-110 transition-all"
+            onClick={handleLogout}
+            className="flex items-center gap-2 rounded-xl border border-gd-border bg-gd-elevated/60 px-4 py-2.5 text-sm font-semibold text-gd-text-secondary transition-colors hover:border-red-500/30 hover:text-red-400"
           >
-            <Pencil className="h-4 w-4" /> Edit profile
+            <LogOut className="h-4 w-4" /> Sign out
           </button>
         </div>
       </Card>
@@ -92,55 +82,39 @@ export default function SettingsPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           {infoRow(<UserIcon className="h-4 w-4" />, "Full name", user.name)}
           {infoRow(<Mail className="h-4 w-4" />, "Email address", user.email)}
-          {infoRow(<ShieldCheck className="h-4 w-4" />, "Account type", roleLabel)}
+          {infoRow(<ShieldCheck className="h-4 w-4" />, "Account type", user.isOwner ? "Agency owner" : roleLabel)}
           {infoRow(<CalendarDays className="h-4 w-4" />, "Member since", joined)}
-          {infoRow(<Award className="h-4 w-4" />, "Eco points", (user.points || 0).toLocaleString())}
-          {infoRow(<Leaf className="h-4 w-4" />, "Badges earned", (user.badges || []).length ? user.badges!.join(" · ") : "None yet")}
         </div>
       </Card>
 
-      {/* Preferences & links */}
+      {/* Workspace links */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <h3 className="mb-3 flex items-center gap-2 font-semibold text-gd-text-primary">
-            <Bell className="h-4 w-4 text-gd-accent-400" /> Notifications
+            <FolderKanban className="h-4 w-4 text-gd-accent-400" /> Your workspace
           </h3>
           <p className="text-sm text-gd-text-secondary leading-relaxed">
-            You&apos;ll get notified about cleanups you join, order updates, and new followers.
+            {user.isOwner
+              ? "Open the agency dashboard to manage orders, clients, projects and finance."
+              : "Open your portal to see your orders, projects and roadmap."}
           </p>
-          <Link href="/dashboard" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-gd-accent-400 hover:text-gd-accent-300 transition-colors">
-            View my portal <ArrowRight className="h-3 w-3" />
+          <Link href={user.isOwner ? "/dashboard" : "/portal"} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-gd-accent-400 hover:text-gd-accent-300 transition-colors">
+            {user.isOwner ? "Open dashboard" : "Open my portal"} <ArrowRight className="h-3 w-3" />
           </Link>
         </Card>
         <Card>
           <h3 className="mb-3 flex items-center gap-2 font-semibold text-gd-text-primary">
-            <Globe className="h-4 w-4 text-gd-accent-400" /> Public profile
+            <MessageCircle className="h-4 w-4 text-gd-accent-400" /> Need help?
           </h3>
           <p className="text-sm text-gd-text-secondary leading-relaxed">
-            Your profile is visible to the community on InstaGro — posts, stories and eco activity.
+            Questions about a project, a quote, or your account? Reach the team through the
+            contact page and we will get back to you.
           </p>
-          <Link href={`/feed/${myUsername}`} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-gd-accent-400 hover:text-gd-accent-300 transition-colors">
-            View public profile <ExternalLink className="h-3 w-3" />
+          <Link href="/b2b" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-gd-accent-400 hover:text-gd-accent-300 transition-colors">
+            Contact us <ArrowRight className="h-3 w-3" />
           </Link>
         </Card>
       </div>
-
-      {/* Support */}
-      <Card>
-        <h3 className="mb-3 flex items-center gap-2 font-semibold text-gd-text-primary">
-          <MessageCircle className="h-4 w-4 text-gd-accent-400" /> Need help?
-        </h3>
-        <p className="text-sm text-gd-text-secondary leading-relaxed">
-          Questions about donations, cleanups or the marketplace? Reach us through the
-          <span className="mx-1 font-medium text-gd-text-primary">Sponsor Trees</span>
-          flow — we reply on WhatsApp or email.
-        </p>
-        <Link href="/tree-tracker" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-gd-accent-400 hover:text-gd-accent-300 transition-colors">
-          Go to Tree Tracker <ArrowRight className="h-3 w-3" />
-        </Link>
-      </Card>
-
-      <ProfileEditor isOpen={showEditor} onClose={() => setShowEditor(false)} onSaved={() => setShowEditor(false)} />
     </div>
   );
 }

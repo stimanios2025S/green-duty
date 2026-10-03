@@ -2,13 +2,20 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import anime from "animejs";
-import { ArrowRight, Play, Satellite, Radar } from "lucide-react";
+import { ArrowRight, Boxes, Server } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 interface Stats {
-  trees?: number; hotspots?: number; users?: number; posts?: number;
-  cleanups?: number; volunteers?: number; verifiedUsers?: number;
+  users?: number; posts?: number; verifiedUsers?: number;
+  /* Agency metrics — real aggregates over clients / projects / partners. */
+  agency?: {
+    systemsDelivered?: number;
+    projectsActive?: number;
+    clientsServed?: number;
+    industriesServed?: number;
+    partners?: number;
+  };
 }
 
 /** Count-up number driven by anime.js */
@@ -50,19 +57,13 @@ export function HeroSection() {
     anime({ targets: words, opacity: [0, 1], translateY: [22, 0], rotateX: [40, 0], duration: 700, delay: anime.stagger(90, { start: 250 }), easing: "easeOutCubic" });
   }, [reduced]);
 
-  const rows = stats
-    ? [
-        { label: "Trees Planted", value: stats.trees || 0 },
-        { label: "Hotspots Reported", value: stats.hotspots || 0 },
-        { label: "Cleanups Organized", value: stats.cleanups || 0 },
-        { label: "Community Members", value: stats.users || 0 },
-      ]
-    : [
-        { label: "Trees Planted", value: 0 },
-        { label: "Hotspots Reported", value: 0 },
-        { label: "Cleanups Organized", value: 0 },
-        { label: "Community Members", value: 0 },
-      ];
+  const agency = stats?.agency;
+  const rows = [
+    { label: "Systems Delivered", value: agency?.systemsDelivered || 0 },
+    { label: "Active Projects", value: agency?.projectsActive || 0 },
+    { label: "Industries Served", value: agency?.industriesServed || 0 },
+    { label: "Partners", value: agency?.partners || 0 },
+  ];
 
   return (
     <section data-perch className="relative overflow-hidden bg-gd-deepest pt-24 pb-28">
@@ -108,54 +109,50 @@ export function HeroSection() {
         {/* Live badge */}
         <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-gd-accent-500/20 bg-gd-accent-500/5 px-4 py-1.5 text-sm text-gd-accent-300 backdrop-blur-sm">
           <span className="h-1.5 w-1.5 rounded-full bg-gd-accent-400 animate-pulse shadow-[0_0_8px_rgba(212,160,23,0.6)]" />
-          Platform v2.0 Now Live · Real-time eco intelligence
+          Software studio · Personalized ERP, MES &amp; CRM for industry
         </div>
 
         {/* Headline — staggered word reveal */}
         <h1 ref={headlineRef} className="mx-auto max-w-4xl text-4xl font-extrabold tracking-tight text-gd-text-primary sm:text-5xl lg:text-6xl [perspective:800px]">
-          <span data-w className="inline-block">Uniting</span>{" "}
-          <span data-w className="inline-block gradient-text">Agriculture</span>
-          <span data-w className="inline-block">,</span>{" "}
-          <span data-w className="inline-block gradient-text">Technology</span>{" "}
-          <span data-w className="inline-block">&amp;</span>{" "}
-          <span data-w className="inline-block shimmer">Environmental Action</span>
+          <span data-w className="inline-block">Software</span>{" "}
+          <span data-w className="inline-block">Built</span>{" "}
+          <span data-w className="inline-block">Around</span>{" "}
+          <span data-w className="inline-block gradient-text">Your</span>{" "}
+          <span data-w className="inline-block gradient-text">Business</span>
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg text-gd-text-secondary leading-relaxed">
-          GreenDuty connects farmers, citizens, and corporations to build a
-          sustainable future through smart farming, pollution reporting, and
-          community-driven environmental action.
+          Personalized ERP, MES and CRM systems for factories and industrial
+          businesses — plus custom web and mobile applications, built around your
+          processes, your terminology and your rules.
         </p>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
-            href="/eco-map"
+            href="/catalogue"
             className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-gd-accent-500 to-gd-accent-600 px-6 py-3 text-sm font-semibold text-gd-text-inverse shadow-lg shadow-gd-accent-500/20 hover:shadow-gd-accent-500/40 hover:brightness-110 transition-all"
           >
-            <Radar className="h-4 w-4 group-hover:animate-spin-slow" /> Explore Eco Map
+            <Boxes className="h-4 w-4" /> Explore the Catalogue
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
           <Link
-            href="/marketplace"
+            href="/b2b"
             className="inline-flex items-center gap-2 rounded-xl border border-gd-border-strong bg-gd-elevated/50 px-6 py-3 text-sm font-semibold text-gd-text-primary hover:bg-gd-overlay hover:border-gd-accent-500/30 transition-all backdrop-blur-sm"
           >
-            Shop Marketplace
+            Book a Consultation
           </Link>
-          <button className="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-gd-text-muted hover:text-gd-accent-300 transition-colors">
-            <Play className="h-4 w-4" /> Watch Demo
-          </button>
         </div>
 
         {/* High-tech telemetry strip */}
         <div className="mx-auto mt-10 flex max-w-xl items-center justify-center gap-3 rounded-2xl border border-gd-border-soft bg-gd-card/60 px-5 py-3 backdrop-blur-sm">
-          <Satellite className="h-4 w-4 text-gd-olive-500" />
-          <span className="text-xs text-gd-text-muted">Satellite uplink</span>
+          <Server className="h-4 w-4 text-gd-olive-500" />
+          <span className="text-xs text-gd-text-muted">Build &amp; deploy pipeline</span>
           <span className="h-1 w-1 rounded-full bg-gd-border-strong" />
           <span className="flex items-center gap-1.5 text-xs font-medium text-gd-success">
             <span className="h-1.5 w-1.5 rounded-full bg-gd-success glow-breathe" /> Systems operational
           </span>
           <span className="h-1 w-1 rounded-full bg-gd-border-strong" />
-          <span className="text-xs text-gd-text-muted">v2.0</span>
+          <span className="text-xs text-gd-text-muted">Support included</span>
         </div>
 
         {/* Stats row — real numbers, count-up */}

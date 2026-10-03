@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { currentNextPath } from "@/lib/utils";
 import { MailCheck, RefreshCw, ArrowLeft, CheckCircle2, Terminal } from "lucide-react";
 
 const CODE_LENGTH = 6;
@@ -21,7 +22,7 @@ export default function VerifyPage() {
 
   // If already logged in, go straight to the dashboard (no loop)
   useEffect(() => {
-    if (user) router.replace("/dashboard");
+    if (user) router.replace(currentNextPath() || "/dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -67,7 +68,7 @@ export default function VerifyPage() {
     try {
       const result = await verify(code);
       if (result.ok) {
-        router.push("/dashboard");
+        router.push(currentNextPath() || "/dashboard");
       } else {
         setError(result.error || "Verification failed.");
         setDigits(Array(CODE_LENGTH).fill(""));

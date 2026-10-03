@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
 
 /**
- * High-tech live ticker: a scrolling marquee of real platform statistics.
- * Values refresh every 30s from /api/stats — all numbers are real.
+ * Live ticker: a scrolling marquee of real agency figures.
+ * Values refresh every 30s from /api/stats — all numbers are real aggregates
+ * over the clients / projects / partners tables.
  */
 export function LiveTicker() {
   const [items, setItems] = useState<string[]>([]);
@@ -16,18 +17,15 @@ export function LiveTicker() {
       .then(d => {
         if (!d) return;
         setLive(true);
-        const n = (v: number) => v.toLocaleString();
+        const n = (v: number | undefined) => (v || 0).toLocaleString();
+        const a = d.agency || {};
         setItems([
-          `🌳 ${n(d.trees || 0)} trees planted`,
-          `📢 ${n(d.hotspots || 0)} hotspots reported`,
-          `🧹 ${n(d.cleanups || 0)} cleanups organized`,
-          `🤝 ${n(d.volunteers || 0)} volunteers joined`,
-          `✅ ${n(d.hotspotsResolved || 0)} hotspots resolved`,
-          `👥 ${n(d.users || 0)} community members`,
-          `💬 ${n(d.posts || 0)} InstaGro posts`,
-          `💳 $${(d.revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} verified commerce`,
-          `📦 ${n(d.orders || 0)} marketplace orders`,
-          `🏆 ${n(d.verifiedUsers || 0)} verified accounts`,
+          `🏭 ${n(a.systemsDelivered)} systems delivered`,
+          `⚙️ ${n(a.projectsActive)} projects in progress`,
+          `🏢 ${n(a.clientsServed)} clients served`,
+          `🎯 ${n(a.industriesServed)} industries served`,
+          `🤝 ${n(a.partners)} active partners`,
+          `👥 ${n(d.verifiedUsers)} verified accounts`,
         ]);
       })
       .catch(() => {});

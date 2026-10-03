@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Settings, LogOut, User } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { TABS_BY_ROLE, ROLE_LABEL } from "@/lib/nav-config";
+import { tabsForAccountType, roleLabelFor, OWNER_TABS, OWNER_LABEL } from "@/lib/nav-config";
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -14,9 +14,12 @@ export function Sidebar() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  const type = user?.accountType || "guest";
-  const tabs = TABS_BY_ROLE[type] || [];
-  const label = ROLE_LABEL[type] || "Guest";
+  const type = user?.accountType || "client";
+  // The agency owner gets the business sections instead of the client tabs.
+  // Their API routes re-check the email server-side, so this only decides
+  // which links are drawn.
+  const tabs = user?.isOwner ? OWNER_TABS : tabsForAccountType(type);
+  const label = user?.isOwner ? OWNER_LABEL : roleLabelFor(type);
 
   const handleLogout = () => {
     logout();
@@ -78,7 +81,7 @@ export function Sidebar() {
       <div className="border-t border-gd-border p-3 space-y-1">
         {!collapsed && (
           <Link
-            href={`/feed/${user?.name?.toLowerCase().replace(/\s+/g, ".") || "you"}`}
+            href="/portal"
             className="flex items-center gap-3 rounded-xl px-3 py-2.5 mb-1 hover:bg-gd-elevated transition-colors"
           >
             <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-gd-accent-500 to-gd-ember-500 text-gd-text-inverse text-xs font-bold shadow-md">
@@ -90,12 +93,12 @@ export function Sidebar() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gd-text-primary truncate">{user?.name || "Guest"}</p>
-              <p className="text-xs text-gd-accent-400 font-medium">{label} · {(user?.points || 0).toLocaleString()} pts</p>
+              <p className="text-xs text-gd-accent-400 font-medium">{label}</p>
             </div>
           </Link>
         )}
         <Link
-          href={`/feed/${user?.name?.toLowerCase().replace(/\s+/g, ".") || "you"}`}
+          href="/portal"
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gd-text-muted hover:text-gd-text-secondary hover:bg-gd-elevated transition-colors"
         >
           <User className="h-5 w-5" />
