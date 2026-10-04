@@ -59,6 +59,8 @@ const SCHEMA = `
     emoji TEXT,
     gradient TEXT,
     avatar_media TEXT,
+    password_reset_code TEXT,
+    password_reset_expires INTEGER,
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -397,6 +399,8 @@ async function migrate(db: Db): Promise<void> {
     ["project_specs.project_name", "ALTER TABLE project_specs ADD COLUMN project_name TEXT"],
     ["project_orders.project_id", "ALTER TABLE project_orders ADD COLUMN project_id TEXT"],
     ["design_references.created_by", "ALTER TABLE design_references ADD COLUMN created_by TEXT"],
+    ["users.password_reset_code", "ALTER TABLE users ADD COLUMN password_reset_code TEXT"],
+    ["users.password_reset_expires", "ALTER TABLE users ADD COLUMN password_reset_expires INTEGER"],
   ];
   for (const [name, sql] of migrations) {
     try {

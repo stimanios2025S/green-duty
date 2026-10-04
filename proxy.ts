@@ -35,7 +35,7 @@ const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const PUBLIC_EXACT = new Set(["/", "/catalogue", "/partners", "/b2b"]);
 
 /** Public prefixes — the authentication flow itself. */
-const PUBLIC_PREFIXES = ["/login", "/auth/register", "/auth/verify"];
+const PUBLIC_PREFIXES = ["/login", "/auth/register", "/auth/verify", "/auth/reset"];
 
 /** Prefixes that must never be intercepted. */
 const ALWAYS_PASS = ["/_next", "/api", "/favicon", "/logo", "/images", "/landing-pages"];

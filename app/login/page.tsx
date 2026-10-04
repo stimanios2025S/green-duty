@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, FormEvent, Suspense } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
@@ -209,6 +210,14 @@ export default function LoginPage() {
                   className="w-full rounded-xl border border-gd-border bg-gd-card/70 py-3 pl-10 pr-4 text-sm text-gd-text-primary placeholder-gd-text-muted outline-none transition-colors focus:border-gd-accent-500/50 focus:ring-1 focus:ring-gd-accent-500/20"
                 />
               </div>
+
+              {mode === "login" && (
+                <div className="flex justify-end -mt-1">
+                  <Link href="/auth/reset" className="text-[11px] font-medium text-gd-accent-400 hover:text-gd-accent-300 transition-colors">
+                    Forgot password?
+                  </Link>
+                </div>
+              )}
 
               {error && (
                 <p className="rounded-xl border border-gd-danger/20 bg-gd-danger/5 px-4 py-2.5 text-xs text-gd-danger">
