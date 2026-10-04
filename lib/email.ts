@@ -136,9 +136,14 @@ export async function sendEnquiryNotification(details: EnquiryDetails): Promise<
         </div>
       `,
     });
-    if (error) return { mode: "failed" };
+    if (error) {
+      console.error("[GreenDuty] password-reset email FAILED:", error.message);
+      return { mode: "failed" };
+    }
+    console.log(`[GreenDuty] password-reset email sent to ${to} (id: ${data?.id})`);
     return { mode: "email", messageId: data?.id };
-  } catch {
+  } catch (err) {
+    console.error("[GreenDuty] password-reset email exception:", err);
     return { mode: "failed" };
   }
 }
@@ -176,9 +181,14 @@ export async function sendPasswordResetEmail(to: string, code: string): Promise<
         </div>
       `,
     });
-    if (error) return { mode: "failed" };
+    if (error) {
+      console.error("[GreenDuty] password-reset email FAILED:", error.message);
+      return { mode: "failed" };
+    }
+    console.log(`[GreenDuty] password-reset email sent to ${to} (id: ${data?.id})`);
     return { mode: "email", messageId: data?.id };
-  } catch {
+  } catch (err) {
+    console.error("[GreenDuty] password-reset email exception:", err);
     return { mode: "failed" };
   }
 }
